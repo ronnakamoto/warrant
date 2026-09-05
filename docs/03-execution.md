@@ -50,7 +50,7 @@ Stretch (only after Day 10 gate): Noir/Honk port; Uniswap CCA `IValidationHook` 
 
 **1:30–2:20 — Prove and pay.** Translator calls the Hedera `/translate` endpoint. Server returns 402 with `warrant` + x402 requirements; agent proves (show ~1.5 s), first three calls free (per-human nullifier), fourth call settles HBAR through Blocky402. Split screen: **server log shows `nullifier=0x8f…, scope=translate, tier=2, paid=0.1 HBAR` — no name, no address, no chain.** HashScan tx + HCS message appear.
 
-**2:20–2:50 — ENSv2.** ENS Explorer on Sepolia: `translator.research.alice-agents.eth` with EAC roles = its scope; ENSIP-25 link to its ERC-8004 id. "Transparency when you want it, the same permissions model either way."
+**2:20–2:50 — ENSv2.** *(Solo path: skip — cut straight to revoke. See [`08-demo-runbook.md`](08-demo-runbook.md).)* ENS Explorer on Sepolia: `translator.research.alice-agents.eth` with EAC roles = its scope; ENSIP-25 link to its ERC-8004 id. "Transparency when you want it, the same permissions model either way."
 
 **2:50–3:30 — Revoke.** Alice clicks **Revoke**. One tx bumps her epoch. All three agents' next calls fail. "The server never learned Alice existed, and it still enforced her decision."
 

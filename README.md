@@ -6,6 +6,14 @@ A human delegates authority to an agent; that agent may delegate a narrower mand
 
 Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World AgentKit, Agent Passport) expose the chain. PSE’s May 2026 *ACTA* proposal lists privacy-preserving recursive delegation as an open problem. Warrant addresses that gap with Semaphore-class ZK (EdDSA-Poseidon over Baby Jubjub, Groth16), World ID AgentBook roots (or documented `tier=0` demo), and x402 settlement on Hedera via Blocky402.
 
+| | Chain private? | Recursive attenuation | Personhood root | Revoke cascade |
+|---|---|---|---|---|
+| IETF AIP / Biscuit | No | Yes | No | App-defined |
+| ERC-7710 | No | Yes | No | Per-session |
+| World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
+| Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
+| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **AgentBook / tier** | **On-chain epoch** |
+
 ## Status
 
 | WP | Deliverable | State |
@@ -165,6 +173,8 @@ translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
 | [`docs/01-research.md`](docs/01-research.md) | Landscape and the ACTA gap |
 | [`docs/02-design.md`](docs/02-design.md) | Threat model, circuit, contracts, x402 |
 | [`docs/03-execution.md`](docs/03-execution.md) | Demo video script and judging self-check |
+| [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md) | Solo recording shot list (skip ENS) |
+| [`AI_USAGE.md`](AI_USAGE.md) | ETHOnline AI tool attribution |
 | [`docs/04-alternatives.md`](docs/04-alternatives.md) | Alternatives considered |
 | [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md) | Work packages and gates |
 | [`docs/06-kickoff.md`](docs/06-kickoff.md) | Kickoff checklist |
