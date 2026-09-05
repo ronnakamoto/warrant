@@ -145,7 +145,8 @@ describe("WP4 gate: 2-hop prove + MandateRegistry currentRoot", function () {
     });
 
     const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], tier, epoch);
-    const group = createGroup([leaf, 11n, 22n]);
+    // Single-member tree so on-chain bindRoot root == circuit merkleRoot.
+    const group = createGroup([leaf]);
     const requestHash = 123456789n;
 
     const prover = new SnarkjsProver(wasm, zkey);
@@ -183,13 +184,14 @@ describe("WP4 gate: 2-hop prove + MandateRegistry currentRoot", function () {
         Number(tier),
       );
       assert.notEqual(currentRoot, 0n);
+      assert.equal(currentRoot, publics.merkleRoot, "registry leaf must use circuit DST");
       const isCurrent = execFileSync(
         "cast",
         [
           "call",
           registry,
           "isCurrentRoot(uint256)(bool)",
-          currentRoot.toString(),
+          publics.merkleRoot.toString(),
           "--rpc-url",
           rpc,
         ],

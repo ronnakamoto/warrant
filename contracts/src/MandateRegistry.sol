@@ -2,10 +2,10 @@
 pragma solidity 0.8.28;
 
 import {InternalLeanIMT, LeanIMTData} from "lean-imt/InternalLeanIMT.sol";
-import {PoseidonT5} from "poseidon-solidity/PoseidonT5.sol";
+import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
 
 /// @title MandateRegistry
-/// @notice LeanIMT of Poseidon4(pkX, pkY, tier, epoch). Bind inserts epoch 0; revoke bumps epoch.
+/// @notice LeanIMT of Poseidon5(DST_leaf, pkX, pkY, tier, epoch). Bind inserts epoch 0; revoke bumps epoch.
 /// @dev No Groth16. AgentBook / personhood is checked **off-chain** at bind time by the
 ///      operator (or documented `tier=0`); this contract does not call World Chain.
 ///
@@ -16,6 +16,9 @@ contract MandateRegistry {
     using InternalLeanIMT for LeanIMTData;
 
     uint256 public constant ROOT_HISTORY_WINDOW = 1 hours;
+
+    /// @dev UTF-8 "warrant/leaf" as a field element — lockstep with circuits/lib/domains.circom.
+    uint256 public constant DOMAIN_LEAF = 36946522432971230366786740582;
 
     struct RootBinding {
         uint256 pkX;
@@ -42,17 +45,21 @@ contract MandateRegistry {
         return tree.depth;
     }
 
+    function _leaf(uint256 pkX, uint256 pkY, uint256 tier, uint256 epoch) internal pure returns (uint256) {
+        return PoseidonT6.hash([DOMAIN_LEAF, pkX, pkY, tier, epoch]);
+    }
+
     function leafOf(address wallet) public view returns (uint256) {
         RootBinding memory b = bindings[wallet];
         require(b.exists, "unbound");
-        return PoseidonT5.hash([b.pkX, b.pkY, uint256(b.tier), uint256(b.epoch)]);
+        return _leaf(b.pkX, b.pkY, uint256(b.tier), uint256(b.epoch));
     }
 
     /// @notice Insert a personhood-backed (or documented tier=0) root leaf at epoch 0.
     function bindRoot(uint256 pkX, uint256 pkY, uint8 tier) external returns (uint256 leaf, uint256 root) {
         require(!bindings[msg.sender].exists, "already bound");
         require(pkX != 0 && pkY != 0, "bad pk");
-        leaf = PoseidonT5.hash([pkX, pkY, uint256(tier), uint256(0)]);
+        leaf = _leaf(pkX, pkY, uint256(tier), uint256(0));
         root = tree._insert(leaf);
         currentRoot = root;
         rootTimestamp[root] = block.timestamp;
@@ -65,9 +72,9 @@ contract MandateRegistry {
     function revoke(uint256[] calldata siblings) external returns (uint256 root) {
         RootBinding storage b = bindings[msg.sender];
         require(b.exists, "unbound");
-        uint256 oldLeaf = PoseidonT5.hash([b.pkX, b.pkY, uint256(b.tier), uint256(b.epoch)]);
+        uint256 oldLeaf = _leaf(b.pkX, b.pkY, uint256(b.tier), uint256(b.epoch));
         uint32 newEpoch = b.epoch + 1;
-        uint256 newLeaf = PoseidonT5.hash([b.pkX, b.pkY, uint256(b.tier), uint256(newEpoch)]);
+        uint256 newLeaf = _leaf(b.pkX, b.pkY, uint256(b.tier), uint256(newEpoch));
         root = tree._update(oldLeaf, newLeaf, siblings);
         currentRoot = root;
         rootTimestamp[root] = block.timestamp;

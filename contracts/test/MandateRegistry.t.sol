@@ -38,8 +38,9 @@ contract MandateRegistryTest is Test {
     function testPoseidonMatchesJsLite() public view {
         assertEq(poseidon.t3(3, 5), _u(".poseidon2_35"));
         assertEq(poseidon.t5(1, 2, 3, 4), _u(".poseidon4_1234"));
-        assertEq(poseidon.t5(_u(".alice.pkX"), _u(".alice.pkY"), 2, 0), _u(".alice.leaf0"));
-        assertEq(poseidon.t5(_u(".alice.pkX"), _u(".alice.pkY"), 2, 1), _u(".alice.leaf1"));
+        uint256 dst = _u(".domainLeaf");
+        assertEq(poseidon.t6(dst, _u(".alice.pkX"), _u(".alice.pkY"), 2, 0), _u(".alice.leaf0"));
+        assertEq(poseidon.t6(dst, _u(".alice.pkX"), _u(".alice.pkY"), 2, 1), _u(".alice.leaf1"));
     }
 
     function testBindThreeThenRevokeAlice() public {

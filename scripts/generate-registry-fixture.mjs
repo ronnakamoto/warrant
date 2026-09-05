@@ -5,18 +5,19 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { poseidon2, poseidon4 } from "poseidon-lite";
+import { poseidon2, poseidon4, poseidon5 } from "poseidon-lite";
 import { Group } from "@semaphore-protocol/group";
 import { Identity } from "@semaphore-protocol/identity";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, "../contracts/test/fixtures");
 
+const DOMAIN_LEAF = BigInt("0x77617272616e742f6c656166"); // warrant/leaf
 const SEEDS = { alice: "warrant-alice", bob: "warrant-bob", carol: "warrant-carol" };
 const tier = 2n;
 
 function leafOf(id, epoch) {
-  return poseidon4([id.publicKey[0], id.publicKey[1], tier, epoch]);
+  return poseidon5([DOMAIN_LEAF, id.publicKey[0], id.publicKey[1], tier, epoch]);
 }
 
 function pk(id) {
@@ -46,6 +47,7 @@ const rootAfterRevoke = group.root;
 const fixture = {
   poseidon2_35: poseidon2([3n, 5n]).toString(),
   poseidon4_1234: poseidon4([1n, 2n, 3n, 4n]).toString(),
+  domainLeaf: DOMAIN_LEAF.toString(),
   alice: { ...pk(alice), leaf0: aliceLeaf0.toString(), leaf1: aliceLeaf1.toString() },
   bob: { ...pk(bob), leaf0: bobLeaf.toString() },
   carol: { ...pk(carol), leaf0: carolLeaf.toString() },
