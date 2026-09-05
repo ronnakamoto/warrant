@@ -10,8 +10,8 @@ From-Scratch rule: no project-specific product code before kickoff. After kickof
 - [ ] Discord: ETHGlobal, World, ENS, Hedera, PSE
 - [ ] World Developer Portal sandbox app (Selfie Check track). If this is blocked, ship `tier=0` *and* keep the AgentBook path in code — do not fake a World ID
 - [x] Hedera testnet ECDSA account `0.0.10311260` (~998 HBAR). Key in gitignored `.env`. Research HCS topic `0.0.10336558`. Live Blocky402 settle: 1000 tinybars to `0.0.98` (tx `0.0.7162784@1788502420.541125170`).
-- [ ] One Base Sepolia wallet with test ETH (for `MandateRegistry`)
-- [ ] One Ethereum Sepolia wallet with test ETH (ENS WP8 only)
+- [x] One Base Sepolia wallet with test ETH (for `MandateRegistry`) — see `deployments/base-sepolia.json`
+- [ ] One Ethereum Sepolia wallet with test ETH (ENS WP8 only — skipped solo)
 - [ ] `circom` 2.2.x and Foundry on PATH (`foundryup`, then `~/.local/bin` / `~/.foundry/bin`)
 - [ ] Re-read `docs/05-implementation-plan.md` §5 work packages — that file is the source of truth for *order*, not `docs/03-execution.md`
 - [ ] Re-read `docs/07-architecture.md` — that file is the source of truth for *structure*, SOLID, and what not to write
@@ -46,4 +46,4 @@ Write `FEEDBACK_WORLD.md`, `FEEDBACK_ENS.md`, `FEEDBACK_HEDERA.md` as you hit sn
 
 ## Video (do not improvise)
 
-Script is `docs/03-execution.md` §4. 2–4 min, ≥720p, **human voice**, no AI voiceover, no speed-up. Two takes on Sep 12. Submit **before 10:00 EDT Sep 13**.
+Script is `docs/03-execution.md` §4; solo shot list is `docs/08-demo-runbook.md`. 2–4 min, ≥720p, **human voice**, no AI voiceover, no speed-up. Two takes on Sep 12. Submit **before 10:00 EDT Sep 13**. Attribute AI in `AI_USAGE.md`.
