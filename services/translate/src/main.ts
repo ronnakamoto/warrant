@@ -1,4 +1,6 @@
 import { createApp } from "./app.js";
+import { fixedMerkleRootFromEnv } from "./demo-root.js";
+import { createHcsSinkFromEnv } from "./hcs-hedera.js";
 import { initializeWired, wire } from "./wiring.js";
 
 async function main(): Promise<void> {
@@ -12,12 +14,11 @@ async function main(): Promise<void> {
       | `0x${string}`
       | undefined,
     baseSepoliaRpc: process.env.BASE_SEPOLIA_RPC,
-    fixedMerkleRoot: process.env.FIXED_MERKLE_ROOT
-      ? BigInt(process.env.FIXED_MERKLE_ROOT)
-      : undefined,
+    fixedMerkleRoot: fixedMerkleRootFromEnv(),
     vkeyPath: process.env.WARRANT_VKEY_PATH,
     payTo: process.env.HEDERA_ACCOUNT_ID ?? "0.0.10311260",
     feePayer: process.env.BLOCKY402_FEE_PAYER ?? "0.0.7162784",
+    hcs: createHcsSinkFromEnv(),
   });
 
   await initializeWired(wired);

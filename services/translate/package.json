@@ -8,6 +8,7 @@
     "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 60000 --exit services/translate/test/**/*.test.ts"
   },
   "dependencies": {
+    "@hiero-ledger/sdk": "2.85.0",
     "@hono/node-server": "^1.19.0",
     "@warrant/core": "workspace:*",
     "@warrant/x402": "workspace:*",

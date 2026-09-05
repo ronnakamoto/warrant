@@ -6,7 +6,22 @@
   "bin": {
     "warrant": "./src/cli.ts"
   },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "cli": "tsx src/cli.ts",
+    "demo": "tsx demo/session.ts",
+    "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 120000 --exit packages/agent/test/**/*.test.ts"
+  },
   "dependencies": {
-    "@warrant/core": "workspace:*"
+    "@warrant/core": "workspace:*",
+    "@x402/core": "2.24.0",
+    "@x402/fetch": "2.24.0",
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "mocha": "^10.8.2",
+    "tsx": "^4.20.5"
   }
 }
