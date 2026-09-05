@@ -1,4 +1,4 @@
-/** { requireScope, minTier, freeCallsPerHuman } — data, not I/O. Stub — WP5. */
+/** { requireScope, minTier, freeCallsPerHuman } — data, not I/O. */
 export type WarrantPolicy = {
   requireScope: bigint;
   minTier: number;
