@@ -1,25 +1,8 @@
 # 07 — Software architecture (patterns, SOLID, structure, smells)
 
-`docs/05-implementation-plan.md` is the **build order** (work packages, gates, measured numbers). This file is the **shape of the product code**. WP0 must follow it. Spikes stay research; they are not a package.
+[`docs/05-implementation-plan.md`](05-implementation-plan.md) is the **build order** (work packages, gates, measured numbers). This file is the **detailed shape of the product code**. WP0 must follow both. Spikes stay research; they are not a package.
 
-If a change violates a rule here, it is a defect even if the demo still works.
-
----
-
-## 0. Verdict on the previous plan
-
-`docs/05` is clear on *what to ship and in what order*. It was **not** a software-architecture plan:
-
-| Question | In `docs/05`? | Here |
-|---|---|---|
-| Work packages, gates, spike numbers | Yes | Unchanged — keep using 05 |
-| Folder list | Sketch only | Exact files + one responsibility each |
-| Who may import whom | No | Acyclic dependency rule |
-| SOLID applied to *this* repo | No | Per package, with forbidden counterexamples |
-| Design patterns we will actually use | Named `ICircuitVerifier` once | Ports/adapters, strategy, pipeline, value objects, generated-code quarantine |
-| Code-smell prevention | Circuit footguns only | Product + crypto + x402 smells from the spikes |
-
-This document fills that gap. It is deliberately small: a hackathon dies from a god-module, not from missing a fifteenth pattern.
+If a change violates a rule here, it is a defect even if the demo still works. Prefer fewer patterns applied correctly over a large catalog.
 
 ---
 
@@ -29,7 +12,7 @@ This document fills that gap. It is deliberately small: a hackathon dies from a 
 2. **Crypto is behind ports.** Swapping Groth16 for Honk is an `IVerifier` impl, not a rewrite of x402.
 3. **Generated artifacts are frozen.** Circom output and `WarrantVerifier.sol` are not edited by hand.
 4. **Spike JS is radioactive.** Copy measurements and API *shapes*. Never `import` from `spikes/`.
-5. **YAGNI.** No Noir stub, no Graph, no mid-tree revoke, no generic plugin framework. One extra hop, one extra public input, or one extra package is a smell.
+5. **YAGNI.** No Noir stub, no Graph, no mid-tree revoke, no generic plugin framework. One extra hop, one extra public input, or one extra package is a defect.
 
 ---
 
@@ -47,7 +30,7 @@ contracts/                    # Foundry. No TS. solc 0.8.28.
 packages/core                 # domain + prove/verify. No HTTP, no React, no Hedera SDK.
 packages/x402                 # ResourceServerExtension + hooks. Depends on core + @x402/*.
 packages/agent                # CLI + warrant.fetch. Depends on core + @x402/fetch.
-apps/dashboard                # Next.js. UI only. Talks to translate via HTTP + viem for revoke.
+apps/dashboard                # Next.js + Astryx runtime, Carbon design language. UI only.
 services/translate            # Hono composition root. Wires x402 + Hedera + HCS.
 deployments/                  # JSON addresses. No logic.
 scripts/                      # compile-circuit, setup-groth16, download-zkey, check-boundaries.
@@ -99,7 +82,44 @@ src/translate.ts         # string reverse / tiny dictionary — the actual resou
 src/hcs.ts               # submit {nullifier, scope, tier, txId} after success
 ```
 
-### 2.5 Dependency direction (acyclic)
+### 2.5 `apps/dashboard` (WP7) — Astryx runtime, Carbon design language
+
+Two constraints that must not be collapsed:
+
+| Concern | Authority |
+|---|---|
+| **What you import** | [Astryx](https://astryx.atmeta.com/docs/getting-started) only (`@astryxdesign/core`, StyleX, CLI) |
+| **How it looks and behaves** | [IBM Carbon Design System](https://carbondesignsystem.com/) (themes, color roles, type, spacing, layering) |
+
+Do **not** install `@carbon/react` or `@carbon/styles`. Carbon is the design language; Astryx is the component runtime. Map Carbon into an editable Astryx theme (not stock `theme-neutral` as the ship look).
+
+Setup:
+
+```bash
+# in apps/dashboard
+pnpm add @astryxdesign/core @stylexjs/stylex @astryxdesign/cli
+npx @astryxdesign/cli init
+npx @astryxdesign/cli theme template   # then map tokens to Carbon g10 (and optional g100)
+```
+
+```css
+/* globals.css — Astryx reset/base + the Carbon-mapped theme (path may vary) */
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+@import './themes/carbon-g10/theme.css';
+```
+
+| Surface | Approach |
+|---|---|
+| Layout | `@astryxdesign/core/Layout` |
+| Actions | `@astryxdesign/core/Button` — primary ≈ Carbon interactive (Blue 60); revoke = danger |
+| Tree / log | Compose Astryx primitives; `astryx component` for the right control |
+| Tokens | Carbon roles (background, layer, text, border, support-error) → Astryx theme CSS variables |
+| Custom polish | StyleX `xstyle` only — no second token set |
+
+No snarkjs, circom, or prove path in this app. Scaffold shape: [Astryx Next.js example](https://github.com/facebook/astryx/tree/main/apps/example-nextjs).
+
+### 2.6 Dependency direction (acyclic)
 
 ```
 apps/dashboard ─────────────► services/translate (HTTP only)
@@ -310,7 +330,9 @@ Hono adapters depend on core. Core does not depend on Hono.
 | Primitive obsession | `scopes: string[]` across packages | `Scope` branded bigint |
 | Magic numbers | `publicSignals[7]` in three files | `PublicInputs.requestHash` / `PUBLIC.requestHash = 7` once |
 | Comments-as-design | `// don't skip verify` with skip still in code | No skip path exists |
-| Speculative generality | `packages/noir`, `IPlugin` | Delete. Non-goal until video |
+| Speculative generality | `packages/noir`, `IPlugin` | Delete. Non-goal until needed |
+| Dual UI kit | `@carbon/react` + Astryx, or shadcn/MUI alongside Astryx | Astryx components only; Carbon via theme tokens |
+| Wrong look | Shipping stock Astryx neutral/butter as the product theme | Carbon-mapped theme (g10 default, g100 optional) |
 | Dead spike import | `from "../../spikes/zk/cascade.mjs"` | Rewrite; copy constants into `deployments/` or core |
 | Divergent mandate hash | Poseidon(4) vs Poseidon(5) for M_i | Pin Poseidon(5) as in 05 |
 | Test-only production branch | `if (process.env.FAKE_WORLD_ID)` | `tier=0` adapter is explicit and logged |
@@ -356,7 +378,7 @@ TDD for product code: failing test on the invariant, then the module. Do not “
 | **4** | Core ports + snarkjs adapters. Public API is the four verbs |
 | **5** | Extension + hooks + pipeline. Register `ExactHederaScheme` **before** `initialize()` |
 | **6** | CLI is a facade over core. HCS is a sink after success, not part of verify |
-| **7** | Dashboard: local tree + revoke tx. No snarkjs in the browser |
+| **7** | Dashboard: Astryx runtime + Carbon design language (theme map); local tree + revoke. No snarkjs; no `@carbon/react` |
 | **8** | ENS adapter. Same `Scope` bits. Droppable without touching core |
 | **9–10** | No new packages |
 
@@ -391,7 +413,7 @@ If this sketch grows `if (chain === "ens")` inside `pipeline.handle`, the archit
 - Not a 40-class enterprise framework.
 - Not 100% unit-test coverage of snarkjs.
 - Not on-chain Groth16 on Hedera (05 non-goal).
-- Not hiding the hackathon trusted setup (disclose in `CEREMONY.md`).
+- Not an undisclosed trusted setup (document entropy and process in `CEREMONY.md`).
 
 Robust means: a new contributor can add a paid rail or a Honk verifier without editing the circuit public-input tuple, the x402 pipeline order, or the dashboard.
 

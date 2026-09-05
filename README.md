@@ -14,16 +14,16 @@ Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World Ag
 | [`docs/02-design.md`](docs/02-design.md) | Design: threat model, data structures, ZK circuit, contracts, x402 middleware, SDK, and integrations. |
 | [`docs/03-execution.md`](docs/03-execution.md) | Demo outline and evaluation criteria. Build order lives in `docs/05`. |
 | [`docs/04-alternatives.md`](docs/04-alternatives.md) | Alternatives considered and why Warrant was chosen. |
-| [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md) | Implementation plan: work packages, gates, constraint budget, and spike-backed decisions. |
+| [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md) | **Implementation plan:** structure, SOLID/patterns, work packages, and failable gates. |
 | [`docs/06-kickoff.md`](docs/06-kickoff.md) | Kickoff checklist: circuit constraints, partner tracks, and delivery constraints. |
-| [`docs/07-architecture.md`](docs/07-architecture.md) | Software architecture: package boundaries, patterns, and coding standards. |
+| [`docs/07-architecture.md`](docs/07-architecture.md) | Architecture detail: import graph, ports, smell catalog, and testing shape. |
 
 ## Properties
 
 - **Authorization, not identity** — Verifiers learn that a mandate is valid under a personhood-rooted tree; they do not learn the human or intermediate agents.
 - **Attenuation** — Each hop can only narrow scope, budget, and TTL.
 - **Cascade revocation** — Killing the root immediately invalidates every descendant mandate.
-- **Practical integration** — Drop-in x402 middleware, a CLI for agent frameworks, and testnet contracts with Blocky402 (Hedera) or Circle Gateway payments.
+- **Practical integration** — Drop-in x402 middleware, a CLI for agent frameworks, testnet contracts with Blocky402 (Hedera) or Circle Gateway payments, and a dashboard built with [Astryx](https://astryx.atmeta.com/docs/getting-started) under the [IBM Carbon](https://carbondesignsystem.com/) design language.
 
 Example developer surface:
 
@@ -33,4 +33,4 @@ warrant delegate --scope translate --budget 2 --ttl 1h --to <sub-agent>
 
 ## Status
 
-Research and design are complete, with closed spike evidence (16 spikes) and an architecture plan in [`docs/07-architecture.md`](docs/07-architecture.md). Implementation follows [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md).
+Research and design are complete, with closed spike evidence (16 spikes). Build order and architecture obligations: [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md). Detailed patterns and smell gates: [`docs/07-architecture.md`](docs/07-architecture.md).
