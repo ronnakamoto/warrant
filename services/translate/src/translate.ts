@@ -1,4 +1,4 @@
-/** String reverse / dictionary — no proofs. Stub — WP5. */
+/** Resource payload — no proofs, no payments. */
 export function translate(input: string): string {
   return input.split("").reverse().join("");
 }

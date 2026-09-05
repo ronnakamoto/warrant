@@ -44,6 +44,7 @@ export {
 } from "./prove/witness.js";
 export { SnarkjsProver, type IProver, type WarrantProof } from "./prove/snarkjs-prover.js";
 export { SnarkjsVerifier, type IVerifier } from "./prove/snarkjs-verifier.js";
+export type { INullifierStore } from "./ports/nullifier-store.js";
 
 import type { IProver, WarrantProof } from "./prove/snarkjs-prover.js";
 import type { IVerifier } from "./prove/snarkjs-verifier.js";

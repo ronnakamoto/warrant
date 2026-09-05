@@ -3,10 +3,12 @@
   "private": true,
   "packageManager": "pnpm@10.19.0",
   "scripts": {
-    "test": "node scripts/check-boundaries.mjs && mocha && pnpm --filter @warrant/core test",
+    "test": "node scripts/check-boundaries.mjs && mocha && pnpm --filter @warrant/core test && pnpm --filter @warrant/x402 test && pnpm --filter @warrant/translate test",
     "test:circuit": "mocha",
     "test:circuit:full": "mocha --config .mocharc.full.cjs",
     "test:core": "NODE_OPTIONS='--import tsx' mocha --no-config --timeout 180000 --exit packages/core/test/**/*.test.ts",
+    "test:x402": "pnpm --filter @warrant/x402 test",
+    "test:translate": "pnpm --filter @warrant/translate test",
     "check-boundaries": "node scripts/check-boundaries.mjs"
   },
   "devDependencies": {

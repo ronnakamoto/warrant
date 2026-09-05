@@ -4,8 +4,19 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 60000 --exit packages/x402/test/**/*.test.ts"
+  },
   "dependencies": {
-    "@warrant/core": "workspace:*"
+    "@warrant/core": "workspace:*",
+    "@x402/core": "2.24.0",
+    "@x402/hono": "2.24.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.8.2",
+    "tsx": "^4.20.5"
   }
 }
