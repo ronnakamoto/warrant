@@ -46,6 +46,22 @@ importers:
       '@warrant/core':
         specifier: workspace:*
         version: link:../core
+      '@x402/core':
+        specifier: 2.24.0
+        version: 2.24.0
+      '@x402/fetch':
+        specifier: 2.24.0
+        version: 2.24.0
+      viem:
+        specifier: ^2.56.3
+        version: 2.56.3(zod@3.25.76)
+    devDependencies:
+      mocha:
+        specifier: ^10.8.2
+        version: 10.8.2
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
 
   packages/core:
     dependencies:
@@ -93,6 +109,9 @@ importers:
 
   services/translate:
     dependencies:
+      '@hiero-ledger/sdk':
+        specifier: 2.85.0
+        version: 2.85.0(bn.js@5.2.3)(react-native@0.87.1(@babel/core@7.29.7)(react@19.2.8))
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.17(hono@4.13.7)
@@ -608,6 +627,9 @@ packages:
 
   '@x402/extensions@2.24.0':
     resolution: {integrity: sha512-OSPywa8o46a2xIrh+nJqpvXQrppIPNimuPwf5zGRhRZEdjXfBAoSydB+rFj15rKR6Fd0iVjjqsrwUE1FnOuMvg==}
+
+  '@x402/fetch@2.24.0':
+    resolution: {integrity: sha512-jhopac/aRWh3CYpDFjMxIzo/raH0ncmdDK2op6RzMoWsH3wj9/ejJylTv+Q22epReWLZ9AI35LEymN66B0MqNw==}
 
   '@x402/hedera@2.24.0':
     resolution: {integrity: sha512-taK6AVZU66cVIk8hW3HXgRdzXRWfRei+q2eI7swib0BLgdvF+OWdMqBGE2ZU7+7/11MLNZeSj7Nhh861I3RvWA==}
@@ -2240,7 +2262,7 @@ snapshots:
   '@grpc/proto-loader@0.7.15':
     dependencies:
       lodash.camelcase: 4.3.0
-      long: 5.3.1
+      long: 5.3.2
       protobufjs: 7.6.6
       yargs: 17.7.3
 
@@ -2557,6 +2579,10 @@ snapshots:
       - ethers
       - typescript
       - utf-8-validate
+
+  '@x402/fetch@2.24.0':
+    dependencies:
+      '@x402/core': 2.24.0
 
   '@x402/hedera@2.24.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.3)(debug@4.4.3)(protobufjs@8.2.0)(react-native@0.87.1(@babel/core@7.29.7)(react@19.2.8))(strip-ansi@7.1.2)':
     dependencies:
@@ -3751,7 +3777,7 @@ snapshots:
   protobufjs@8.2.0:
     dependencies:
       '@types/node': 22.7.5
-      long: 5.3.1
+      long: 5.3.2
 
   pump@3.0.4:
     dependencies:
