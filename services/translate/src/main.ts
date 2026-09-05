@@ -1,3 +1,4 @@
+import { TRANSLATE } from "@warrant/core";
 import { createApp } from "./app.js";
 import { fixedMerkleRootFromEnv } from "./demo-root.js";
 import { createHcsSinkFromEnv } from "./hcs-hedera.js";
@@ -16,9 +17,14 @@ async function main(): Promise<void> {
     baseSepoliaRpc: process.env.BASE_SEPOLIA_RPC,
     fixedMerkleRoot: fixedMerkleRootFromEnv(),
     vkeyPath: process.env.WARRANT_VKEY_PATH,
-    payTo: process.env.HEDERA_ACCOUNT_ID ?? "0.0.10311260",
+    payTo: process.env.HEDERA_PAY_TO ?? process.env.HEDERA_ACCOUNT_ID ?? "0.0.10311260",
     feePayer: process.env.BLOCKY402_FEE_PAYER ?? "0.0.7162784",
     hcs: createHcsSinkFromEnv(),
+    policy: {
+      requireScope: TRANSLATE,
+      minTier: Number(process.env.WARRANT_MIN_TIER ?? 1),
+      freeCallsPerHuman: Number(process.env.WARRANT_FREE_CALLS ?? 3),
+    },
   });
 
   await initializeWired(wired);

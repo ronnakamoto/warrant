@@ -15,6 +15,8 @@ Built against Hedera **testnet** with Blocky402 as the x402 facilitator and an H
 3. **Testnet faucet / fee payer** — demos need a funded fee payer (`BLOCKY402_FEE_PAYER` / account). Document the expected tinybar amounts next to the facilitator base URL.
 4. **ECDSA account format** — mixing `0.0.N` account IDs with EVM `0x` addresses in the same `.env` is easy to swap; clearer naming in examples would help (`HEDERA_ACCOUNT_ID` vs `HEDERA_EVM_ADDRESS`).
 5. **Hono `getBody` is async** — `@x402/hono` adapter returns `Promise` from `getBody()`, but resource-server challenge resolution is synchronous, so `requestHash` cannot bind the POST body today without hashing a Promise (wrong) or using `""`. Warrant uses empty `bodyHash` until the x402 hook path is async.
+6. **Payer ≠ payTo** — if the agent payer account equals `accepts[0].payTo`, ExactHedera settlement fails with `invalid_exact_hedera_payload_amount_mismatch` (self-transfer nets to zero). Document a separate merchant `HEDERA_PAY_TO` in client examples.
+7. **Client spendControls** — `@x402/core` defaults reject Hedera HBAR `asset: 0.0.0` unless `spendControls: false` or an `allowedAssets` entry; demo clients must opt in explicitly.
 
 ## Wishlist
 

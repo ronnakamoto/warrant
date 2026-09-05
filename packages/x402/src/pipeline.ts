@@ -107,18 +107,21 @@ export function createWarrantPipeline(deps: PipelineDeps) {
         return { kind: "abort", reason: "policy" };
       }
 
-      // 7. Replay seal
-      const seal = await deps.nullifiers.takeRequest(publics.nullifier, publics.requestHash);
-      if (seal === "seen") {
-        return { kind: "abort", reason: "replay" };
-      }
-
-      // 8. Free quota (atomic consume — quota is not the replay seal)
+      // 7–8. Free quota, then replay seal on grant only.
+      // Pay fallthrough must not seal: wrapFetchWithPayment retries the same warrant
+      // after attaching exact/hedera payment (docs/05 §3 step 9).
       const free = await deps.nullifiers.consumeFree(
         publics.nullifier,
         deps.policy.freeCallsPerHuman,
       );
       if (free === "granted") {
+        const seal = await deps.nullifiers.takeRequest(
+          publics.nullifier,
+          publics.requestHash,
+        );
+        if (seal === "seen") {
+          return { kind: "abort", reason: "replay" };
+        }
         return { kind: "grant" };
       }
 

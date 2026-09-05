@@ -1,0 +1,13 @@
+{
+  "chainId": 84532,
+  "rpc": "https://sepolia.base.org",
+  "deployer": "0xa16d90c5f9D2B14133Db64D57ac81F46DD1161eF",
+  "operator": "0xa16d90c5f9D2B14133Db64D57ac81F46DD1161eF",
+  "MandateRegistry": "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+  "WarrantVerifier": "0xf63f8055FA522bb5Ae243FF713cB889f02c4f742",
+  "WarrantGate": "0xb0a73736C5A1eFa09589aB3E30C3201D267A24A1",
+  "explorer": {
+    "registry": "https://sepolia.basescan.org/address/0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+    "gate": "https://sepolia.basescan.org/address/0xb0a73736C5A1eFa09589aB3E30C3201D267A24A1"
+  }
+}

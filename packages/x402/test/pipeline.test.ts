@@ -216,6 +216,29 @@ describe("@warrant/x402 pipeline", function () {
     assert.deepEqual(await p.handle(req), { kind: "abort", reason: "replay" });
   });
 
+  it("pay fallthrough re-entry same warrant → continue (not replay)", async function () {
+    const store = memoryNullifiers();
+    const p = pipe(verifierOk, store);
+    const base = { method: "POST" as const, path, challenge };
+    for (let i = 0; i < 3; i++) {
+      const ch = { ...challenge, nonce: `pay-n-${i}` };
+      const pub = publics({
+        requestHash: hashChallenge({ ...ch, merkleRoot: String(liveRoot) }),
+      });
+      assert.equal(
+        (await p.handle({ ...base, challenge: ch, warrantHeader: header(pub) })).kind,
+        "grant",
+      );
+    }
+    const ch4 = { ...challenge, nonce: "pay-n-3" };
+    const pub4 = publics({
+      requestHash: hashChallenge({ ...ch4, merkleRoot: String(liveRoot) }),
+    });
+    const req4 = { ...base, challenge: ch4, warrantHeader: header(pub4) };
+    assert.equal((await p.handle(req4)).kind, "continue");
+    assert.equal((await p.handle(req4)).kind, "continue", "payment retry");
+  });
+
   it("consumeFree is atomic vs interleaved check/bump", async function () {
     const store = memoryNullifiers();
     const a = await store.consumeFree(1n, 1);

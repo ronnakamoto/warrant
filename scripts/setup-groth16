@@ -36,8 +36,23 @@ fi
 
 if [[ ! -f "$PTAU" ]]; then
   echo "Downloading Hermez pot16 final..."
-  curl -L --fail -o "$PTAU" \
+  urls=(
     "https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_16.ptau"
+    "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_16.ptau"
+  )
+  ok=0
+  for url in "${urls[@]}"; do
+    echo "trying $url"
+    if curl -L --fail -o "$PTAU" "$url"; then
+      ok=1
+      break
+    fi
+    rm -f "$PTAU"
+  done
+  if [[ "$ok" -ne 1 ]]; then
+    echo "failed to download pot16 from known mirrors" >&2
+    exit 1
+  fi
 fi
 
 if [[ ! -f "${BUILD}/${NAME}.r1cs" ]]; then
