@@ -1,0 +1,12 @@
+{
+  "name": "@warrant/agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "warrant": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@warrant/core": "workspace:*"
+  }
+}

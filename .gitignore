@@ -1,10 +1,17 @@
 agent-tools/
 terminals/
 node_modules/
+dist/
+.next/
 .env
 .env.*
 !.env.example
 spikes/node_modules/
+
+# Foundry (product + spikes)
+contracts/out/
+contracts/cache/
+contracts/broadcast/
 spikes/zk/ptau/
 spikes/zk/build/
 spikes/zk/prove-results.json
@@ -14,3 +21,14 @@ spikes/zk/foundry/broadcast/
 spikes/zk/foundry/lib/forge-std/
 *.ptau
 spikes/**/*.log
+
+# Isolated git worktrees
+.worktrees/
+.superpowers/
+
+# Circom / snarkjs build
+circuits/build/
+*.r1cs
+*.wasm
+*.wtns
+*.sym

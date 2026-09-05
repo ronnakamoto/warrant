@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+NAME="${1:-warrant_lean}"
+OUT="${ROOT}/circuits/build"
+mkdir -p "$OUT"
+CIRCOMLIB="${ROOT}/node_modules/circomlib/circuits"
+BMR="${ROOT}/node_modules/@zk-kit/binary-merkle-root.circom/src"
+CIRCUITS="${ROOT}/circuits"
+circom "${ROOT}/circuits/${NAME}.circom" --r1cs --wasm --sym -o "$OUT" \
+  -l "$CIRCOMLIB" -l "$BMR" -l "$CIRCUITS" -l "${CIRCUITS}/lib"
+echo "compiled ${NAME} → ${OUT}"
+node "${ROOT}/node_modules/snarkjs/cli.js" r1cs info "${OUT}/${NAME}.r1cs"

@@ -1,0 +1,22 @@
+{
+  "name": "warrant",
+  "private": true,
+  "packageManager": "pnpm@10.19.0",
+  "scripts": {
+    "test": "node scripts/check-boundaries.mjs && mocha",
+    "test:circuit": "mocha",
+    "test:circuit:full": "mocha --config .mocharc.full.cjs",
+    "check-boundaries": "node scripts/check-boundaries.mjs"
+  },
+  "devDependencies": {
+    "@semaphore-protocol/group": "4.14.3",
+    "@semaphore-protocol/identity": "4.14.3",
+    "@zk-kit/binary-merkle-root.circom": "2.0.0",
+    "chai": "^4.5.0",
+    "circom_tester": "0.0.24",
+    "circomlib": "^2.0.5",
+    "mocha": "^10.8.2",
+    "poseidon-lite": "^0.3.0",
+    "snarkjs": "^0.7.6"
+  }
+}

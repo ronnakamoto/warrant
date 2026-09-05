@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Wrapper kept for docs/CI that call `scripts/download-zkey`.
+set -euo pipefail
+exec "$(cd "$(dirname "$0")" && pwd)/download-zkey.sh" "$@"

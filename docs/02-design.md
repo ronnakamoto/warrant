@@ -57,24 +57,23 @@ Private inputs: `rootPk, epoch, merkleDepth, merkleIndex, siblings[MAX_DEPTH], m
 ## 3. The circuit (Noir or circom; fixed max depth D = 4, padded)
 
 ```
-1. leaf = Poseidon(rootPk, tier, epoch)          ; assert MerkleVerify(leaf, path) == merkleRoot
+1. tagC = Poseidon(DST_tag, humanTag)
+   leaf = Poseidon(DST_leaf, rootPk, tier, epoch) ; assert MerkleVerify(leaf, path) == merkleRoot
 2. for i in 0..D:
-     if i < depth:
-        assert EdDSAVerify(pk_{i-1} (pk_{-1} = rootPk), H(mandate_i), sig_i)
-        assert mandate_i.scope     ⊆ mandate_{i-1}.scope      (bitwise: child & ~parent == 0)
-        assert mandate_i.budgetCap ≤ mandate_{i-1}.budgetCap
-        assert mandate_i.expiry    ≤ mandate_{i-1}.expiry
-        assert mandate_i.epoch     == epoch  &&  mandate_i.tier == tier
-        assert mandate_i.parentHash == H(mandate_{i-1})   (0 for i = 0)
-     else: copy-through (padding)
-3. leafPk = mandate_{depth-1}.childPk ; assert leafPk == derive(leafSk)
-4. assert EdDSAVerify(leafSk, requestHash)          ; binds this proof to this exact HTTP request / tx
-5. assert minExpiry ≤ mandate_{depth-1}.expiry
-6. effectiveScope = mandate_{depth-1}.scope ; effectiveBudgetCap = mandate_{depth-1}.budgetCap
-7. nullifier = Poseidon(humanTag, contextHash) ; assert Poseidon(humanTag) == mandate_0.humanTagCommitment
+     parentHash_0 = 0 ; parentHash_i = H(mandate_{i-1})
+     M_i = Poseidon(DST_mandate, childPk, scope, budget, expiry, tier, epoch, parentHash_i, tagC)
+     if enabled[i]:
+        assert EdDSAVerify(pk_{i-1} (pk_{-1} = rootPk), M_i, sig_i)
+        assert scope ⊆ parent.scope ; budget ≤ parent.budget ; expiry ≤ parent.expiry
+     else: padding (on-curve dummy keys)
+3. leafPk = last-enabled childPk
+4. assert EdDSAVerify(leafPk, requestHash)          ; binds this proof to this exact HTTP request / tx
+5. assert minExpiry ≤ last-enabled expiry
+6. effectiveScope / effectiveBudgetCap = last-enabled hop
+7. nullifier = Poseidon(DST_nullifier, humanTag, contextHash)
 ```
 
-Cost (measured 2026-09-02, see `docs/05-implementation-plan.md`): the **full** circuit (LeanIMT-20 + 4 padded mandate signatures + request signature) is **56,794** constraints, Groth16 prove **2.2 s**, JS verify **319 ms**. Public inputs stay 8. zkey is **27.9 MB** (do not commit). If time allows, Noir + UltraHonk avoids the trusted setup.
+Cost (measured on WP2 product circuit): **59,837** constraints; Groth16 prove ~**1.8 s** in CI-local runs. Public inputs stay 8. zkey ~**28 MB** (do not commit). Domain tags and `tagC` inside every mandate close quota-rotation. If time allows, Noir + UltraHonk avoids the trusted setup (still not PQ by itself).
 
 Why `requestHash` matters: the proof is not a bearer token. Replaying it against a different request fails. Pinned formula (spike 16): `requestHash = keccak256(method|path|nonce|merkleRoot|amount|payTo|bodyHash) mod r` (`r` = bn254 scalar field). The leaf EdDSA-signs that field. The x402 hook requires `publicSignals[7]` to equal the live challenge.
 
