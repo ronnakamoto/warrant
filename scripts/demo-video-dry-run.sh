@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Dry-run the solo demo video beats (prove → free×3 → pay → optional revoke check).
+# Does not record video. Requires: .env, zkey, translate on :8787 (or starts one).
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+if [[ ! -f .env ]]; then
+  echo "missing .env — copy .env.example" >&2
+  exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+STORE="${WARRANT_STORE:-/tmp/warrant-live/state.json}"
+export WARRANT_STORE="$STORE"
+export TRANSLATE_URL="${TRANSLATE_URL:-http://127.0.0.1:8787/v1/translate}"
+PORT="${PORT:-8787}"
+
+if [[ ! -f "$STORE" ]]; then
+  echo "missing store $STORE — bind + delegate first (see docs/08-demo-runbook.md)" >&2
+  exit 1
+fi
+
+if [[ ! -f circuits/build/warrant_final.zkey ]]; then
+  echo "missing zkey — copy or run ./scripts/download-zkey.sh" >&2
+  exit 1
+fi
+
+health() {
+  curl -sf "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1
+}
+
+if ! health; then
+  echo "starting translate on :${PORT} (real vkey, REGISTRY currentRoot)…"
+  export ALLOW_DEMO_ROOT=1
+  export WARRANT_MIN_TIER="${WARRANT_MIN_TIER:-0}"
+  export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-3}"
+  export WARRANT_VKEY_PATH="${WARRANT_VKEY_PATH:-$ROOT/circuits/build/warrant_vkey.json}"
+  unset FIXED_MERKLE_ROOT ALLOW_DEMO_VERIFY || true
+  pnpm --filter @warrant/translate dev &
+  TRANSLATE_PID=$!
+  trap 'kill "$TRANSLATE_PID" 2>/dev/null || true' EXIT
+  for _ in $(seq 1 30); do
+    health && break
+    sleep 0.5
+  done
+  health || { echo "translate failed to start" >&2; exit 1; }
+fi
+
+call() {
+  local label=$1
+  shift
+  echo ""
+  echo "=== $label ==="
+  "$@"
+}
+
+# Restarting translate mid-script is awkward; burn quota with free calls then pay.
+# If quota already exhausted, free calls return 402 — pay still exercises Blocky402.
+call "free/prove 1" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
+  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "free/prove 2" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
+  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "free/prove 3" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
+  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "pay (Blocky402)" env WARRANT_REAL_PROVE=1 WARRANT_PAY=1 \
+  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+
+echo ""
+echo "Dry-run complete. For revoke beat: dashboard Revoke or cast send revoke, then:"
+echo "  WARRANT_REAL_PROVE=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts"
+echo "  # expect 403 root_revoked"
+echo "Shot list: docs/08-demo-runbook.md"

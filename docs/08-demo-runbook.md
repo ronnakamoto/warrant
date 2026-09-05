@@ -19,6 +19,13 @@ export WARRANT_STORE=/tmp/warrant-demo-video/state.json
 # keygen alice/orchestrator/translator, bind-root on-chain, two delegates — or reuse /tmp/warrant-live after epoch sync
 ```
 
+Automated beat check (prove / free / pay — not revoke):
+
+```bash
+export WARRANT_STORE=/tmp/warrant-live/state.json
+./scripts/demo-video-dry-run.sh
+```
+
 ## Shot list (solo, no ENS)
 
 | Time | Beat | Show | Say (short) |
