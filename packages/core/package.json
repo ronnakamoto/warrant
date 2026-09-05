@@ -6,5 +6,19 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 180000 --exit packages/core/test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@semaphore-protocol/group": "4.14.3",
+    "@semaphore-protocol/identity": "4.14.3",
+    "poseidon-lite": "^0.3.0",
+    "snarkjs": "^0.7.6"
+  },
+  "devDependencies": {
+    "mocha": "^10.8.2",
+    "tsx": "^4.20.5"
   }
 }

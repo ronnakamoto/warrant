@@ -1,6 +1,18 @@
 /** Exactly 8 public input slots. Adding a field is a type error. */
 export const PUBLIC_INPUT_COUNT = 8 as const;
 
+/** Slot indices — use these instead of raw `publicSignals[7]`. */
+export const PUBLIC = {
+  merkleRoot: 0,
+  contextHash: 1,
+  nullifier: 2,
+  effectiveScope: 3,
+  effectiveBudgetCap: 4,
+  minExpiry: 5,
+  tier: 6,
+  requestHash: 7,
+} as const;
+
 export type PublicInputTuple = readonly [
   merkleRoot: bigint,
   contextHash: bigint,
@@ -54,4 +66,26 @@ export function fromArray(arr: readonly bigint[]): PublicInputs {
     tier: arr[6]!,
     requestHash: arr[7]!,
   };
+}
+
+export function publicsFromWitness(w: {
+  merkleRoot: bigint;
+  contextHash: bigint;
+  nullifier: bigint;
+  effectiveScope: bigint;
+  effectiveBudgetCap: bigint;
+  minExpiry: bigint;
+  tier: bigint;
+  requestHash: bigint;
+}): PublicInputs {
+  return fromArray([
+    w.merkleRoot,
+    w.contextHash,
+    w.nullifier,
+    w.effectiveScope,
+    w.effectiveBudgetCap,
+    w.minExpiry,
+    w.tier,
+    w.requestHash,
+  ]);
 }
