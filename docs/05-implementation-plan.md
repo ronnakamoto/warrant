@@ -335,6 +335,8 @@ End-to-end demo:
 4. Revoke; next call fails with `root_revoked`.
 5. Optional: ENS subname appears then disappears.
 
+**Gate (automated):** `pnpm dod` — scripts/dod.ts. Solo path skips (5); note in README + `FEEDBACK_ENS.md`.
+
 If 1–4 pass, the implementation is done. Everything else is polish.
 
 ---

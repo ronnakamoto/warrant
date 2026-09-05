@@ -16,8 +16,8 @@ Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World Ag
 | 6 | Agent CLI + two-agent demo + HCS | Done |
 | 7 | Dashboard (Astryx + Carbon g10/g100) + revoke | Done |
 | 8 | ENSv2 namespaces | **Skipped** (solo path) |
-| 9 | Runnable README + partner feedback | This PR |
-| 10 | End-to-end definition of done | Next |
+| 9 | Runnable README + partner feedback | Done |
+| 10 | End-to-end definition of done | Done (`pnpm dod`) |
 
 ## Quick start (local paid-path smoke)
 
@@ -176,3 +176,11 @@ Smell gate (every WP):
 ```bash
 pnpm check-boundaries
 ```
+
+## Definition of done (WP10)
+
+```bash
+pnpm dod
+```
+
+Exits 0 when gates 1–4 pass (tier=0 bind → attenuated delegate → free×3 then 402 → revoke/`root_revoked`). ENS (gate 5) is skipped on the solo path.
