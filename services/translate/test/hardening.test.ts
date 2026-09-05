@@ -4,6 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bodyHashFromCanonical, bodyHashFromRaw } from "@warrant/core";
 import { FileNullifierStore } from "../src/nullifiers-file.ts";
+import {
+  cachedRequestBody,
+  parseRequestBody,
+  withRequestBody,
+} from "../src/request-body.ts";
 
 describe("FileNullifierStore", function () {
   it("persists takeRequest and consumeFree across instances", async function () {
@@ -63,5 +68,25 @@ describe("bodyHashFromCanonical", function () {
 
   it("non-JSON strings hash as raw bytes", function () {
     assert.equal(bodyHashFromCanonical("not-json"), bodyHashFromRaw("not-json"));
+  });
+});
+
+describe("request body ALS", function () {
+  it("clone-parses JSON without consuming the original Request", async function () {
+    const req = new Request("http://127.0.0.1/v1/translate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"text":"hi"}',
+    });
+    const parsed = await parseRequestBody(req);
+    assert.deepEqual(parsed, { text: "hi" });
+    assert.equal(await req.text(), '{"text":"hi"}');
+  });
+
+  it("exposes the cached body inside withRequestBody", function () {
+    assert.equal(cachedRequestBody(), undefined);
+    const seen = withRequestBody({ text: "hi" }, () => cachedRequestBody());
+    assert.deepEqual(seen, { text: "hi" });
+    assert.equal(cachedRequestBody(), undefined);
   });
 });

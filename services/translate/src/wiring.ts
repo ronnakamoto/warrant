@@ -28,6 +28,7 @@ import { FileNullifierStore } from "./nullifiers-file.js";
 import { MemoryNullifierStore } from "./nullifiers.js";
 import { CurrentRootChecker, FixedRootChecker } from "./roots.js";
 import { createLogHcsSink, type HcsSink } from "./hcs.js";
+import { cachedRequestBody } from "./request-body.js";
 
 export type WireConfig = {
   /** Live Blocky402 URL, or inject a FacilitatorClient (tests). */
@@ -62,6 +63,10 @@ export type Wired = {
 };
 
 async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
+  const cached = cachedRequestBody();
+  if (cached !== undefined && cached !== null) {
+    return bodyHashFromCanonical(cached);
+  }
   const getBody = ctx.adapter.getBody;
   if (!getBody) return "";
   let body: unknown;

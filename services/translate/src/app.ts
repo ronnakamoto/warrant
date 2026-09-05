@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { decodePaymentResponseHeader } from "@x402/core/http";
 import { paymentMiddlewareFromHTTPServer } from "@x402/hono";
 import type { Wired } from "./wiring.js";
+import { parseRequestBody, withRequestBody } from "./request-body.js";
 import { translate } from "./translate.js";
 import type { HcsSink } from "./hcs.js";
 
@@ -28,32 +29,37 @@ export function createApp(deps: AppDeps): Hono {
   const paymentMw = paymentMiddlewareFromHTTPServer(deps.wired.http);
 
   // Run payment middleware (incl. after-handler settle), then audit once with optional txId.
+  // Must return x402's Response — discarding it leaves Hono unfinalized (500 instead of 402).
   app.use("/v1/*", async (c, next) => {
-    await paymentMw(c, next);
-    if (c.res.status !== 200) return;
-    const warrant = c.req.header("warrant");
-    if (!warrant) return;
-    try {
-      const parsed = JSON.parse(warrant) as {
-        publicSignals?: string[];
-        nonce?: string;
-      };
-      const signals = parsed.publicSignals;
-      const issued = parsed.nonce
-        ? deps.wired.challenges.resolve(parsed.nonce)
-        : deps.wired.challenges.last();
-      if (!(signals && signals.length >= 8 && issued)) return;
-      const payHdr =
-        c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response");
-      await hcs.submit({
-        nullifier: signals[2]!,
-        scope: signals[3]!,
-        tier: signals[6]!,
-        txId: txIdFromPaymentResponse(payHdr ?? undefined),
-      });
-    } catch {
-      /* ignore audit failures */
-    }
+    const parsedBody = await parseRequestBody(c.req.raw);
+    return withRequestBody(parsedBody, async () => {
+      const out = await paymentMw(c, next);
+      if (out instanceof Response) return out;
+      if (c.res.status !== 200) return;
+      const warrant = c.req.header("warrant");
+      if (!warrant) return;
+      try {
+        const parsed = JSON.parse(warrant) as {
+          publicSignals?: string[];
+          nonce?: string;
+        };
+        const signals = parsed.publicSignals;
+        const issued = parsed.nonce
+          ? deps.wired.challenges.resolve(parsed.nonce)
+          : deps.wired.challenges.last();
+        if (!(signals && signals.length >= 8 && issued)) return;
+        const payHdr =
+          c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response");
+        await hcs.submit({
+          nullifier: signals[2]!,
+          scope: signals[3]!,
+          tier: signals[6]!,
+          txId: txIdFromPaymentResponse(payHdr ?? undefined),
+        });
+      } catch {
+        /* ignore audit failures */
+      }
+    });
   });
 
   app.post("/v1/translate", async (c) => {
