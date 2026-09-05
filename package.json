@@ -3,9 +3,10 @@
   "private": true,
   "packageManager": "pnpm@10.19.0",
   "scripts": {
-    "test": "node scripts/check-boundaries.mjs && mocha",
+    "test": "node scripts/check-boundaries.mjs && mocha && pnpm --filter @warrant/core test",
     "test:circuit": "mocha",
     "test:circuit:full": "mocha --config .mocharc.full.cjs",
+    "test:core": "NODE_OPTIONS='--import tsx' mocha --no-config --timeout 180000 --exit packages/core/test/**/*.test.ts",
     "check-boundaries": "node scripts/check-boundaries.mjs"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
     "circomlib": "^2.0.5",
     "mocha": "^10.8.2",
     "poseidon-lite": "^0.3.0",
-    "snarkjs": "^0.7.6"
+    "snarkjs": "^0.7.6",
+    "tsx": "^4.20.5"
   }
 }
