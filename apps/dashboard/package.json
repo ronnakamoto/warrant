@@ -3,6 +3,31 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "echo 'dashboard stub — WP7' && exit 1"
+    "dev": "next dev",
+    "build": "pnpm theme:build && next build",
+    "start": "next start",
+    "theme:build": "astryx theme build theme/carbon-g10.ts",
+    "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 60000 --exit 'apps/dashboard/test/**/*.test.ts'",
+    "astryx": "node ../../node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
+  },
+  "dependencies": {
+    "@astryxdesign/cli": "0.5.2",
+    "@astryxdesign/core": "0.5.2",
+    "@stylexjs/stylex": "^0.19.0",
+    "@zk-kit/lean-imt": "2.2.5",
+    "next": "^15.5.25",
+    "poseidon-lite": "^0.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@warrant/core": "workspace:*",
+    "@warrant/x402": "workspace:*",
+    "mocha": "^10.8.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
