@@ -53,8 +53,11 @@ export class AgentBookPersonhood implements IPersonhood {
       });
       if (id === 0n) return null;
       return id;
-    } catch {
-      return null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Contract revert / missing function → unbound. Transport errors must not look like "not registered".
+      if (/revert|execution reverted|ContractFunctionExecutionError/i.test(msg)) return null;
+      throw err;
     }
   }
 }

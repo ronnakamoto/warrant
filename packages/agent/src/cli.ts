@@ -97,10 +97,11 @@ async function cmdBindRoot(args: string[]): Promise<void> {
   const epoch = 0;
   const leaf = hashLeaf(id.publicKey[0], id.publicKey[1], BigInt(tier), BigInt(epoch));
 
+  let humanFromBook: bigint | null = null;
   if (tier > 0) {
     const personhood = personhoodFromEnv();
-    const human = await personhood.lookupHuman(wallet);
-    if (human === null) {
+    humanFromBook = await personhood.lookupHuman(wallet);
+    if (humanFromBook === null) {
       console.error(
         `tier ${tier} requires AgentBook / personhood lookup for ${wallet} (set WORLDCHAIN_RPC + AGENTBOOK_ADDRESS, or use --tier 0 demo)`,
       );
@@ -137,8 +138,8 @@ async function cmdBindRoot(args: string[]): Promise<void> {
     if (!state.members.includes(leaf.toString())) appendLeaf(state, leaf);
   }
 
-  // Fresh per-root tags — never share static demo defaults across users
-  state.humanTag = freshFieldTag();
+  // AgentBook id → per-human nullifier. tier=0 demo → session tag (not "per human").
+  state.humanTag = humanFromBook !== null ? humanFromBook.toString() : freshFieldTag();
   state.contextHash = freshFieldTag();
   state.rootName = name;
   state.rootWallet = wallet;
@@ -183,17 +184,17 @@ async function cmdSyncRoot(args: string[]): Promise<void> {
     process.exit(1);
   }
   const synced = await readBinding({ rpcUrl: rpc, registry, wallet });
-  const oldLeaf =
-    state.rootName && state.rootEpoch !== undefined && state.rootTier !== undefined
-      ? hashLeaf(
-          identityOf(state, state.rootName).publicKey[0],
-          identityOf(state, state.rootName).publicKey[1],
-          BigInt(state.rootTier),
-          BigInt(state.rootEpoch),
-        ).toString()
-      : undefined;
-  state.members = state.members.filter((m) => m !== oldLeaf && m !== synced.leaf.toString());
-  state.members.push(synced.leaf.toString());
+  if (state.rootName) {
+    const local = identityOf(state, state.rootName);
+    if (local.publicKey[0] !== synced.pkX || local.publicKey[1] !== synced.pkY) {
+      console.error(
+        `sync-root: local ${state.rootName} pk does not match on-chain binding for ${wallet}`,
+      );
+      process.exit(1);
+    }
+  }
+  // Single on-chain leaf for this wallet — extra local members (e.g. demo bob) diverge from currentRoot.
+  state.members = [synced.leaf.toString()];
   state.rootEpoch = synced.epoch;
   state.rootTier = synced.tier;
   state.rootWallet = wallet;

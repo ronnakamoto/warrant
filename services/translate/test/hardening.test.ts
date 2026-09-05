@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bodyHashFromRaw } from "@warrant/core";
+import { bodyHashFromCanonical, bodyHashFromRaw } from "@warrant/core";
 import { FileNullifierStore } from "../src/nullifiers-file.ts";
 
 describe("FileNullifierStore", function () {
@@ -21,14 +21,47 @@ describe("FileNullifierStore", function () {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("fails closed on corrupt JSON", function () {
+    const dir = mkdtempSync(join(tmpdir(), "warrant-null-"));
+    const path = join(dir, "nullifiers.json");
+    try {
+      writeFileSync(path, "{not json");
+      assert.throws(() => new FileNullifierStore(path), /corrupt nullifier store/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serializes concurrent consumeFree", async function () {
+    const dir = mkdtempSync(join(tmpdir(), "warrant-null-"));
+    const path = join(dir, "nullifiers.json");
+    try {
+      const store = new FileNullifierStore(path);
+      const results = await Promise.all([
+        store.consumeFree(9n, 1),
+        store.consumeFree(9n, 1),
+        store.consumeFree(9n, 1),
+      ]);
+      assert.equal(results.filter((r) => r === "granted").length, 1);
+      assert.equal(results.filter((r) => r === "exhausted").length, 2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
-describe("bodyHashFromRaw", function () {
-  it("matches JSON round-trip used by Hono getBody", function () {
-    const raw = JSON.stringify({ text: "hi" });
-    const fromString = bodyHashFromRaw(raw);
-    const fromObject = bodyHashFromRaw(JSON.stringify(JSON.parse(raw)));
-    assert.equal(fromString, fromObject);
-    assert.match(fromString, /^0x[0-9a-f]{64}$/);
+describe("bodyHashFromCanonical", function () {
+  it("pretty and compact JSON match (Hono parse + stringify)", function () {
+    const compact = JSON.stringify({ text: "hi" });
+    const pretty = JSON.stringify({ text: "hi" }, null, 2);
+    assert.notEqual(compact, pretty);
+    assert.equal(bodyHashFromCanonical(compact), bodyHashFromCanonical(pretty));
+    assert.equal(bodyHashFromCanonical(compact), bodyHashFromCanonical({ text: "hi" }));
+    assert.match(bodyHashFromCanonical(compact), /^0x[0-9a-f]{64}$/);
+  });
+
+  it("non-JSON strings hash as raw bytes", function () {
+    assert.equal(bodyHashFromCanonical("not-json"), bodyHashFromRaw("not-json"));
   });
 });

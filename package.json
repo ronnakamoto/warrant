@@ -12,7 +12,9 @@
     "test:translate": "pnpm --filter @warrant/translate test",
     "test:agent": "pnpm --filter @warrant/agent test",
     "check-boundaries": "node scripts/check-boundaries.mjs",
-    "dod": "NODE_OPTIONS='--import tsx' tsx scripts/dod.ts"
+    "dod": "NODE_OPTIONS='--import tsx' tsx scripts/dod.ts",
+    "demo": "pnpm --filter @warrant/agent demo",
+    "demo:live": "./scripts/demo-video-dry-run.sh"
   },
   "devDependencies": {
     "@semaphore-protocol/group": "4.14.3",

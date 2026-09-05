@@ -17,7 +17,7 @@ Warrant treats World ID / AgentBook as the **personhood root** for production-sh
 
 - Operator-gated `bindRoot` with off-chain policy hooks.
 - Permissionless self-bind **tier=0 only** for local/anvil tests (not for public mempools — PK squatting).
-- Nullifier tags (`humanTag`, `contextHash`) minted per root at bind time — not a shared demo constant.
+- `tier=0` bind mints a **session** `humanTag` (quota per bind). `tier>0` writes AgentBook `lookupHuman` into `humanTag` when the adapter returns a non-null id.
 
 ## Wishlist
 

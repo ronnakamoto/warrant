@@ -1,7 +1,7 @@
 import {
   TRANSLATE,
   SnarkjsVerifier,
-  bodyHashFromRaw,
+  bodyHashFromCanonical,
   hashChallenge,
   type ChallengeParts,
   type INullifierStore,
@@ -71,9 +71,7 @@ async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
     return "";
   }
   if (body === undefined || body === null) return "";
-  if (typeof body === "string") return bodyHashFromRaw(body);
-  if (body instanceof Uint8Array) return bodyHashFromRaw(body);
-  return bodyHashFromRaw(JSON.stringify(body));
+  return bodyHashFromCanonical(body);
 }
 
 /**

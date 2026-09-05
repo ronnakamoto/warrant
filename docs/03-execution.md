@@ -44,11 +44,11 @@ Stretch (only after Day 10 gate): Noir/Honk port; Uniswap CCA `IValidationHook` 
 
 **0:00–0:20 — Hook.** "Agents now hire agents. Every system that lets them publishes the org chart. Warrant lets a sub-agent prove it's acting for a real human, within scope and budget — and reveal nothing else."
 
-**0:20–0:50 — Root.** Alice verifies with World ID (sandbox) and binds her root key. Show the AgentBook entry and the `MandateRegistry` leaf. "This tree of 1 is her anonymity set today; in production it's every AgentBook agent."
+**0:20–0:50 — Root.** Alice binds her root key (`tier=0` demo personhood unless World Sandbox is live). Show the `MandateRegistry` leaf. "This tree of 1 is her anonymity set today; in production it's every AgentBook agent."
 
 **0:50–1:30 — Delegate.** Terminal: `warrant delegate --to research-agent --scope fetch,translate,pay --budget 20 --ttl 24h`. The research agent (Claude) decides it needs a translation and runs `warrant delegate --to translator --scope translate --budget 2 --ttl 1h`. Show attenuation being enforced when it *tries* to grant `trade` (fails client-side and would fail in-circuit).
 
-**1:30–2:20 — Prove and pay.** Translator calls the Hedera `/translate` endpoint. Server returns 402 with `warrant` + x402 requirements; agent proves (show ~1.5 s), first three calls free (per-human nullifier), fourth call settles HBAR through Blocky402. Split screen: **server log shows `nullifier=0x8f…, scope=translate, tier=2, paid=0.1 HBAR` — no name, no address, no chain.** HashScan tx + HCS message appear.
+**1:30–2:20 — Prove and pay.** Translator calls the Hedera `/translate` endpoint. Server returns 402 with `warrant` + x402 requirements; agent proves (show ~1.5 s), first three calls free (session nullifier at `tier=0`), fourth call settles HBAR through Blocky402. Split screen: **server log shows `nullifier=…, scope=1, tier=0` — no name, no address, no chain.** HashScan / `txId` only on the **paid** settle.
 
 **2:20–2:50 — ENSv2.** *(Solo path: skip — cut straight to revoke. See [`08-demo-runbook.md`](08-demo-runbook.md).)* ENS Explorer on Sepolia: `translator.research.alice-agents.eth` with EAC roles = its scope; ENSIP-25 link to its ERC-8004 id. "Transparency when you want it, the same permissions model either way."
 
@@ -58,9 +58,9 @@ Stretch (only after Day 10 gate): Noir/Honk port; Uniswap CCA `IValidationHook` 
 
 ## 5. Judging rubric — self-check before submitting
 
-- **Technicality:** Is the circuit real (repo has `.circom`/`.nr`, tests for negative cases, gas report)? Is revocation on-chain? Is payment real (HashScan link)?
+- **Technicality:** Is the circuit real (repo has `.circom`, tests for negative cases)? Is revocation on-chain? Is payment real (HashScan / Blocky402 `txId` on a paid call)?
 - **Originality:** Does the README's first paragraph state the *unsolved* problem and cite ACTA? Is the comparison table (AIP, ERC-7710, AgentKit, APS) present?
-- **Practicality:** Can a stranger run `pnpm demo` and reproduce the paid call? Is the middleware usable by any x402 server in <10 lines?
+- **Practicality:** Can a stranger run `pnpm demo` (local smoke) and `pnpm demo:live` (paid path when `.env` is filled)? Is the middleware usable by any x402 server in <10 lines?
 - **Usability:** Is the CLI three commands? Is the dashboard's revoke one click? Is there a SKILL.md so agents self-integrate?
 - **WOW:** Does the video show the *nameless log* and the *live revocation*? Those two moments are the memory hooks.
 

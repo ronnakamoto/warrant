@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Dry-run the solo demo video beats (prove → free×3 → pay → optional revoke check).
-# Does not record video. Requires: .env, zkey, translate on :8787 (or starts one).
+# Dry-run the solo demo video beats (prove → free×3 → pay).
+# Restarts translate on :8787 so free quota is fresh. Does not record video.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -25,7 +25,12 @@ if [[ ! -f "$STORE" ]]; then
 fi
 
 if [[ ! -f circuits/build/warrant_final.zkey ]]; then
-  echo "missing zkey — copy or run ./scripts/download-zkey.sh" >&2
+  echo "missing zkey — run ./scripts/download-zkey.sh" >&2
+  exit 1
+fi
+
+if [[ -z "${HEDERA_PAY_TO:-}" || "${HEDERA_PAY_TO}" == "${HEDERA_ACCOUNT_ID:-}" ]]; then
+  echo "set HEDERA_PAY_TO to a merchant account distinct from HEDERA_ACCOUNT_ID" >&2
   exit 1
 fi
 
@@ -33,22 +38,22 @@ health() {
   curl -sf "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1
 }
 
-if ! health; then
-  echo "starting translate on :${PORT} (real vkey, REGISTRY currentRoot)…"
-  export ALLOW_DEMO_ROOT=1
-  export WARRANT_MIN_TIER="${WARRANT_MIN_TIER:-0}"
-  export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-3}"
-  export WARRANT_VKEY_PATH="${WARRANT_VKEY_PATH:-$ROOT/circuits/build/warrant_vkey.json}"
-  unset FIXED_MERKLE_ROOT ALLOW_DEMO_VERIFY || true
-  pnpm --filter @warrant/translate dev &
-  TRANSLATE_PID=$!
-  trap 'kill "$TRANSLATE_PID" 2>/dev/null || true' EXIT
-  for _ in $(seq 1 30); do
-    health && break
-    sleep 0.5
-  done
-  health || { echo "translate failed to start" >&2; exit 1; }
-fi
+echo "restarting translate on :${PORT} (real vkey, fresh in-memory quota)…"
+lsof -i ":${PORT}" -t 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 1
+export ALLOW_DEMO_ROOT=1
+export WARRANT_MIN_TIER="${WARRANT_MIN_TIER:-0}"
+export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-3}"
+export WARRANT_VKEY_PATH="${WARRANT_VKEY_PATH:-$ROOT/circuits/build/warrant_vkey.json}"
+unset FIXED_MERKLE_ROOT ALLOW_DEMO_VERIFY || true
+pnpm --filter @warrant/translate dev &
+TRANSLATE_PID=$!
+trap 'kill "$TRANSLATE_PID" 2>/dev/null || true' EXIT
+for _ in $(seq 1 40); do
+  health && break
+  sleep 0.5
+done
+health || { echo "translate failed to start" >&2; exit 1; }
 
 call() {
   local label=$1
@@ -58,19 +63,11 @@ call() {
   "$@"
 }
 
-# Restarting translate mid-script is awkward; burn quota with free calls then pay.
-# If quota already exhausted, free calls return 402 — pay still exercises Blocky402.
-call "free/prove 1" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
-  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "free/prove 2" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
-  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "free/prove 3" env WARRANT_REAL_PROVE=1 WARRANT_PAY=0 \
-  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "pay (Blocky402)" env WARRANT_REAL_PROVE=1 WARRANT_PAY=1 \
-  pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "free/prove 1" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "free/prove 2" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "free/prove 3" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "pay (Blocky402)" env WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
 echo ""
-echo "Dry-run complete. For revoke beat: dashboard Revoke or cast send revoke, then:"
-echo "  WARRANT_REAL_PROVE=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts"
-echo "  # expect 403 root_revoked — then: warrant sync-root && re-delegate"
-echo "Shot list: docs/08-demo-runbook.md"
+echo "Dry-run complete. Revoke beat: dashboard Revoke or cast send revoke, then live-call → 403 root_revoked."
+echo "Recover: warrant sync-root && re-delegate. Shot list: docs/08-demo-runbook.md"

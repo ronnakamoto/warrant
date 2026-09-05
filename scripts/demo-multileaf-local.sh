@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
-# Bind a second local root identity so the anonymity-set demo is not “tree of 1”.
-# Does NOT call on-chain bind for bob (operator must bind separately if live).
+# Append a second local leaf without bind-root (does not rotate tags or clear mandates).
 # Usage: WARRANT_STORE=/tmp/warrant-live/state.json ./scripts/demo-multileaf-local.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 STORE="${WARRANT_STORE:?set WARRANT_STORE}"
+export WARRANT_STORE="$STORE"
 
-pnpm --filter @warrant/agent exec tsx src/cli.ts keygen --name bob --store "$STORE" || true
-# Local leaf only (tier=0) — expands the LeanIMT mirror for dashboard / prove membership size.
-pnpm --filter @warrant/agent exec tsx src/cli.ts bind-root \
-  --name bob \
-  --wallet 0x00000000000000000000000000000000000000b0 \
-  --tier 0 \
-  --local \
-  --store "$STORE"
+pnpm --filter @warrant/agent exec tsx <<'TS'
+import { hashLeaf } from "@warrant/core";
+import { appendLeaf, ensureIdentity, loadState, saveState } from "./src/store.ts";
 
-echo "Local members now include bob. For live chain anonymity set, operator-bind a second real wallet."
-echo "Store: $STORE"
+const path = process.env.WARRANT_STORE!;
+const state = loadState(path);
+const bob = ensureIdentity(state, "bob");
+const leaf = hashLeaf(bob.publicKey[0], bob.publicKey[1], 0n, 0n);
+const already = state.members.includes(leaf.toString());
+if (!already) appendLeaf(state, leaf);
+saveState(state, path);
+console.log(
+  JSON.stringify(
+    {
+      added: already ? "bob (already present)" : "bob",
+      leaf: leaf.toString(),
+      members: state.members.length,
+      rootName: state.rootName ?? null,
+      mandatesKept: state.mandates.length,
+    },
+    null,
+    2,
+  ),
+);
+TS

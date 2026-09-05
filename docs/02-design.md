@@ -46,7 +46,7 @@ sig = EdDSA_Poseidon(parentSk, Poseidon(all fields except humanTag) )
 ```
 
 - The root block is signed by the **root key**; each following block by the **previous child**.
-- `humanTag = Poseidon(rootSecret, "warrant/tag")` is generated once by the root and handed down with every mandate. It never touches a chain or a verifier. It lets *any* leaf derive `nullifier = Poseidon(humanTag, context)` — the same value across all of a human's agents — so a verifier can enforce "3 free calls per human" even when it's talking to 30 different sub-agents, without learning who the human is.
+- `humanTag` is handed down with every mandate and never shown to a verifier. `nullifier = Poseidon(humanTag, context)`. **Production intent:** `humanTag` is the AgentBook human id (same across that human's agents → "3 free per human"). **Shipped demo:** `tier=0` bind mints a random session tag (quota is per bind). `tier>0` bind writes `lookupHuman` into `humanTag` when AgentBook returns a non-null id.
 - Poseidon uses **disjoint domain tags** (BIP-340-style, Poseidon not SHA): `warrant/tag`, `warrant/mandate`, `warrant/nullifier`, `warrant/leaf`. Do not hash mixed-length tuples without a tag.
 
 ### 2.3 Warrant (the proof)
