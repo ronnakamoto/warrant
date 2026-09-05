@@ -3,7 +3,16 @@
   "private": true,
   "packageManager": "pnpm@10.19.0",
   "scripts": {
-    "test": "node scripts/check-boundaries.mjs",
-    "check-boundaries": "node scripts/check-boundaries.mjs"
+    "test": "node scripts/check-boundaries.mjs && node circuits/test/warrant_lean_witness.mjs",
+    "check-boundaries": "node scripts/check-boundaries.mjs",
+    "test:circuit": "node circuits/test/warrant_lean_witness.mjs"
+  },
+  "devDependencies": {
+    "@semaphore-protocol/group": "4.14.3",
+    "@semaphore-protocol/identity": "4.14.3",
+    "@zk-kit/binary-merkle-root.circom": "2.0.0",
+    "circomlib": "^2.0.5",
+    "poseidon-lite": "^0.3.0",
+    "snarkjs": "^0.7.6"
   }
 }

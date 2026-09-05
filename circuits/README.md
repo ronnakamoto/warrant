@@ -1,5 +1,10 @@
 # circuits
 
-Circom sources and witness tests. No TypeScript runtime.
+Circom sources and witness tests. No TypeScript runtime package.
 
-Product circuit (`warrant.circom`) is written in WP1+. This directory is a path stub only.
+| File | WP |
+|---|---|
+| `warrant_lean.circom` | WP1 — LeanIMT + attenuation (no EdDSA) |
+| `warrant.circom` | WP2 — full circuit (5× EdDSAPoseidon) |
+
+Compile: `./scripts/compile-circuit` (lean by default).

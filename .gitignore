@@ -30,3 +30,10 @@ spikes/**/*.log
 contracts/out/
 contracts/cache/
 contracts/broadcast/
+
+# Circom / snarkjs build
+circuits/build/
+*.r1cs
+*.wasm
+*.wtns
+*.sym
