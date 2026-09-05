@@ -86,8 +86,8 @@ export async function warrantFetch(
   // Keep client aligned so requestHash matches (do not keccak the POST body here yet).
   void init?.body;
 
-  const baseFetch = opts.paymentFetch ?? globalThis.fetch;
-  const res1 = await baseFetch(input, init);
+  // Probe without paymentFetch so free-tier warrant challenges are not auto-settled.
+  const res1 = await globalThis.fetch(input, init);
 
   if (res1.status !== 402) return res1;
 
@@ -102,8 +102,8 @@ export async function warrantFetch(
 
   const extensions = pr.extensions as { warrant?: unknown } | undefined;
   if (!extensions?.warrant) {
-    // Pure payment 402 — optional payment wrapper
-    if (opts.paymentFetch) return res1;
+    // Pure payment 402 — settle when a payment-capable fetch is provided.
+    if (opts.paymentFetch) return opts.paymentFetch(input, init);
     return res1;
   }
 
@@ -122,8 +122,9 @@ export async function warrantFetch(
   const headers = new Headers(init?.headers);
   headers.set("warrant", warrantHeaderJson(proved));
 
-  const res2 = await baseFetch(input, { ...init, headers });
-  return res2;
+  // Retry with warrant; paymentFetch settles quota-exhausted exact/hedera 402s.
+  const retryFetch = opts.paymentFetch ?? globalThis.fetch;
+  return retryFetch(input, { ...init, headers });
 }
 
 /** Helper: wrap global fetch with warrant + optional x402 payment client. */

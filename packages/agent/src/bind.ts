@@ -65,15 +65,20 @@ export async function bindRootOnChain(args: BindRootArgs): Promise<{ leaf: bigin
     functionName: "bindRoot",
     args: [args.wallet, args.pkX, args.pkY, args.tier],
   });
-  await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`bindRoot reverted (${hash})`);
+  }
 
   const root = await publicClient.readContract({
     address: args.registry,
     abi,
     functionName: "currentRoot",
   });
+  if (root === 0n) {
+    throw new Error("bindRoot succeeded but currentRoot is still 0");
+  }
 
-  // Re-simulate leaf via eth_call static is awkward; caller has hashLeaf locally.
   return { leaf: 0n, root };
 }
 

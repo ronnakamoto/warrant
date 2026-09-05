@@ -124,6 +124,28 @@ cd contracts && forge test
 # see contracts/README.md for anvil DeployRegistry
 ```
 
+### 6. Live Base Sepolia (optional)
+
+Deployed addresses: [`deployments/base-sepolia.json`](deployments/base-sepolia.json). Fund `ETH_ADDRESS`, set `REGISTRY_ADDRESS` / `BIND_PRIVATE_KEY` / `NEXT_PUBLIC_*` from `.env.example`.
+
+```bash
+export WARRANT_STORE=/tmp/warrant-live/state.json
+# bind-root (operator or tier=0), then delegate alice→orchestrator→translator
+# translate: REGISTRY_ADDRESS + BASE_SEPOLIA_RPC, WARRANT_MIN_TIER=0, no FIXED_MERKLE_ROOT
+pnpm --filter @warrant/translate dev
+
+# Fake prove (ALLOW_DEMO_VERIFY=1) or real:
+export WARRANT_REAL_PROVE=1   # needs circuits/build zkey
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+
+# After free quota: settle via Blocky402 (payer ≠ payTo)
+export WARRANT_PAY=1
+# HEDERA_PAY_TO must differ from HEDERA_ACCOUNT_ID (self-transfer → amount mismatch)
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+```
+
+Revoke on-chain (or dashboard), then the same call returns **403** `root_revoked`. Sync local `rootEpoch` / members and re-delegate before calling again.
+
 ### Payment flow (Hedera)
 
 ```text
@@ -134,7 +156,7 @@ translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
                 | else → 402 exact / hedera:testnet → Blocky402 settle
 ```
 
-Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`).
+`HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`).
 
 ## Documentation
 
