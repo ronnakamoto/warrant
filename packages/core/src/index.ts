@@ -45,6 +45,8 @@ export {
 export { SnarkjsProver, type IProver, type WarrantProof } from "./prove/snarkjs-prover.js";
 export { SnarkjsVerifier, type IVerifier } from "./prove/snarkjs-verifier.js";
 export type { INullifierStore } from "./ports/nullifier-store.js";
+export type { IPersonhood } from "./ports/personhood.js";
+export { bodyHashFromRaw } from "./domain/body-hash.js";
 
 import type { IProver, WarrantProof } from "./prove/snarkjs-prover.js";
 import type { IVerifier } from "./prove/snarkjs-verifier.js";

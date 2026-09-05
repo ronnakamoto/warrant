@@ -19,6 +19,13 @@ export WARRANT_STORE=/tmp/warrant-demo-video/state.json
 # keygen alice/orchestrator/translator, bind-root on-chain, two delegates — or reuse /tmp/warrant-live after epoch sync
 ```
 
+Automated beat check (prove / free / pay — not revoke):
+
+```bash
+export WARRANT_STORE=/tmp/warrant-live/state.json
+./scripts/demo-video-dry-run.sh
+```
+
 ## Shot list (solo, no ENS)
 
 | Time | Beat | Show | Say (short) |
@@ -29,6 +36,8 @@ export WARRANT_STORE=/tmp/warrant-demo-video/state.json
 | 1:20–2:10 | Prove + pay | `WARRANT_REAL_PROVE=1` live-call ×3 → 200; 4th `WARRANT_PAY=1` → 200; split: server nullifier log | Translator proves (~1–2 s). Three free calls per nullifier; fourth settles HBAR via Blocky402. Log is nullifier only — no name, wallet, or chain. |
 | 2:10–2:50 | Revoke | Dashboard **Revoke** (or `cast send revoke`) + failed live-call **403** `root_revoked` | Alice revokes once. Epoch bumps; every agent fails. Server never learned Alice; it still enforced her decision. |
 | 2:50–3:20 | Close | README / ACTA one-liner + repo URL | Answers ACTA’s recursive private delegation gap. World + Hedera feedback docs in-repo. Links. |
+
+After the revoke shot (optional recovery for a second take): `warrant sync-root` then re-delegate.
 
 ## Commands (copy pane)
 

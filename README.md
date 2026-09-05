@@ -82,7 +82,9 @@ export ALLOW_DEMO_ROOT=1
 pnpm --filter @warrant/translate dev
 ```
 
-Production-shaped root check: set `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC` instead of `FIXED_MERKLE_ROOT` (and omit `ALLOW_DEMO_*`).
+Production-shaped root check: set `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC` instead of `FIXED_MERKLE_ROOT` (and omit `ALLOW_DEMO_*`). Prefer `WARRANT_VKEY_PATH` for real Groth16 verify. Optional durable free-quota: `WARRANT_NULLIFIER_PATH=/tmp/warrant-nullifiers.json`.
+
+After on-chain revoke: `warrant sync-root` then re-`delegate` (epoch bump clears local mandates).
 
 ### 3. Call as the translator sub-agent (terminal B)
 
@@ -152,7 +154,14 @@ export WARRANT_PAY=1
 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 ```
 
-Revoke on-chain (or dashboard), then the same call returns **403** `root_revoked`. Sync local `rootEpoch` / members and re-delegate before calling again.
+Revoke on-chain (or dashboard), then:
+
+```bash
+pnpm --filter @warrant/agent cli -- sync-root
+# re-delegate alice→orch→translator at the new epoch
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+# expect 403 until sync+delegate, then 200 again
+```
 
 ### Payment flow (Hedera)
 
@@ -165,6 +174,21 @@ translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
 ```
 
 `HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`).
+
+### Architecture (overview)
+
+```mermaid
+flowchart LR
+  Human[Human root] --> Orch[Orchestrator]
+  Orch --> Trans[Translator]
+  Trans -->|warrant.fetch + Groth16| X402["@warrant/x402"]
+  X402 -->|free quota| OK[200 + HCS nullifier]
+  X402 -->|exhausted| Pay[Blocky402 exact HBAR]
+  Human -->|revoke epoch| Reg[MandateRegistry]
+  Reg -->|currentRoot| X402
+```
+
+Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md).
 
 ## Documentation
 

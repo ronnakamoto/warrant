@@ -1,6 +1,6 @@
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
-import type { ChallengeParts, IProver } from "@warrant/core";
+import { bodyHashFromRaw, type ChallengeParts, type IProver } from "@warrant/core";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { loadState, type WarrantState } from "./store.js";
 
@@ -82,9 +82,11 @@ export async function warrantFetch(
   const path = url.pathname;
 
   let bodyHash = "";
-  // Hono/@x402 adapter exposes async getBody; server challenge uses "" until sync body is available.
-  // Keep client aligned so requestHash matches (do not keccak the POST body here yet).
-  void init?.body;
+  if (typeof init?.body === "string") {
+    bodyHash = bodyHashFromRaw(init.body);
+  } else if (init?.body instanceof Uint8Array) {
+    bodyHash = bodyHashFromRaw(init.body);
+  }
 
   // Probe without paymentFetch so free-tier warrant challenges are not auto-settled.
   const res1 = await globalThis.fetch(input, init);

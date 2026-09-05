@@ -32,6 +32,7 @@ export function createHederaHcsSink(config: HederaHcsConfig): HcsSink {
           nullifier: event.nullifier,
           scope: event.scope,
           tier: event.tier,
+          ...(event.txId ? { txId: event.txId } : {}),
         });
         const tx = await new TopicMessageSubmitTransaction()
           .setTopicId(config.topicId)

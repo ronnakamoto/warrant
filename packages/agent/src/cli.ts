@@ -12,6 +12,8 @@ import { bindRootOnChain, readCurrentRoot } from "./bind.js";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { createSnarkjsProver } from "./prover.js";
 import { warrantFetch } from "./fetch.js";
+import { personhoodFromEnv } from "./personhood.js";
+import { readBinding } from "./sync-root.js";
 import {
   appendLeaf,
   defaultStorePath,
@@ -34,6 +36,7 @@ Usage:
   warrant keygen --name <id> [--seed <string>]
   warrant bind-root --name <id> --wallet <0x...> --tier <n> [--local]
       [--rpc <url>] [--registry <0x...>] [--private-key <0x...>]
+  warrant sync-root [--wallet <0x...>] [--rpc] [--registry]
   warrant delegate --from <id> --to <id> --scope translate[,fetch] --budget <n> --ttl <1h>
   warrant prove --as <id> --nonce <n> --merkle-root <n> --path <p> [--amount] [--pay-to] [--body-hash]
   warrant fetch --as <id> --url <url> [--body <json>]
@@ -94,6 +97,17 @@ async function cmdBindRoot(args: string[]): Promise<void> {
   const epoch = 0;
   const leaf = hashLeaf(id.publicKey[0], id.publicKey[1], BigInt(tier), BigInt(epoch));
 
+  if (tier > 0) {
+    const personhood = personhoodFromEnv();
+    const human = await personhood.lookupHuman(wallet);
+    if (human === null) {
+      console.error(
+        `tier ${tier} requires AgentBook / personhood lookup for ${wallet} (set WORLDCHAIN_RPC + AGENTBOOK_ADDRESS, or use --tier 0 demo)`,
+      );
+      process.exit(1);
+    }
+  }
+
   let root: bigint;
   if (local) {
     appendLeaf(state, leaf);
@@ -144,6 +158,56 @@ async function cmdBindRoot(args: string[]): Promise<void> {
         humanTag: state.humanTag,
         contextHash: state.contextHash,
         local,
+        store: path,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+/**
+ * After on-chain revoke: pull epoch/leaf into the local store and clear mandates
+ * (must re-delegate at the new epoch).
+ */
+async function cmdSyncRoot(args: string[]): Promise<void> {
+  const path = flag(args, "--store") ?? defaultStorePath();
+  const state = loadState(path);
+  const wallet = (flag(args, "--wallet") ?? state.rootWallet) as `0x${string}` | undefined;
+  const rpc = flag(args, "--rpc") ?? process.env.BASE_SEPOLIA_RPC;
+  const registry = (flag(args, "--registry") ?? process.env.REGISTRY_ADDRESS) as
+    | `0x${string}`
+    | undefined;
+  if (!wallet || !rpc || !registry) {
+    console.error("sync-root needs --wallet (or store.rootWallet), --rpc, --registry");
+    process.exit(1);
+  }
+  const synced = await readBinding({ rpcUrl: rpc, registry, wallet });
+  const oldLeaf =
+    state.rootName && state.rootEpoch !== undefined && state.rootTier !== undefined
+      ? hashLeaf(
+          identityOf(state, state.rootName).publicKey[0],
+          identityOf(state, state.rootName).publicKey[1],
+          BigInt(state.rootTier),
+          BigInt(state.rootEpoch),
+        ).toString()
+      : undefined;
+  state.members = state.members.filter((m) => m !== oldLeaf && m !== synced.leaf.toString());
+  state.members.push(synced.leaf.toString());
+  state.rootEpoch = synced.epoch;
+  state.rootTier = synced.tier;
+  state.rootWallet = wallet;
+  state.mandates = [];
+  saveState(state, path);
+  console.log(
+    JSON.stringify(
+      {
+        wallet,
+        epoch: synced.epoch,
+        tier: synced.tier,
+        leaf: synced.leaf.toString(),
+        currentRoot: synced.currentRoot.toString(),
+        mandatesCleared: true,
         store: path,
       },
       null,
@@ -306,6 +370,9 @@ async function main(): Promise<void> {
       break;
     case "bind-root":
       await cmdBindRoot(rest);
+      break;
+    case "sync-root":
+      await cmdSyncRoot(rest);
       break;
     case "delegate":
       cmdDelegate(rest);

@@ -22,4 +22,4 @@ Warrant treats World ID / AgentBook as the **personhood root** for production-sh
 ## Wishlist
 
 - Stable Sandbox App deep-link + example “tier attestation → off-chain allowlist → bind tx” for agent frameworks.
-- Public read API shape for AgentBook membership checks that matches a single `IPersonhood.lookupHuman(wallet)` port.
+- Public read API shape for AgentBook membership checks — Warrant now has `IPersonhood.lookupHuman` + `AgentBookPersonhood` adapter; confirm ABI against live AgentBook before production.
