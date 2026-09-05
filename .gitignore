@@ -14,3 +14,7 @@ spikes/zk/foundry/broadcast/
 spikes/zk/foundry/lib/forge-std/
 *.ptau
 spikes/**/*.log
+
+# Isolated git worktrees
+.worktrees/
+.superpowers/
