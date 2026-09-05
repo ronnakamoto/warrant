@@ -11,7 +11,8 @@
     "test:x402": "pnpm --filter @warrant/x402 test",
     "test:translate": "pnpm --filter @warrant/translate test",
     "test:agent": "pnpm --filter @warrant/agent test",
-    "check-boundaries": "node scripts/check-boundaries.mjs"
+    "check-boundaries": "node scripts/check-boundaries.mjs",
+    "dod": "NODE_OPTIONS='--import tsx' tsx scripts/dod.ts"
   },
   "devDependencies": {
     "@semaphore-protocol/group": "4.14.3",

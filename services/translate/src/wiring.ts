@@ -35,6 +35,8 @@ export type WireConfig = {
   baseSepoliaRpc?: string;
   /** When set, skip RPC and use this root (tests / local). */
   fixedMerkleRoot?: bigint;
+  /** Injected root policy (tests / DoD). Overrides fixed/registry constructors. */
+  roots?: IRootChecker;
   vkeyPath?: string;
   /** Injected verifier for tests. */
   verifier?: IVerifier;
@@ -91,7 +93,9 @@ export function wire(config: WireConfig): Wired {
   const hcs = config.hcs ?? createLogHcsSink();
 
   let roots: IRootChecker;
-  if (config.fixedMerkleRoot !== undefined) {
+  if (config.roots) {
+    roots = config.roots;
+  } else if (config.fixedMerkleRoot !== undefined) {
     roots = new FixedRootChecker(config.fixedMerkleRoot);
   } else if (config.registryAddress && config.baseSepoliaRpc) {
     roots = new CurrentRootChecker({
