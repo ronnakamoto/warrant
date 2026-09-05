@@ -82,10 +82,9 @@ export async function warrantFetch(
   const path = url.pathname;
 
   let bodyHash = "";
-  if (init?.body && typeof init.body === "string" && init.body.length > 0) {
-    const { keccak256, toBytes } = await import("viem");
-    bodyHash = keccak256(toBytes(init.body));
-  }
+  // Hono/@x402 adapter exposes async getBody; server challenge uses "" until sync body is available.
+  // Keep client aligned so requestHash matches (do not keccak the POST body here yet).
+  void init?.body;
 
   const baseFetch = opts.paymentFetch ?? globalThis.fetch;
   const res1 = await baseFetch(input, init);

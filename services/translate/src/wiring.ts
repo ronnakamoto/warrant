@@ -58,7 +58,12 @@ export type Wired = {
 function bodyHashFromContext(ctx: HTTPRequestContext): string {
   const getBody = ctx.adapter.getBody;
   if (!getBody) return "";
-  const body = getBody();
+  const body = getBody() as unknown;
+  // @x402/hono getBody is async (Promise). Sync resolveChallenge cannot await —
+  // treat pending bodies as unavailable (empty) rather than hashing "{}".
+  if (body != null && typeof (body as { then?: unknown }).then === "function") {
+    return "";
+  }
   if (body === undefined || body === null) return "";
   if (typeof body === "string") {
     return body.length === 0 ? "" : keccak256(toBytes(body));
@@ -97,15 +102,25 @@ export function wire(config: WireConfig): Wired {
     roots = new FixedRootChecker(0n); // rejects all until configured
   }
 
+  const allowDemoVerify =
+    process.env.ALLOW_DEMO_VERIFY === "1" && process.env.ALLOW_DEMO_ROOT === "1";
+
   const verifier: IVerifier =
     config.verifier ??
     (config.vkeyPath
       ? SnarkjsVerifier.fromPath(config.vkeyPath)
-      : {
-          async verify() {
-            return false;
-          },
-        });
+      : allowDemoVerify
+        ? {
+            async verify() {
+              // Demo/tests only — paired with ALLOW_DEMO_ROOT. Never production.
+              return true;
+            },
+          }
+        : {
+            async verify() {
+              return false;
+            },
+          });
 
   const pipeline = createWarrantPipeline({
     verifier,
