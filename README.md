@@ -166,6 +166,21 @@ translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
 
 `HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`).
 
+### Architecture (overview)
+
+```mermaid
+flowchart LR
+  Human[Human root] --> Orch[Orchestrator]
+  Orch --> Trans[Translator]
+  Trans -->|warrant.fetch + Groth16| X402["@warrant/x402"]
+  X402 -->|free quota| OK[200 + HCS nullifier]
+  X402 -->|exhausted| Pay[Blocky402 exact HBAR]
+  Human -->|revoke epoch| Reg[MandateRegistry]
+  Reg -->|currentRoot| X402
+```
+
+Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md).
+
 ## Documentation
 
 | Document | Description |
