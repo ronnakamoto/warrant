@@ -74,7 +74,7 @@ pnpm --filter @warrant/translate dev
 
 ```bash
 ./scripts/compile-circuit warrant   # if circuits/build missing
-./scripts/download-zkey.sh          # or setup-groth16
+./scripts/download-zkey.sh          # defaults to GitHub release artifacts-groth16-v1
 export WARRANT_VKEY_PATH=$PWD/circuits/build/warrant_vkey.json
 export FIXED_MERKLE_ROOT=<merkleRoot>
 export ALLOW_DEMO_ROOT=1
@@ -198,7 +198,9 @@ Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/0
 | [`docs/02-design.md`](docs/02-design.md) | Threat model, circuit, contracts, x402 |
 | [`docs/03-execution.md`](docs/03-execution.md) | Demo video script and judging self-check |
 | [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md) | Solo recording shot list (skip ENS) |
+| [`docs/09-submission-checklist.md`](docs/09-submission-checklist.md) | ETHOnline submit self-check |
 | [`AI_USAGE.md`](AI_USAGE.md) | ETHOnline AI tool attribution |
+| [`CEREMONY.md`](CEREMONY.md) | Groth16 setup + release artifact checksums |
 | [`docs/04-alternatives.md`](docs/04-alternatives.md) | Alternatives considered |
 | [`docs/05-implementation-plan.md`](docs/05-implementation-plan.md) | Work packages and gates |
 | [`docs/06-kickoff.md`](docs/06-kickoff.md) | Kickoff checklist |

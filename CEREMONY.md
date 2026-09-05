@@ -49,13 +49,22 @@ This stack (Groth16 + Baby Jubjub EdDSA) is **not post-quantum**.
 
 ## Release download
 
+Demo / testnet artifacts (solo ceremony — **not** mainnet MPC):
+
+| File | SHA-256 |
+|---|---|
+| `warrant_final.zkey` | `7f283d2b461512f444dc339dc40318277820d968bcffe3e562878e34839e16fa` |
+| `warrant_vkey.json` | `cf95bb6c8717503fdca3651fd867653f52121ebcfcc390313ed8c943bed883e4` |
+
 ```bash
-WARRANT_ZKEY_URL=https://github.com/<org>/warrant/releases/download/<tag>/warrant_final.zkey \
-WARRANT_VKEY_URL=https://github.com/<org>/warrant/releases/download/<tag>/warrant_vkey.json \
-  ./scripts/download-zkey.sh
+# Defaults to artifacts-groth16-v1 release URLs
+./scripts/download-zkey.sh
+
+# Or local ceremony:
+WARRANT_ZKEY_URL=local WARRANT_CEREMONY_ENTROPY="$(openssl rand -hex 32)" ./scripts/download-zkey.sh
 ```
 
-If `WARRANT_ZKEY_URL` is unset, `download-zkey.sh` falls back to `setup-groth16` (still requires entropy).
+Release: https://github.com/ronnakamoto/warrant/releases/tag/artifacts-groth16-v1
 
 ## Regenerate verifier
 

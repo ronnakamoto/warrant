@@ -7,24 +7,29 @@ mkdir -p "$BUILD"
 OUT="${BUILD}/warrant_final.zkey"
 VK="${BUILD}/warrant_vkey.json"
 
-WARRANT_ZKEY_URL="${WARRANT_ZKEY_URL:-}"
+# Default: demo/testnet artifacts release (not multi-party MPC — see CEREMONY.md).
+DEFAULT_ZKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant_final.zkey"
+DEFAULT_VKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant_vkey.json"
+
+WARRANT_ZKEY_URL="${WARRANT_ZKEY_URL:-$DEFAULT_ZKEY_URL}"
+WARRANT_VKEY_URL="${WARRANT_VKEY_URL:-$DEFAULT_VKEY_URL}"
 
 if [[ -f "$OUT" && -s "$VK" ]]; then
   echo "already present: $OUT ($(wc -c < "$OUT") bytes), vkey $(wc -c < "$VK") bytes"
   exit 0
 fi
 
-if [[ -n "$WARRANT_ZKEY_URL" ]]; then
-  echo "Downloading zkey from WARRANT_ZKEY_URL..."
-  curl -L --fail -o "$OUT" "$WARRANT_ZKEY_URL"
-  if [[ -n "${WARRANT_VKEY_URL:-}" ]]; then
-    curl -L --fail -o "$VK" "$WARRANT_VKEY_URL"
-  else
-    node "${ROOT}/node_modules/snarkjs/cli.js" zkey export verificationkey "$OUT" "$VK"
-  fi
-  echo "wrote $OUT"
-  exit 0
+if [[ "${WARRANT_ZKEY_URL}" == "local" ]]; then
+  echo "WARRANT_ZKEY_URL=local — running local ceremony via scripts/setup-groth16"
+  exec "${ROOT}/scripts/setup-groth16" warrant
 fi
 
-echo "No WARRANT_ZKEY_URL set — running local ceremony via scripts/setup-groth16"
-exec "${ROOT}/scripts/setup-groth16" warrant
+echo "Downloading zkey from WARRANT_ZKEY_URL..."
+curl -L --fail -o "$OUT" "$WARRANT_ZKEY_URL"
+if [[ -n "${WARRANT_VKEY_URL}" ]]; then
+  curl -L --fail -o "$VK" "$WARRANT_VKEY_URL"
+else
+  node "${ROOT}/node_modules/snarkjs/cli.js" zkey export verificationkey "$OUT" "$VK"
+fi
+echo "wrote $OUT"
+echo "vkey → $VK ($(wc -c < "$VK") bytes)"
