@@ -368,7 +368,7 @@ If 1–4 pass, the implementation is done. Everything else is polish.
 
 ## 11. Solo path
 
-Skip WP8. Keep Next.js + Astryx with the Carbon-mapped theme, but shrink to one page (tree + revoke + log). Do not skip WP0 boundaries, WP2 verifier export, WP5 pipeline order, WP7 Astryx+Carbon UI, or revoke semantics (**403**).
+Skip WP8 (note in README + `FEEDBACK_ENS.md`). Keep Next.js + Astryx with the Carbon-mapped theme, but shrink to one page (tree + revoke + log). Do not skip WP0 boundaries, WP2 verifier export, WP5 pipeline order, WP7 Astryx+Carbon UI, or revoke semantics (**403**).
 
 ---
 

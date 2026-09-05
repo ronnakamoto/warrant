@@ -12,6 +12,7 @@
   "scripts": {
     "cli": "tsx src/cli.ts",
     "demo": "tsx demo/session.ts",
+    "demo:prepare": "tsx demo/session.ts --prepare-only",
     "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 120000 --exit packages/agent/test/**/*.test.ts"
   },
   "dependencies": {

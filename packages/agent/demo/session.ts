@@ -5,9 +5,11 @@
  * Live HCS: set HEDERA_* on the translate process.
  *
  * Usage:
- *   pnpm --filter @warrant/agent demo
+ *   pnpm --filter @warrant/agent demo -- --prepare-only   # print merkleRoot + store, exit
+ *   WARRANT_STORE=... pnpm --filter @warrant/agent demo  # call translate
+ *   WARRANT_REAL_PROVE=1 ...                             # snarkjs prove (needs zkey)
  */
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -22,12 +24,15 @@ import { warrantFetch } from "../src/fetch.js";
 import {
   appendLeaf,
   freshFieldTag,
+  loadState,
   rebuildGroup,
   saveState,
   type WarrantState,
 } from "../src/store.js";
 
-async function buildLocalState(): Promise<{ state: WarrantState; root: string; storePath: string }> {
+async function buildLocalState(
+  storePath: string,
+): Promise<{ state: WarrantState; root: string; storePath: string }> {
   const alice = keygen("demo-alice");
   const orch = keygen("demo-orchestrator");
   const translator = keygen("demo-translator");
@@ -117,10 +122,14 @@ async function buildLocalState(): Promise<{ state: WarrantState; root: string; s
     });
   }
 
-  const dir = mkdtempSync(join(tmpdir(), "warrant-demo-"));
-  const storePath = join(dir, "state.json");
   saveState(state, storePath);
   return { state, root: group.root.toString(), storePath };
+}
+
+function resolveStorePath(): string {
+  if (process.env.WARRANT_STORE) return process.env.WARRANT_STORE;
+  const dir = mkdtempSync(join(tmpdir(), "warrant-demo-"));
+  return join(dir, "state.json");
 }
 
 /** Fake prover for offline session smoke (no zkey). */
@@ -134,13 +143,24 @@ function fakeProver(): IProver {
 
 async function main(): Promise<void> {
   const url = process.env.TRANSLATE_URL ?? "http://127.0.0.1:8787/v1/translate";
-  const { state, root, storePath } = await buildLocalState();
+  const prepareOnly = process.argv.includes("--prepare-only");
+  const storePath = resolveStorePath();
+
+  let state: WarrantState;
+  let root: string;
+  if (existsSync(storePath) && !prepareOnly && process.env.WARRANT_STORE) {
+    state = loadState(storePath);
+    root = rebuildGroup(state).root.toString();
+  } else {
+    ({ state, root } = await buildLocalState(storePath));
+  }
+
   const useRealProve = process.env.WARRANT_REAL_PROVE === "1";
 
   console.log(
     JSON.stringify(
       {
-        step: "delegate",
+        step: prepareOnly ? "prepare" : "delegate",
         store: storePath,
         merkleRoot: root,
         hint: `Start translate with FIXED_MERKLE_ROOT=${root} ALLOW_DEMO_ROOT=1 (demo only)`,
@@ -149,6 +169,10 @@ async function main(): Promise<void> {
       2,
     ),
   );
+
+  if (prepareOnly) {
+    return;
+  }
 
   console.log(JSON.stringify({ step: "orchestrator→translator", scope: "translate" }));
 
