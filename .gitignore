@@ -1,0 +1,16 @@
+agent-tools/
+terminals/
+node_modules/
+.env
+.env.*
+!.env.example
+spikes/node_modules/
+spikes/zk/ptau/
+spikes/zk/build/
+spikes/zk/prove-results.json
+spikes/zk/foundry/out/
+spikes/zk/foundry/cache/
+spikes/zk/foundry/broadcast/
+spikes/zk/foundry/lib/forge-std/
+*.ptau
+spikes/**/*.log

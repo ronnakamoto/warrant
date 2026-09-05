@@ -1,0 +1,32 @@
+{
+  "agentkitPattern": "createAgentkitHooks.requestHook returns { grantAccess: true }; wire via http.onProtectedRequest (or transportHooks.http.onProtectedRequest). Missing header is void → 402, not skip-on-verify.",
+  "planCorrection": "Do not use onBeforeVerify { skip: true } for the free tier. AgentKit free mode never enters verify/settle. Warrant: valid+under-quota → grantAccess; valid+exhausted → void (402/pay); revoked/invalid → abort 403; missing header → void so the client sees 402 with extensions.warrant.",
+  "cases": [
+    {
+      "label": "no-header",
+      "type": "payment-error",
+      "status": 402,
+      "reason": {}
+    },
+    {
+      "label": "free-warrant",
+      "type": "no-payment-required"
+    },
+    {
+      "label": "paid-warrant",
+      "type": "payment-error",
+      "status": 402,
+      "reason": {}
+    },
+    {
+      "label": "revoked",
+      "type": "payment-error",
+      "status": 403,
+      "reason": {
+        "error": "root_revoked"
+      }
+    }
+  ],
+  "grantAccessIsNoPayment": true,
+  "revokedIs403": true
+}

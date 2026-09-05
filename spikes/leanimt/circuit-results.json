@@ -1,0 +1,46 @@
+{
+  "package": "@zk-kit/binary-merkle-root.circom",
+  "packagePresent": true,
+  "compiles": [
+    {
+      "name": "lean_imt",
+      "compileMs": 954,
+      "constraints": 10485,
+      "info": "\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: Curve: bn-128\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Wires: 10508\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Constraints: 10485\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Private Inputs: 23\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Public Inputs: 1\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Labels: 15737\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Outputs: 0"
+    },
+    {
+      "name": "warrant_lean",
+      "compileMs": 1241,
+      "constraints": 13018,
+      "info": "\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: Curve: bn-128\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Wires: 12780\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Constraints: 13018\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Private Inputs: 42\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Public Inputs: 8\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Labels: 18742\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Outputs: 0"
+    }
+  ],
+  "jsCircuitMatch": {
+    "groupSize": 3,
+    "groupDepth": 2,
+    "proofSiblings": [
+      "2",
+      "3"
+    ],
+    "proofIndex": 0,
+    "membershipWitness": {
+      "ok": true
+    },
+    "wrongRootRejected": true,
+    "wrongRootErrorSnippet": "ERROR:  4 Error in template LeanIMTCheck_76 line: 21\n\n"
+  },
+  "warrantLean": {
+    "leaf": "1455121781402255091383043375377086962754888305868351522806823225318129865530",
+    "groupRoot": "11405701577642554549093786945797823958185384977384390920094465173039630750621",
+    "merkleDepth": 2,
+    "witness": {
+      "ok": true
+    },
+    "widenedScopeRejected": true
+  },
+  "notes": {
+    "api": "BinaryMerkleRoot(MAX_DEPTH)(leaf, depth, index, siblings) — v2.x single index + Num2Bits, not indices[]",
+    "mustUseV2": "v1.x was under-constrained (PSE 2025-07). Pin >=2.0.0.",
+    "padding": "pad siblings with 0 to MAX_DEPTH; depth = proof.siblings.length (LeanIMT actual depth)"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "rpcMs": 468,
+  "chainId": 480,
+  "agentBook": {
+    "address": "0xA23aB2712eA7BBa896930544C7d6636a96b944dA",
+    "bytecodeBytes": 3569,
+    "groupId": "1",
+    "getNextNonce_0x1": "0",
+    "lookupHuman_0x1": "0",
+    "sdkLookupNullForUnregistered": true
+  },
+  "extensionKey": "agentkit",
+  "declaredExtension": {
+    "agentkit": {
+      "info": {
+        "version": "1",
+        "domain": "translate.warrant.example",
+        "uri": "https://translate.warrant.example/v1/translate",
+        "resources": [
+          "https://translate.warrant.example/v1/translate"
+        ],
+        "statement": "Prove a Warrant chain rooted in a unique human"
+      },
+      "supportedChains": [
+        {
+          "chainId": "eip155:480",
+          "type": "eip191"
+        },
+        {
+          "chainId": "eip155:480",
+          "type": "eip1271"
+        }
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "version": {
+            "type": "string"
+          },
+          "chainId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expirationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notBefore": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "signature": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "address",
+          "uri",
+          "version",
+          "chainId",
+          "type",
+          "nonce",
+          "issuedAt",
+          "signature"
+        ]
+      },
+      "_options": {
+        "domain": "translate.warrant.example",
+        "resourceUri": "https://translate.warrant.example/v1/translate",
+        "statement": "Prove a Warrant chain rooted in a unique human",
+        "network": "eip155:480",
+        "mode": {
+          "type": "free-trial",
+          "uses": 3
+        }
+      }
+    }
+  },
+  "clientExports": {
+    "createAgentkitClient": "function"
+  }
+}

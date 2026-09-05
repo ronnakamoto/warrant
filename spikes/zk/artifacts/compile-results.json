@@ -1,0 +1,14 @@
+[
+  {
+    "name": "warrant_core",
+    "compileMs": 892,
+    "log": "\u001b[32mtemplate instances\u001b[0m: 151\nnon-linear constraints: 5755\nlinear constraints: 5162\npublic inputs: 8\nprivate inputs: 52 (51 belong to witness)\npublic outputs: 0\nwires: 10674\nlabels: 15459\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/warrant_core.r1cs\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/warrant_core.sym\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/warrant_core_js/warrant_core.wasm\n\u001b[32mEverything went okay\u001b[0m",
+    "info": "\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: Curve: bn-128\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Wires: 10674\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Constraints: 10917\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Private Inputs: 52\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Public Inputs: 8\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Labels: 15459\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Outputs: 0"
+  },
+  {
+    "name": "eddsa_one",
+    "compileMs": 951,
+    "log": "\u001b[32mtemplate instances\u001b[0m: 101\nnon-linear constraints: 7383\nlinear constraints: 703\npublic inputs: 0\nprivate inputs: 7\npublic outputs: 0\nwires: 8086\nlabels: 21252\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/eddsa_one.r1cs\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/eddsa_one.sym\n\u001b[32mWritten successfully:\u001b[0m /workspace/spikes/zk/build/eddsa_one_js/eddsa_one.wasm\n\u001b[32mEverything went okay\u001b[0m",
+    "info": "\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: Curve: bn-128\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Wires: 8086\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Constraints: 8086\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Private Inputs: 7\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Public Inputs: 0\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Labels: 21252\n\u001b[32;22m[INFO]  \u001b[39;1msnarkJS\u001b[0m: # of Outputs: 0"
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "jsVerify": true,
+  "publicKey": [
+    "1714916583046383316109430357479853758404619829741766734126976174413783503593",
+    "17189227092011842798495365524861571815951472812685598708220192156830167080075"
+  ],
+  "message": "15805707659607764519661337093514215866263235633300838807773375348842636740",
+  "signature": {
+    "S": "963252233357376803047299537695655675772360346779513319646900201127070007673",
+    "R8": [
+      "44005364824002121753802301643725017536823240306525560693738463417001806473",
+      "319953998539862734713779685749741374939746860703292483786707966888470350068"
+    ]
+  },
+  "circuitAcceptsZkKitSignature": true,
+  "goodWitness": {
+    "ok": true
+  },
+  "tamperedMessageRejected": true,
+  "tamperedWitness": {
+    "ok": false,
+    "error": "ERROR:  4 Error in template ForceEqualIfEnabled_98 line: 56\nError in template EdDSAPoseidonVerifier_99 line: 117\nError in template EdDSACount_100 line: 21\n\n"
+  },
+  "disabledPaddingAccepted": true,
+  "disabledWitness": {
+    "ok": true
+  }
+}

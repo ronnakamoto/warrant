@@ -1,0 +1,32 @@
+{
+  "constraints": 56794,
+  "estimated": 53448,
+  "compileMs": 2192,
+  "hop2Witness": {
+    "ok": true
+  },
+  "widenedScopeRejected": true,
+  "tamperedRequestSigRejected": true,
+  "timings": {
+    "compileMs": 2192,
+    "setupMs": 12996,
+    "contributeMs": 7128,
+    "proveMs": 2247,
+    "verifyMs": 319
+  },
+  "prove": {
+    "ok": true,
+    "zkeyBytes": 27866244,
+    "public": [
+      "16976401775264285839060742650181732967457173242384835748586610605557949713532",
+      "99",
+      "6125580477344842895807173206518365848008734345927647360630884587987620623090",
+      "1",
+      "200000",
+      "1788364537",
+      "2",
+      "123456789"
+    ]
+  },
+  "zkeyFitsGit": false
+}

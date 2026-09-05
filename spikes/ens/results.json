@@ -1,0 +1,40 @@
+{
+  "chainId": 11155111,
+  "sizes": {
+    "ensUniversalResolver": {
+      "address": "0xeEeEEEeE14D718C2B47D9923Deab1335E144EeEe",
+      "bytecodeBytes": 2491
+    },
+    "ensRegistry": {
+      "address": "0xBDC85dD5b15D7ecb354cd7cb6f2c50b4f2c4F0E2",
+      "bytecodeBytes": 14730
+    },
+    "ensVerifiableFactory": {
+      "address": "0x10dC6333CDFe1FCEf624c6e0a8221b91804Cd7ef",
+      "bytecodeBytes": 1411
+    },
+    "ensPermissionedResolverImpl": {
+      "address": "0x9EAe5C2730a7dD16BDD1DeE6421a1B91e3B0365e",
+      "bytecodeBytes": 17597
+    },
+    "ensUserRegistryImpl": {
+      "address": "0x624a25d67B59D587752EbEc8DdeD8827dAe52050",
+      "bytecodeBytes": 17159
+    },
+    "ensEthRegistrar": {
+      "address": "0xa88553F454b77203B0D036A05c894d555EAAa2Cc",
+      "bytecodeBytes": 7497
+    }
+  },
+  "ethRegistry": {
+    "getParent": {
+      "rootRegistry": "0x8115186E8f2E0B0281e86ab91f0f48Ba90364354",
+      "label": "eth"
+    },
+    "supportsERC1155": true,
+    "hasRootRoles_dummy": false,
+    "rootGetSubregistry_eth": "0xBDC85dD5b15D7ecb354cd7cb6f2c50b4f2c4F0E2",
+    "rootMatchesEnsjs": true
+  },
+  "note": "ENSv2 Sepolia addresses taken from ensjs l1.ts (2026-07-30 redeploy). Pin in deployments/ and re-verify on day 9."
+}

@@ -1,0 +1,65 @@
+{
+  "idea": "Revoke = epoch bump + LeanIMT.updateMember. Old leaf is gone from the new root. Mandate signatures stay valid; membership is what dies.",
+  "tree": {
+    "size": 3,
+    "depth": 2,
+    "aliceLeaf0": "1549490030803131232418288877749613193485275505252106926577197698383255026575",
+    "aliceLeaf1": "9510552206525853459274026783738290127308739580204092292993194032015348450820",
+    "rootBefore": "3192244062491681256197878910153905309621685973044997989212867388213365155806",
+    "rootAfter": "17452421775904543116675186251845994597604828484932625414743156705876609800447",
+    "rootsDiffer": true
+  },
+  "warrantLean": {
+    "epoch0AgainstLiveRoot": {
+      "ok": true
+    },
+    "oldLeafNewRootRejected": true,
+    "oldLeafNewRoot": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template WarrantLean_154 line: 57\n\n"
+    },
+    "oldLeafOldRootStillProves": true,
+    "oldLeafOldRoot": {
+      "ok": true
+    },
+    "newLeafNewRootAccepted": true,
+    "newLeafNewRoot": {
+      "ok": true
+    },
+    "oldEpochNewSiblingsRejected": true,
+    "oldEpochNewSiblings": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template WarrantLean_154 line: 57\n\n"
+    }
+  },
+  "attenuation": {
+    "childBudgetGtParentRejected": true,
+    "childBudgetGtParent": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template WarrantLean_154 line: 84\n\n"
+    },
+    "childExpiryGtParentRejected": true,
+    "childExpiryGtParent": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template WarrantLean_154 line: 89\n\n"
+    },
+    "paddedDisabledHopMayExceedBudget": true,
+    "paddedDisabledHop": {
+      "ok": true
+    }
+  },
+  "warrantFull": {
+    "oldSignedChainOnNewRoot": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template WarrantFull_252 line: 67\n\n"
+    },
+    "newEpochSameSignatures": {
+      "ok": true
+    }
+  },
+  "verifierChoice": {
+    "currentRootOnly": "oldLeafOldRoot proves, but isCurrentRoot(oldRoot)=false → instant cascade (demo)",
+    "knownRootWindow": "oldLeafOldRoot + isKnownRoot(oldRoot)=true for 1h → in-flight survival, revoked identity can still prove until window ends"
+  },
+  "ok": true
+}

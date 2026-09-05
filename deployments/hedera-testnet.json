@@ -1,0 +1,17 @@
+{
+  "network": "testnet",
+  "accountId": "0.0.10311260",
+  "evmAddress": "0x830106c650d995f079f29848d90d4e96b1fcbdb8",
+  "hashscan": "https://hashscan.io/testnet/account/0.0.10311260",
+  "topicId": "0.0.10336558",
+  "topicHashscan": "https://hashscan.io/testnet/topic/0.0.10336558",
+  "blocky402FeePayer": "0.0.7162784",
+  "blocky402Settle": {
+    "payTo": "0.0.98",
+    "amountTinybars": "1000",
+    "transactionId": "0.0.7162784@1788502420.541125170",
+    "hashscan": "https://hashscan.io/testnet/transaction/0.0.7162784-1788502420-541125170",
+    "mirrorStatus": "SUCCESS"
+  },
+  "notes": "Private key lives in gitignored .env as HEDERA_PRIVATE_KEY. This account is the x402 payTo treasury and HCS payer."
+}

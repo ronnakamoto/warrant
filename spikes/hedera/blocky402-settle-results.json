@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "accountId": "0.0.10311260",
+  "payTo": "0.0.98",
+  "amountTinybars": "1000",
+  "asset": "0.0.0",
+  "feePayer": "0.0.7162784",
+  "facilitator": "https://api.testnet.blocky402.com",
+  "supportedHedera": {
+    "x402Version": 2,
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "extra": {
+      "feePayer": "0.0.7162784"
+    }
+  },
+  "payloadError": null,
+  "payloadHasTransaction": true,
+  "x402Version": 2,
+  "verify": {
+    "isValid": true,
+    "payer": "0.0.10311260"
+  },
+  "verifyError": null,
+  "settle": {
+    "success": true,
+    "payer": "0.0.10311260",
+    "transaction": "0.0.7162784@1788502420.541125170",
+    "network": "hedera:testnet"
+  },
+  "settleError": null,
+  "transactionId": "0.0.7162784@1788502420.541125170",
+  "hashscan": "https://hashscan.io/testnet/transaction/0.0.7162784-1788502420-541125170",
+  "mirrorStatus": "SUCCESS",
+  "mirrorName": "CRYPTOTRANSFER",
+  "transfers": [
+    { "account": "0.0.98", "amount": 1000, "is_approval": false },
+    { "account": "0.0.802", "amount": 255725, "is_approval": false },
+    { "account": "0.0.7162784", "amount": -255725, "is_approval": false },
+    { "account": "0.0.10311260", "amount": -1000, "is_approval": false }
+  ]
+}

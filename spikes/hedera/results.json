@@ -1,0 +1,23 @@
+{
+  "supply": {
+    "status": 200,
+    "released": "1610297679516585482",
+    "total": "5000000000000000000"
+  },
+  "nodes": {
+    "status": 200,
+    "first": "Hosted by Hedera | West Coast, USA",
+    "nodeAccount": "0.0.3"
+  },
+  "latestTx": {
+    "status": 200,
+    "transaction_id": "0.0.7821288-1788362715-219558602",
+    "name": "CONSENSUSSUBMITMESSAGE",
+    "result": "SUCCESS"
+  },
+  "topicsPostWithoutAuth": {
+    "status": 404,
+    "body": "{\"_status\":{\"messages\":[{\"message\":\"Not found\"}]}}"
+  },
+  "implication": "Mirror node is live for reads. Topic creation requires a signed Hedera SDK transaction (needs testnet account + key), not a REST POST. Plan: create HCS topic via @hiero-ledger/sdk on day 8 once a testnet account exists."
+}

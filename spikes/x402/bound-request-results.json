@@ -1,0 +1,68 @@
+{
+  "formula": "requestHash = keccak256(method|path|nonce|merkleRoot|amount|payTo|bodyHash) mod r. Leaf EdDSA-signs that field (warrant_full). Groth16 publicSignals[7] must match the live challenge.",
+  "challenge": {
+    "method": "POST",
+    "path": "/v1/translate",
+    "nonce": "spike-nonce-1",
+    "merkleRoot": "3192244062491681256197878910153905309621685973044997989212867388213365155806",
+    "amount": "100000",
+    "payTo": "0.0.10311260",
+    "bodyHash": "0xcf4e23be7ce4008bddee356ee2f155e245d051f02477aa305d879ad7dda95a79"
+  },
+  "requestHash": "12323197026343565711906788605325549043109529703344780070610917608995888352524",
+  "wrongHash": "7775725226697278382834811581882659861672699231458561040055423630929377810483",
+  "merkleRoot": "3192244062491681256197878910153905309621685973044997989212867388213365155806",
+  "leanWitness": {
+    "ok": true
+  },
+  "groth16": {
+    "verified": true,
+    "requestHashPublic": "12323197026343565711906788605325549043109529703344780070610917608995888352524",
+    "matchesChallenge": true
+  },
+  "full": {
+    "signedChallengeAccepted": true,
+    "good": {
+      "ok": true
+    },
+    "wrongNonceRejected": true,
+    "wrongNonce": {
+      "ok": false,
+      "error": "ERROR:  4 Error in template ForceEqualIfEnabled_250 line: 56\nError in template EdDSAPoseidonVerifier_251 line: 117\nError in template WarrantFull_252 line: 160\n\n"
+    }
+  },
+  "cases": [
+    {
+      "label": "no-header",
+      "type": "payment-error",
+      "status": 402,
+      "reason": {}
+    },
+    {
+      "label": "valid-bound-proof",
+      "type": "no-payment-required"
+    },
+    {
+      "label": "wrong-challenge-hash",
+      "type": "payment-error",
+      "status": 403,
+      "reason": {
+        "error": "request_hash_mismatch"
+      }
+    },
+    {
+      "label": "root-revoked",
+      "type": "payment-error",
+      "status": 403,
+      "reason": {
+        "error": "root_revoked"
+      }
+    }
+  ],
+  "validIsNoPayment": true,
+  "mismatchIs403": true,
+  "mismatchReason": "request_hash_mismatch",
+  "revokedIs403": true,
+  "revokedReason": "root_revoked",
+  "ok": true
+}
