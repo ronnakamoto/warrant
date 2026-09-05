@@ -4,8 +4,9 @@ ETHOnline requires documenting where AI tools were used.
 
 ## Tools
 
-- **Cursor** (Composer / agent) — primary coding assistant for monorepo scaffold, circuits wiring, contracts, `@warrant/*` packages, translate service, dashboard, tests, README, and partner feedback docs.
-- **Claude / other LLMs** (via Cursor) — design iteration against `docs/02-design.md` / `docs/05-implementation-plan.md`, debugging (x402 pay fallthrough, requestHash / Hono bodyHash, Hedera payer≠payTo), and prose polish on feedback docs.
+- **VS Code** — primary editor for monorepo scaffold, circuits wiring, contracts, `@warrant/*` packages, translate service, dashboard, tests, README, and partner feedback docs.
+- **GitHub Copilot** — inline completions and chat-assisted edits across TypeScript, Solidity, Circom, and docs.
+- **Ollama** — local LLM assistance for design iteration against `docs/02-design.md` / `docs/05-implementation-plan.md`, debugging (x402 pay fallthrough, requestHash / Hono bodyHash, Hedera payer≠payTo), and prose polish on feedback docs.
 
 ## What humans owned
 
