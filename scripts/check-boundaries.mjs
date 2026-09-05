@@ -19,8 +19,13 @@ const SKIP_DIRS = new Set([
   ".git",
   ".worktrees",
   ".superpowers",
-  "lib",
 ]);
+
+/** Foundry vendor tree only — never skip a product directory named `lib`. */
+function isForgeStdVendor(absDir) {
+  const rel = posixRel(absDir);
+  return rel === "contracts/lib" || rel.startsWith("contracts/lib/");
+}
 
 const SOURCE_EXT = new Set([
   ".ts",
@@ -49,7 +54,14 @@ const TS_JS_EXT = new Set([
 const IMPORT_RE =
   /(?:import|export)\s+(?:[^'"\n]*from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|require\(\s*['"]([^'"]+)['"]\s*\)/g;
 
-/** @type {{ from: string, forbid: string[] }[]} */
+/**
+ * Forbid table from docs/07 §2.6, plus the binding isolation from
+ * docs/05 §2 and docs/07 §2.6:
+ *   circuits  ×  contracts  ×  packages   (no imports across these three)
+ * apps/* and services/* sit with packages for this constraint.
+ *
+ * @type {{ from: string, forbid: string[] }[]}
+ */
 const RULES = [
   {
     from: "packages/core",
@@ -67,6 +79,13 @@ const RULES = [
     from: "apps/dashboard",
     forbid: ["snarkjs", "circomlib*", "spikes/", "circuits/"],
   },
+  // Tree isolation: packages / apps / services must not import circuits or contracts.
+  { from: "packages", forbid: ["circuits/", "contracts/"] },
+  { from: "apps", forbid: ["circuits/", "contracts/"] },
+  { from: "services", forbid: ["circuits/", "contracts/"] },
+  // Circuits and contracts must not pull from packages or each other (TS).
+  { from: "circuits", forbid: ["packages/", "contracts/"] },
+  { from: "contracts", forbid: ["packages/", "circuits/"] },
 ];
 
 const PRODUCT_PREFIXES = ["packages/", "apps/", "services/", "scripts/"];
@@ -81,8 +100,10 @@ function walk(dir, acc = []) {
   for (const entry of entries) {
     if (SKIP_DIRS.has(entry.name)) continue;
     const full = join(dir, entry.name);
-    if (entry.isDirectory()) walk(full, acc);
-    else acc.push(full);
+    if (entry.isDirectory()) {
+      if (isForgeStdVendor(full)) continue;
+      walk(full, acc);
+    } else acc.push(full);
   }
   return acc;
 }
