@@ -1,0 +1,34 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  apps/dashboard: {}
+
+  packages/agent:
+    dependencies:
+      '@warrant/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/core: {}
+
+  packages/x402:
+    dependencies:
+      '@warrant/core':
+        specifier: workspace:*
+        version: link:../core
+
+  services/translate:
+    dependencies:
+      '@warrant/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@warrant/x402':
+        specifier: workspace:*
+        version: link:../../packages/x402

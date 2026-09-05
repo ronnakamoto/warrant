@@ -1,0 +1,9 @@
+{
+  "name": "warrant",
+  "private": true,
+  "packageManager": "pnpm@10.19.0",
+  "scripts": {
+    "test": "node scripts/check-boundaries.mjs",
+    "check-boundaries": "node scripts/check-boundaries.mjs"
+  }
+}

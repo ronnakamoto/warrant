@@ -139,6 +139,8 @@ Do not collapse steps 3 and 4. Do not put this in `onBeforeVerify`. Quota is not
 
 ## 4. SOLID (applied)
 
+Patterns, ports, and the import graph: [`docs/07-architecture.md`](07-architecture.md).
+
 | Principle | Application |
 |---|---|
 | **S** | `MandateRegistry` = tree + epoch. `WarrantGate` = verify + root check. `pipeline` = authorize. `translate` = payload. `hcs` = audit. |

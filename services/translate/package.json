@@ -1,0 +1,10 @@
+{
+  "name": "@warrant/translate",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@warrant/core": "workspace:*",
+    "@warrant/x402": "workspace:*"
+  }
+}
