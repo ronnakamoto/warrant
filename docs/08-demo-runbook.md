@@ -33,7 +33,7 @@ export WARRANT_STORE=/tmp/warrant-live/state.json
 | 0:00–0:20 | Hook | Title slide or empty terminal | Agents hire agents; every system publishes the org chart. Warrant proves a real human, scope, and budget — and reveals nothing else. |
 | 0:20–0:50 | Root | Basescan `MandateRegistry` + CLI `bind-root` JSON (leaf/root) | Alice binds a BabyJubjub root at tier 0 (demo personhood). Tree of 1 today; production anonymity set is AgentBook. |
 | 0:50–1:20 | Delegate | Two `warrant delegate` commands; failed widen attempt | Orchestrator gets translate+budget; translator is attenuated. Widening scope fails client-side. |
-| 1:20–2:10 | Prove + pay | `WARRANT_REAL_PROVE=1` live-call ×3 → 200; 4th `WARRANT_PAY=1` → 200; split: server nullifier log | Translator proves (~1–2 s). Three free calls per nullifier; fourth settles HBAR via Blocky402. Log is nullifier only — no name, wallet, or chain. |
+| 1:20–2:10 | Prove + pay | live-call ×3 → 200; 4th `WARRANT_PAY=1` → 200; split: server nullifier log | Translator proves (~1–2 s). Three free calls per session nullifier; fourth settles HBAR via Blocky402. Log is nullifier only (`tier=0`). HashScan/`txId` on the paid call only. |
 | 2:10–2:50 | Revoke | Dashboard **Revoke** (or `cast send revoke`) + failed live-call **403** `root_revoked` | Alice revokes once. Epoch bumps; every agent fails. Server never learned Alice; it still enforced her decision. |
 | 2:50–3:20 | Close | README / ACTA one-liner + repo URL | Answers ACTA’s recursive private delegation gap. World + Hedera feedback docs in-repo. Links. |
 
@@ -45,14 +45,14 @@ After the revoke shot (optional recovery for a second take): `warrant sync-root`
 export WARRANT_STORE=/tmp/warrant-demo-video/state.json
 export TRANSLATE_URL=http://127.0.0.1:8787/v1/translate
 
-# Free calls (real prove)
-WARRANT_REAL_PROVE=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+# Free calls (real Groth16 by default)
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
-# Paid (after free quota exhausted)
-WARRANT_REAL_PROVE=1 WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+# Paid (after free quota exhausted; HEDERA_PAY_TO ≠ HEDERA_ACCOUNT_ID)
+WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
 # After revoke — expect 403
-WARRANT_REAL_PROVE=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 ```
 
 Widen fail (attenuation wow):
@@ -74,5 +74,5 @@ pnpm --filter @warrant/agent cli -- delegate --from translator --to evil --scope
 | Partner | Evidence in video |
 |---|---|
 | Hedera | Live 402 → Blocky402 settle + nullifier HCS line |
-| World | Tier in proof / feedback doc callout (Selfie Check / AgentBook path; demo may be tier=0) |
+| World | Disclose `tier=0` + `FEEDBACK_WORLD.md`; AgentBook path is in-repo for when Sandbox is live |
 | ENS | **Omit** — see `FEEDBACK_ENS.md` |

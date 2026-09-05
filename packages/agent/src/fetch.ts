@@ -1,6 +1,6 @@
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
-import { bodyHashFromRaw, type ChallengeParts, type IProver } from "@warrant/core";
+import { bodyHashFromCanonical, type ChallengeParts, type IProver } from "@warrant/core";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { loadState, type WarrantState } from "./store.js";
 
@@ -81,12 +81,9 @@ export async function warrantFetch(
   const method = (init?.method ?? "GET").toUpperCase();
   const path = url.pathname;
 
-  let bodyHash = "";
-  if (typeof init?.body === "string") {
-    bodyHash = bodyHashFromRaw(init.body);
-  } else if (init?.body instanceof Uint8Array) {
-    bodyHash = bodyHashFromRaw(init.body);
-  }
+  const bodyHash = bodyHashFromCanonical(
+    typeof init?.body === "string" || init?.body instanceof Uint8Array ? init.body : undefined,
+  );
 
   // Probe without paymentFetch so free-tier warrant challenges are not auto-settled.
   const res1 = await globalThis.fetch(input, init);

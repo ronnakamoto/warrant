@@ -1,8 +1,10 @@
 /**
  * Live Base Sepolia + translate call helper.
  *
- * WARRANT_REAL_PROVE=1 → snarkjs (needs circuits/build zkey)
+ * Real Groth16 by default (needs circuits/build zkey).
+ * ALLOW_DEMO_VERIFY=1 + WARRANT_REAL_PROVE=0 → fake proof bytes.
  * WARRANT_PAY=1 → settle quota-exhausted 402 via Blocky402 / ExactHedera
+ *   (requires HEDERA_PAY_TO ≠ HEDERA_ACCOUNT_ID).
  */
 import { x402Client } from "@x402/fetch";
 import { wrapFetchWithPayment } from "@x402/fetch";
@@ -26,8 +28,12 @@ function paymentFetchFromEnv(): typeof globalThis.fetch | undefined {
   if (process.env.WARRANT_PAY !== "1") return undefined;
   const accountId = process.env.HEDERA_ACCOUNT_ID;
   const keyRaw = process.env.HEDERA_PRIVATE_KEY;
+  const payTo = process.env.HEDERA_PAY_TO;
   if (!accountId || !keyRaw) {
     throw new Error("WARRANT_PAY=1 needs HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY");
+  }
+  if (!payTo || payTo === accountId) {
+    throw new Error("WARRANT_PAY=1 needs HEDERA_PAY_TO distinct from HEDERA_ACCOUNT_ID");
   }
   const key = keyRaw.startsWith("0x")
     ? PrivateKey.fromStringECDSA(keyRaw)
@@ -35,7 +41,6 @@ function paymentFetchFromEnv(): typeof globalThis.fetch | undefined {
   const signer = createClientHederaSigner(accountId, key, {
     network: "hedera:testnet",
   });
-  // Demo: HBAR tinybars on hedera:testnet — disable spendControls so asset 0.0.0 is accepted.
   const client = x402Client.fromConfig({
     schemes: [{ network: "hedera:*", client: new ExactHederaScheme(signer) }],
     spendControls: false,
@@ -43,13 +48,23 @@ function paymentFetchFromEnv(): typeof globalThis.fetch | undefined {
   return wrapFetchWithPayment(globalThis.fetch, client);
 }
 
+function proverFromEnv(): IProver {
+  const demoVerify = process.env.ALLOW_DEMO_VERIFY === "1";
+  const real = process.env.WARRANT_REAL_PROVE !== "0";
+  if (!real && demoVerify) return fake;
+  if (!real) {
+    throw new Error("fake prove needs ALLOW_DEMO_VERIFY=1; otherwise omit WARRANT_REAL_PROVE=0");
+  }
+  return createSnarkjsProver();
+}
+
 async function main() {
-  const storePath = process.env.WARRANT_STORE!;
+  const storePath = process.env.WARRANT_STORE;
+  if (!storePath) throw new Error("set WARRANT_STORE");
   const state = loadState(storePath);
   const body = JSON.stringify({ text: process.env.TRANSLATE_TEXT ?? "live base sepolia" });
   const paymentFetch = paymentFetchFromEnv();
-  const prover =
-    process.env.WARRANT_REAL_PROVE === "1" ? createSnarkjsProver() : fake;
+  const prover = proverFromEnv();
   const res = await warrantFetch(
     process.env.TRANSLATE_URL ?? "http://127.0.0.1:8787/v1/translate",
     { method: "POST", headers: { "content-type": "application/json" }, body },
@@ -71,7 +86,7 @@ async function main() {
         body: (await res.text()).slice(0, 500),
         paymentRequired: paymentRequired ? paymentRequired.slice(0, 120) + "…" : null,
         paid: process.env.WARRANT_PAY === "1",
-        realProve: process.env.WARRANT_REAL_PROVE === "1",
+        realProve: process.env.WARRANT_REAL_PROVE !== "0",
       },
       null,
       2,

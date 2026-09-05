@@ -12,7 +12,7 @@ Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World Ag
 | ERC-7710 | No | Yes | No | Per-session |
 | World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
 | Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
-| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **AgentBook / tier** | **On-chain epoch** |
+| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **AgentBook when live; `tier=0` demo** | **On-chain epoch** |
 
 ## Status
 
@@ -101,7 +101,7 @@ export WARRANT_REAL_PROVE=1
 pnpm --filter @warrant/agent demo
 ```
 
-Expect **200** on the free quota (3 calls per human nullifier). A fourth call without a payment-capable fetch returns **402** with Hedera `exact` accepts (Blocky402). Server / HCS logs must show a **nullifier only** — no names, wallets, or tree.
+Expect **200** on the free quota (3 calls per **session nullifier** at `tier=0`; per AgentBook human id when `tier>0`). A fourth call without a payment-capable fetch returns **402** with Hedera `exact` accepts (Blocky402). Server / HCS logs must show a **nullifier only** — no names, wallets, or tree. Paid settle may include `txId`; free grants do not.
 
 ### 4. CLI (attenuated delegate)
 
@@ -240,4 +240,4 @@ pnpm check-boundaries
 pnpm dod
 ```
 
-Exits 0 when gates 1–4 pass (tier=0 bind → attenuated delegate → free×3 then 402 → revoke/`root_revoked`). ENS (gate 5) is skipped on the solo path.
+Exits 0 when gates 1–4 pass (in-process: tier=0 bind → attenuated delegate → free×3 then 402 → mock `root_revoked`). **Does not** run Groth16 or on-chain revoke — that loop is `pnpm demo:live` + dashboard/`sync-root`. ENS (gate 5) is skipped on the solo path.

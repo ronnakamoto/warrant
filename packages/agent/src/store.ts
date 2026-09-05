@@ -51,7 +51,7 @@ export type WarrantState = {
   rootTier?: number;
   rootEpoch?: number;
   /**
-   * Personhood / root-scoped nullifier tag — set at bind-root, never a shared default.
+   * Nullifier tag — AgentBook human id when tier>0, else a session tag (tier=0 demo).
    * Nullifier = Poseidon(humanTag, contextHash).
    */
   humanTag?: string;
