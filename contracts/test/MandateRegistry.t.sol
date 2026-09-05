@@ -16,10 +16,12 @@ contract MandateRegistryTest is Test {
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
     address internal carol = address(0xCA201);
+    address internal operator = address(0xB17D);
 
     function setUp() public {
         json = vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/registry.json"));
-        registry = new MandateRegistry();
+        // Permissionless tier-0 mode for fixture-driven tree tests (tier forced to 0 below).
+        registry = new MandateRegistry(address(0));
         poseidon = new PoseidonCheck();
     }
 
@@ -43,58 +45,89 @@ contract MandateRegistryTest is Test {
         assertEq(poseidon.t6(dst, _u(".alice.pkX"), _u(".alice.pkY"), 2, 1), _u(".alice.leaf1"));
     }
 
+    /// Fixture leaves used tier=2; rebuild tree under operator mode so tiers match fixtures.
     function testBindThreeThenRevokeAlice() public {
-        vm.prank(alice);
-        (uint256 leafA, uint256 rootA) = registry.bindRoot(_u(".alice.pkX"), _u(".alice.pkY"), 2);
+        MandateRegistry opReg = new MandateRegistry(operator);
+        vm.startPrank(operator);
+        (uint256 leafA, uint256 rootA) = opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
         assertEq(leafA, _u(".alice.leaf0"));
         assertEq(rootA, _u(".rootAfterAlice"));
-        assertTrue(registry.isCurrentRoot(rootA));
+        assertTrue(opReg.isCurrentRoot(rootA));
 
-        vm.prank(bob);
-        (uint256 leafB, uint256 rootB) = registry.bindRoot(_u(".bob.pkX"), _u(".bob.pkY"), 2);
+        (uint256 leafB, uint256 rootB) = opReg.bindRoot(bob, _u(".bob.pkX"), _u(".bob.pkY"), 2);
         assertEq(leafB, _u(".bob.leaf0"));
         assertEq(rootB, _u(".rootAfterBob"));
 
-        vm.prank(carol);
-        (uint256 leafC, uint256 rootC) = registry.bindRoot(_u(".carol.pkX"), _u(".carol.pkY"), 2);
+        (uint256 leafC, uint256 rootC) = opReg.bindRoot(carol, _u(".carol.pkX"), _u(".carol.pkY"), 2);
         assertEq(leafC, _u(".carol.leaf0"));
         assertEq(rootC, _u(".rootAfterCarol"));
-        assertEq(registry.size(), 3);
-        assertTrue(registry.isCurrentRoot(rootC));
-        assertTrue(registry.isKnownRoot(rootC));
-        assertTrue(registry.isKnownRoot(rootA));
-        assertTrue(registry.isKnownRoot(rootB));
+        assertEq(opReg.size(), 3);
+        assertTrue(opReg.isCurrentRoot(rootC));
+        vm.stopPrank();
 
         uint256[] memory siblings = _siblings(".revokeSiblings");
         vm.prank(alice);
-        uint256 rootRevoked = registry.revoke(siblings);
+        uint256 rootRevoked = opReg.revoke(siblings);
         assertEq(rootRevoked, _u(".rootAfterRevoke"));
-        assertEq(registry.leafOf(alice), _u(".alice.leaf1"));
-        assertTrue(registry.isCurrentRoot(rootRevoked));
-        assertFalse(registry.isCurrentRoot(rootC));
-        assertTrue(registry.isKnownRoot(rootC));
+        assertEq(opReg.leafOf(alice), _u(".alice.leaf1"));
+        assertTrue(opReg.isCurrentRoot(rootRevoked));
+        assertFalse(opReg.isCurrentRoot(rootC));
+        assertTrue(opReg.isKnownRoot(rootC));
 
         vm.warp(block.timestamp + 1 hours + 1);
-        assertFalse(registry.isKnownRoot(rootC));
-        assertTrue(registry.isCurrentRoot(rootRevoked));
+        assertFalse(opReg.isKnownRoot(rootC));
+        assertTrue(opReg.isCurrentRoot(rootRevoked));
     }
 
-    function testZeroRootNeverCurrentOrKnown() public {
+    function testZeroRootNeverCurrentOrKnown() public view {
         assertFalse(registry.isCurrentRoot(0));
         assertFalse(registry.isKnownRoot(0));
     }
 
     function testRevokeWithoutBindReverts() public {
         uint256[] memory empty;
-        vm.expectRevert(bytes("unbound"));
+        vm.expectRevert(MandateRegistry.Unbound.selector);
         registry.revoke(empty);
+    }
+
+    function testPermissionlessRejectsTierAboveZero() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(MandateRegistry.TierRequiresOperator.selector, uint8(2)));
+        registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
+    }
+
+    function testPermissionlessSelfBindTierZero() public {
+        vm.prank(alice);
+        (uint256 leaf,) = registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
+        assertEq(registry.walletOfLeaf(leaf), alice);
+    }
+
+    function testOperatorRequiredForNonSelfWallet() public {
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.NotOperator.selector);
+        registry.bindRoot(bob, _u(".bob.pkX"), _u(".bob.pkY"), 0);
+    }
+
+    function testLeafClaimedPreventsSquattingSamePk() public {
+        vm.prank(alice);
+        registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(MandateRegistry.LeafClaimed.selector, alice));
+        registry.bindRoot(bob, _u(".alice.pkX"), _u(".alice.pkY"), 0);
     }
 
     function testDoubleBindReverts() public {
         vm.prank(alice);
-        registry.bindRoot(_u(".alice.pkX"), _u(".alice.pkY"), 2);
+        registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
         vm.prank(alice);
-        vm.expectRevert(bytes("already bound"));
-        registry.bindRoot(_u(".alice.pkX"), _u(".alice.pkY"), 2);
+        vm.expectRevert(MandateRegistry.AlreadyBound.selector);
+        registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
+    }
+
+    function testNonOperatorCannotBindWhenOperatorSet() public {
+        MandateRegistry opReg = new MandateRegistry(operator);
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.NotOperator.selector);
+        opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
     }
 }

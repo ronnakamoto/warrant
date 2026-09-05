@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import * as snarkjs from "snarkjs";
 import {
   TRANSLATE,
   SnarkjsProver,
@@ -14,6 +15,8 @@ import {
   keygen,
   prove,
   verify,
+  type WarrantProof,
+  type PublicInputs,
 } from "../src/index.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +27,7 @@ const vkey = join(repoRoot, "circuits/build/warrant_vkey.json");
 const contractsDir = join(repoRoot, "contracts");
 
 const ANVIL_PK = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const ANVIL_ADDR = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
 function artifactsReady(): boolean {
   return existsSync(wasm) && existsSync(zkey) && existsSync(vkey);
@@ -51,7 +55,7 @@ function startAnvil(port: number): ChildProcess {
   });
 }
 
-function deployRegistry(rpc: string): string {
+function deploy(rpc: string): { registry: string; gate: string } {
   const raw = execFileSync(
     "forge",
     [
@@ -63,16 +67,23 @@ function deployRegistry(rpc: string): string {
       ANVIL_PK,
       "--broadcast",
     ],
-    { cwd: contractsDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    {
+      cwd: contractsDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, WARRANT_BIND_OPERATOR: ANVIL_ADDR },
+    },
   );
-  const match = raw.match(/MandateRegistry\s+(0x[0-9a-fA-F]{40})/);
-  if (!match) throw new Error(`forge script: no MandateRegistry address\n${raw}`);
-  return match[1]!;
+  const registry = raw.match(/MandateRegistry\s+(0x[0-9a-fA-F]{40})/)?.[1];
+  const gate = raw.match(/WarrantGate\s+(0x[0-9a-fA-F]{40})/)?.[1];
+  if (!registry || !gate) throw new Error(`forge script parse failed\n${raw}`);
+  return { registry, gate };
 }
 
-function bindAndReadRoot(
+function bindRoot(
   rpc: string,
   registry: string,
+  wallet: string,
   pkX: bigint,
   pkY: bigint,
   tier: number,
@@ -82,7 +93,8 @@ function bindAndReadRoot(
     [
       "send",
       registry,
-      "bindRoot(uint256,uint256,uint8)",
+      "bindRoot(address,uint256,uint256,uint8)",
+      wallet,
       pkX.toString(),
       pkY.toString(),
       String(tier),
@@ -98,15 +110,54 @@ function bindAndReadRoot(
     ["call", registry, "currentRoot()(uint256)", "--rpc-url", rpc],
     { encoding: "utf8" },
   ).trim();
-  const decimal = out.split(/\s+/)[0];
-  if (!decimal) throw new Error(`currentRoot parse failed: ${out}`);
-  return BigInt(decimal);
+  return BigInt(out.split(/\s+/)[0]!);
 }
 
-describe("WP4 gate: 2-hop prove + MandateRegistry currentRoot", function () {
+/** snarkjs proof → cast args for WarrantGate.verify */
+async function gateVerifyArgs(
+  proof: WarrantProof,
+  publics: PublicInputs,
+): Promise<string[]> {
+  const pubArr = [
+    publics.merkleRoot,
+    publics.contextHash,
+    publics.nullifier,
+    publics.effectiveScope,
+    publics.effectiveBudgetCap,
+    publics.minExpiry,
+    publics.tier,
+    publics.requestHash,
+  ].map(String);
+  const calldata = await snarkjs.groth16.exportSolidityCallData(
+    {
+      pi_a: proof.pi_a,
+      pi_b: proof.pi_b,
+      pi_c: proof.pi_c,
+      protocol: proof.protocol ?? "groth16",
+      curve: proof.curve ?? "bn128",
+    },
+    pubArr,
+  );
+  const [pA, pB, pC, pubs] = JSON.parse(`[${calldata}]`) as [
+    string[],
+    string[][],
+    string[],
+    string[],
+  ];
+  return [
+    "verify(uint256[2],uint256[2][2],uint256[2],uint256[8],uint256)",
+    `[${pA.join(",")}]`,
+    `[[${pB[0]!.join(",")}],[${pB[1]!.join(",")}]]`,
+    `[${pC.join(",")}]`,
+    `[${pubs.join(",")}]`,
+    publics.requestHash.toString(),
+  ];
+}
+
+describe("WP4 gate: 2-hop prove + on-chain WarrantGate", function () {
   this.timeout(180_000);
 
-  it("proves a 2-hop chain and reads a live currentRoot from anvil", async function () {
+  it("proves, binds under operator, and passes WarrantGate.verify with requestHash", async function () {
     if (!artifactsReady()) this.skip();
 
     const root = keygen("warrant-wp4-root");
@@ -145,7 +196,6 @@ describe("WP4 gate: 2-hop prove + MandateRegistry currentRoot", function () {
     });
 
     const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], tier, epoch);
-    // Single-member tree so on-chain bindRoot root == circuit merkleRoot.
     const group = createGroup([leaf]);
     const requestHash = 123456789n;
 
@@ -168,38 +218,45 @@ describe("WP4 gate: 2-hop prove + MandateRegistry currentRoot", function () {
 
     assert.equal(await verify(proof, publics, verifier), true);
     assert.equal(publics.merkleRoot, group.root);
-    assert.notEqual(publics.merkleRoot, 0n);
 
     const port = 18545 + Math.floor(Math.random() * 400);
     const rpc = `http://127.0.0.1:${port}`;
     const anvil = startAnvil(port);
     try {
       await waitForRpc(rpc);
-      const registry = deployRegistry(rpc);
-      const currentRoot = bindAndReadRoot(
+      const { registry, gate } = deploy(rpc);
+      const currentRoot = bindRoot(
         rpc,
         registry,
+        ANVIL_ADDR,
         root.publicKey[0],
         root.publicKey[1],
         Number(tier),
       );
-      assert.notEqual(currentRoot, 0n);
-      assert.equal(currentRoot, publics.merkleRoot, "registry leaf must use circuit DST");
-      const isCurrent = execFileSync(
+      assert.equal(currentRoot, publics.merkleRoot);
+
+      const args = await gateVerifyArgs(proof, publics);
+      const okRaw = execFileSync(
         "cast",
-        [
-          "call",
-          registry,
-          "isCurrentRoot(uint256)(bool)",
-          publics.merkleRoot.toString(),
-          "--rpc-url",
-          rpc,
-        ],
+        ["call", gate, ...args, "--rpc-url", rpc],
         { encoding: "utf8" },
-      )
-        .trim()
-        .split(/\s+/)[0];
-      assert.equal(isCurrent, "true");
+      ).trim();
+      const ok = okRaw.split(/\s+/)[0]!;
+      assert.ok(ok === "true" || ok === "0x1" || /0x0*1$/.test(ok), `gate.verify returned ${okRaw}`);
+
+      // Wrong challenge must fail
+      const badArgs = [...args];
+      badArgs[badArgs.length - 1] = (publics.requestHash + 1n).toString();
+      let rejected = false;
+      try {
+        execFileSync("cast", ["call", gate, ...badArgs, "--rpc-url", rpc], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch {
+        rejected = true;
+      }
+      assert.equal(rejected, true, "expectedRequestHash mismatch must revert");
     } finally {
       anvil.kill("SIGTERM");
     }

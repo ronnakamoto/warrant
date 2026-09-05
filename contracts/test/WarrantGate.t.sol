@@ -36,7 +36,7 @@ contract WarrantGateTest is Test {
     address internal alice = address(0xA11CE);
 
     function setUp() public {
-        registry = new MandateRegistry();
+        registry = new MandateRegistry(address(0));
         verifier = new WarrantVerifier();
         gate = new WarrantGate(IMandateRoot(address(registry)), verifier);
         string memory path = string.concat(vm.projectRoot(), "/test/fixtures/proof.json");
@@ -54,7 +54,7 @@ contract WarrantGateTest is Test {
         uint256[2] memory pC;
         uint256[8] memory pubs;
         vm.expectRevert(abi.encodeWithSelector(WarrantGate.RootRejected.selector, uint256(0)));
-        gate.verify(pA, pB, pC, pubs);
+        gate.verify(pA, pB, pC, pubs, 0);
     }
 
     function testStaleRootRejected() public {
@@ -62,7 +62,7 @@ contract WarrantGateTest is Test {
         uint256 pkX = vm.parseUint(stdJson.readString(reg, ".alice.pkX"));
         uint256 pkY = vm.parseUint(stdJson.readString(reg, ".alice.pkY"));
         vm.prank(alice);
-        (, uint256 root) = registry.bindRoot(pkX, pkY, 2);
+        (, uint256 root) = registry.bindRoot(alice, pkX, pkY, 0);
         assertTrue(registry.isCurrentRoot(root));
 
         uint256[2] memory pA;
@@ -71,7 +71,18 @@ contract WarrantGateTest is Test {
         uint256[8] memory pubs;
         pubs[0] = root + 1;
         vm.expectRevert(abi.encodeWithSelector(WarrantGate.RootRejected.selector, root + 1));
-        gate.verify(pA, pB, pC, pubs);
+        gate.verify(pA, pB, pC, pubs, 0);
+    }
+
+    function testRequestHashMismatchRejected() public {
+        vm.skip(!hasProof);
+        (uint256[2] memory pA, uint256[2][2] memory pB, uint256[2] memory pC, uint256[8] memory pubs) =
+            _loadProof();
+        FixedRoot fixedRoot = new FixedRoot(pubs[0]);
+        WarrantGate g2 = new WarrantGate(IMandateRoot(address(fixedRoot)), verifier);
+        uint256 wrong = pubs[7] + 1;
+        vm.expectRevert(abi.encodeWithSelector(WarrantGate.RequestHashMismatch.selector, wrong, pubs[7]));
+        g2.verify(pA, pB, pC, pubs, wrong);
     }
 
     function testValidProofVerifies() public {
@@ -102,13 +113,13 @@ contract WarrantGateTest is Test {
         assertGt(used, 150_000);
     }
 
-    function testGateAcceptsWhenRootIsCurrent() public {
+    function testGateAcceptsWhenRootAndRequestHashMatch() public {
         vm.skip(!hasProof);
         (uint256[2] memory pA, uint256[2][2] memory pB, uint256[2] memory pC, uint256[8] memory pubs) =
             _loadProof();
         FixedRoot fixedRoot = new FixedRoot(pubs[0]);
         WarrantGate g2 = new WarrantGate(IMandateRoot(address(fixedRoot)), verifier);
-        assertTrue(g2.verify(pA, pB, pC, pubs));
+        assertTrue(g2.verify(pA, pB, pC, pubs, pubs[7]));
     }
 
     function _loadProof()

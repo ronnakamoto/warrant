@@ -106,6 +106,11 @@ describe("@warrant/core unit", function () {
     it("changes when the nonce changes", function () {
       assert.notEqual(hashChallenge(parts), hashChallenge({ ...parts, nonce: "n2" }));
     });
+
+    it("rejects missing path or nonce", function () {
+      assert.throws(() => hashChallenge({ ...parts, path: "" }), /path/);
+      assert.throws(() => hashChallenge({ ...parts, nonce: "" }), /nonce/);
+    });
   });
 
   describe("tree pad", function () {

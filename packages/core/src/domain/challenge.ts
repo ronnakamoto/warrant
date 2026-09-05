@@ -6,8 +6,10 @@ export const SNARK_SCALAR_FIELD =
 
 export type ChallengeParts = {
   method?: string;
-  path?: string;
-  nonce?: string;
+  /** Required — empty path weakens challenge uniqueness. */
+  path: string;
+  /** Required — empty/missing nonce enables proof replay across requests. */
+  nonce: string;
   merkleRoot?: string | bigint;
   amount?: string;
   payTo?: string;
@@ -27,17 +29,24 @@ function bytesToBigInt(bytes: Uint8Array): bigint {
 /**
  * Bind a warrant proof to one x402 challenge.
  * keccak256(method|path|nonce|merkleRoot|amount|payTo|bodyHash) mod r
+ *
+ * `path` and `nonce` are required so callers cannot accidentally omit the
+ * replay-critical fields (empty-string defaults were a review finding).
  */
 export function hashChallenge(parts: ChallengeParts): bigint {
+  if (typeof parts.path !== "string" || parts.path.length === 0) {
+    throw new Error("hashChallenge: path is required");
+  }
+  if (typeof parts.nonce !== "string" || parts.nonce.length === 0) {
+    throw new Error("hashChallenge: nonce is required");
+  }
   const method = parts.method ?? "POST";
-  const path = parts.path ?? "";
-  const nonce = parts.nonce ?? "";
   const merkleRoot = parts.merkleRoot === undefined ? "" : String(parts.merkleRoot);
   const amount = parts.amount ?? "";
   const payTo = parts.payTo ?? "";
   const bodyHash = parts.bodyHash ?? "";
   const digest = keccak_256(
-    utf8(`${method}|${path}|${nonce}|${merkleRoot}|${amount}|${payTo}|${bodyHash}`),
+    utf8(`${method}|${parts.path}|${parts.nonce}|${merkleRoot}|${amount}|${payTo}|${bodyHash}`),
   );
   return bytesToBigInt(digest) % SNARK_SCALAR_FIELD;
 }
