@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Warrant — mandate dashboard",
-  description: "Local mandate tree, revoke, and verifier log (Carbon g10 on Astryx)",
+  title: "Warrant — revoke",
+  description: "Revoke your Warrant root. Every agent that proves with it stops.",
 };
 
 export default function RootLayout({

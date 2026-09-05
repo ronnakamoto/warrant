@@ -216,7 +216,7 @@ export function explorerTxUrl(txHash: Hex, chainId = baseSepolia.id): string {
 export type VerifierLogEntry = {
   id: string;
   at: string;
-  kind: "info" | "bound" | "revoked" | "error";
+  kind: "info" | "bound" | "revoked" | "error" | "loaded" | "checked";
   message: string;
   href?: string;
 };
@@ -231,7 +231,7 @@ export function logFromRevoke(opts: {
     id: opts.txHash,
     at: new Date().toISOString(),
     kind: "revoked",
-    message: `Revoked ${opts.wallet} → epoch ${opts.epoch}, root ${opts.root.toString()}`,
+    message: "Revoked. Old proofs will be rejected (403). Re-bind to recover.",
     href: explorerTxUrl(opts.txHash),
   };
 }

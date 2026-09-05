@@ -6,7 +6,6 @@ import { isAddress, isHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Banner } from "@astryxdesign/core/Banner";
-import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
@@ -20,6 +19,7 @@ import {
   saveMirror,
   type MirrorDoc,
 } from "../lib/mirror";
+import { friendlyError, rootsMatch, shortRoot, treeStatus } from "../lib/status";
 import {
   explorerAddressUrl,
   logFromRevoke,
@@ -71,6 +71,19 @@ export function Dashboard() {
   );
   const analyzed = useMemo(() => analyzeMembers(members), [members]);
   const localRoot = analyzed.root;
+  const status = useMemo(
+    () => treeStatus(members.length, chainRoot, localRoot.toString()),
+    [chainRoot, localRoot, members.length],
+  );
+  const statusBanner =
+    status.kind === "sync"
+      ? "success"
+      : status.kind === "drift"
+        ? "warning"
+        : "info";
+  const revokeWho =
+    mirror.bindings.find((b) => b.label)?.label ??
+    (members.length > 0 ? "this root" : null);
 
   const pushLog = useCallback((entry: VerifierLogEntry) => {
     setLog((prev) => [entry, ...prev].slice(0, 40));
@@ -82,26 +95,41 @@ export function Dashboard() {
     setMirrorJson(formatMirrorJson(doc));
   }, []);
 
+  const loadFromText = useCallback(
+    (raw: string) => {
+      setError(null);
+      try {
+        const doc = parseMirrorJson(raw);
+        applyMirrorDoc(doc);
+        setChainRoot("");
+        const n = doc.members.length;
+        const who = doc.bindings.find((b) => b.label)?.label;
+        pushLog({
+          id: `import-${Date.now()}`,
+          at: new Date().toISOString(),
+          kind: "loaded",
+          message:
+            n === 0
+              ? "Loaded an empty list"
+              : who
+                ? `Loaded ${who}’s agents`
+                : `Loaded ${n} ${n === 1 ? "agent" : "agents"}`,
+        });
+      } catch (e) {
+        setError(friendlyError(e instanceof Error ? e.message : String(e)));
+      }
+    },
+    [applyMirrorDoc, pushLog],
+  );
+
   const onImportMirror = useCallback(() => {
-    setError(null);
-    try {
-      const doc = parseMirrorJson(mirrorJson);
-      applyMirrorDoc(doc);
-      pushLog({
-        id: `import-${Date.now()}`,
-        at: new Date().toISOString(),
-        kind: "info",
-        message: `Imported mirror (${doc.members.length} leaves)`,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [applyMirrorDoc, mirrorJson, pushLog]);
+    loadFromText(mirrorJson);
+  }, [loadFromText, mirrorJson]);
 
   const onRefreshRoot = useCallback(async () => {
     setError(null);
     if (!isAddress(registry)) {
-      setError("Set a valid MandateRegistry address");
+      setError(friendlyError("Set a valid MandateRegistry address"));
       return;
     }
     const gen = ++refreshGen.current;
@@ -116,33 +144,37 @@ export function Dashboard() {
       pushLog({
         id: `root-${Date.now()}`,
         at: new Date().toISOString(),
-        kind: "info",
-        message: `On-chain currentRoot ${root.toString()}`,
+        kind: "checked",
+        message: rootsMatch(root.toString(), localRoot.toString())
+          ? `Still live on Base Sepolia (${shortRoot(root.toString())})`
+          : `On-chain list differs (${shortRoot(root.toString())})`,
         href: explorerAddressUrl(registry as Address),
       });
     } catch (e) {
       if (gen !== refreshGen.current) return;
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyError(e instanceof Error ? e.message : String(e)));
     } finally {
       if (gen === refreshGen.current) setBusy(null);
     }
-  }, [pushLog, registry, rpcUrl]);
+  }, [localRoot, pushLog, registry, rpcUrl]);
 
   const runRevoke = useCallback(async () => {
     setConfirmOpen(false);
     setError(null);
+    if (!chainRoot) {
+      setError("Confirm they’re still live on Base Sepolia before revoking.");
+      return;
+    }
     if (!isAddress(registry)) {
-      setError("Set a valid MandateRegistry address");
+      setError(friendlyError("Set a valid MandateRegistry address"));
       return;
     }
     if (!privateKey || !isHex(privateKey) || privateKey.length !== 66) {
-      setError(
-        "Private key must be 0x-prefixed 32-byte hex (demo only — never commit)",
-      );
+      setError(friendlyError("Private key must be 0x-prefixed 32-byte hex"));
       return;
     }
     if (members.length === 0) {
-      setError("Import a local tree mirror (members[]) before revoke");
+      setError("Load who you delegated to first.");
       return;
     }
 
@@ -152,7 +184,7 @@ export function Dashboard() {
       (b) => b.wallet.toLowerCase() === wallet,
     );
     if (bindingIdx < 0) {
-      setError(`No binding in mirror for ${account.address}`);
+      setError(friendlyError(`No binding in mirror for ${account.address}`));
       return;
     }
     const binding = mirror.bindings[bindingIdx]!;
@@ -164,7 +196,7 @@ export function Dashboard() {
     );
     const leafIndex = members.findIndex((m) => m === oldLeaf);
     if (leafIndex < 0) {
-      setError("Current leaf missing from members[] — mirror out of sync");
+      setError("This list is out of date. Load a newer copy from your agent app.");
       return;
     }
 
@@ -218,21 +250,15 @@ export function Dashboard() {
           epoch: newEpoch,
         }),
       );
-      pushLog({
-        id: `policy-${Date.now()}`,
-        at: new Date().toISOString(),
-        kind: "info",
-        message:
-          "Next warrant.fetch with the old merkleRoot must get 403 root_revoked (CurrentRootChecker).",
-      });
     } catch (e) {
       if (gen !== revokeGen.current) return;
-      setError(e instanceof Error ? e.message : String(e));
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(friendlyError(raw));
       pushLog({
         id: `err-${Date.now()}`,
         at: new Date().toISOString(),
         kind: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: raw,
       });
     } finally {
       if (gen === revokeGen.current) setBusy(null);
@@ -240,6 +266,7 @@ export function Dashboard() {
   }, [
     analyzed,
     applyMirrorDoc,
+    chainRoot,
     localRoot,
     members,
     mirror.bindings,
@@ -271,16 +298,15 @@ export function Dashboard() {
             <VStack gap={1}>
               <Heading level={1}>Warrant</Heading>
               <Text type="supporting" color="secondary">
-                Mandate tree · revoke · verifier log — Carbon g10 / g100 on Astryx
+                Revoke your root. Every agent that proves with it stops.
               </Text>
             </VStack>
             <HStack gap={2} vAlign="center">
-              <Badge
-                variant="info"
-                label={mode === "light" ? "g10" : "g100"}
-              />
+              <Text type="supporting" color="secondary">
+                Base Sepolia
+              </Text>
               <Button
-                label={mode === "light" ? "Switch to g100" : "Switch to g10"}
+                label={mode === "light" ? "Dark" : "Light"}
                 variant="secondary"
                 size="sm"
                 onClick={toggleMode}
@@ -289,60 +315,69 @@ export function Dashboard() {
           </div>
 
           {error ? (
-            <Banner status="error" title="Action failed" description={error} />
+            <Banner status="error" title="Can’t do that" description={error} />
           ) : null}
+          <Banner
+            status={statusBanner}
+            title={status.title}
+            description={status.detail}
+          />
 
           {!mirrorHydrated ? (
             <Text type="supporting" color="secondary">
-              Loading local mirror…
+              Loading…
             </Text>
           ) : null}
-
-          <ChainPanel
-            rpcUrl={rpcUrl}
-            registry={registry}
-            privateKey={privateKey}
-            chainRoot={chainRoot}
-            localRoot={localRoot.toString()}
-            busy={busy === "refresh"}
-            onRpcUrl={setRpcUrl}
-            onRegistry={setRegistry}
-            onPrivateKey={setPrivateKey}
-            onRefresh={() => void onRefreshRoot()}
-          />
-
-          <Divider />
-
-          <MirrorPanel
-            mirrorJson={mirrorJson}
-            onMirrorJson={setMirrorJson}
-            onImport={onImportMirror}
-          />
 
           <TreePanel
             members={members}
             bindings={mirror.bindings}
+            privateKey={privateKey}
             busy={busy === "revoke"}
+            checkBusy={busy === "refresh"}
+            chainChecked={Boolean(chainRoot)}
+            onPrivateKey={setPrivateKey}
+            onCheckChain={() => void onRefreshRoot()}
             onRequestRevoke={() => setConfirmOpen(true)}
           />
 
-          <Divider />
+          <MirrorPanel
+            mirrorJson={mirrorJson}
+            expanded={members.length === 0}
+            onMirrorJson={setMirrorJson}
+            onImport={onImportMirror}
+            onLoadText={loadFromText}
+          />
+
+          {members.length > 0 ? <Divider /> : null}
+
+          <ChainPanel
+            rpcUrl={rpcUrl}
+            registry={registry}
+            chainRoot={chainRoot}
+            localRoot={localRoot.toString()}
+            showRoots={members.length > 0}
+            onRpcUrl={setRpcUrl}
+            onRegistry={setRegistry}
+          />
 
           <VerifierLogPanel log={log} />
         </VStack>
       </div>
 
-      <AlertDialog
-        isOpen={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title="Revoke root leaf?"
-        description="This bumps your on-chain epoch and changes currentRoot. Agents proving against the old root will get 403 root_revoked. This cannot be undone."
-        cancelLabel="Cancel"
-        actionLabel="Revoke"
-        actionVariant="destructive"
-        isActionLoading={busy === "revoke"}
-        onAction={() => void runRevoke()}
-      />
+      {confirmOpen ? (
+        <AlertDialog
+          isOpen
+          onOpenChange={setConfirmOpen}
+          title={revokeWho ? `Revoke ${revokeWho}?` : "Revoke this root?"}
+          description="Every agent you delegated will be rejected. This cannot be undone."
+          cancelLabel="Cancel"
+          actionLabel="Revoke"
+          actionVariant="destructive"
+          isActionLoading={busy === "revoke"}
+          onAction={() => void runRevoke()}
+        />
+      ) : null}
     </main>
   );
 }
