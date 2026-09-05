@@ -191,11 +191,13 @@ pnpm exec node scripts/check-boundaries.mjs
 | Max depth D | 4 (padded) |
 | LeanIMT | `BinaryMerkleRoot(20)`, pin `@zk-kit/binary-merkle-root.circom` ≥ 2.0.0 |
 | EdDSA | 5× `EdDSAPoseidonVerifier` (4 mandate + 1 request) |
-| Mandate hash | `Poseidon(5)([childPkX, childPkY, scope, budgetCap, expiry])` |
-| Leaf | `Poseidon(4)([pkX, pkY, tier, epoch])` |
+| Mandate hash | `Poseidon(10)([DST_mandate, childPkX, childPkY, scope, budgetCap, expiry, tier, epoch, parentHash, tagCommitment])` |
+| Leaf | `Poseidon(5)([DST_leaf, pkX, pkY, tier, epoch])` |
+| Tag commitment | `Poseidon(2)([DST_tag, humanTag])` (bound into every mandate) |
+| Nullifier | `Poseidon(3)([DST_nullifier, humanTag, contextHash])` |
 | `requestHash` | `keccak256(method\|path\|nonce\|merkleRoot\|amount\|payTo\|bodyHash) mod r` |
-| Lean target | &lt; 15k constraints (measured 13,018) |
-| Full target | &lt; 60k constraints (measured 56,794); prove &lt; 8 s (measured 2.2 s) |
+| Lean target | &lt; 15k constraints (measured 13,205 with domain tags) |
+| Full target | &lt; 65k constraints (measured 59,837 with domain tags + tag binding); prove &lt; 8 s |
 | pot / zkey | pot16; zkey ~27.9 MB — host via release, never commit |
 
 ### Chains

@@ -1,4 +1,69 @@
 #!/usr/bin/env bash
+# Production-oriented Groth16 phase-2 for the product `warrant` circuit (pot16).
+#
+# Requires strong operator entropy. Finalizes with a public beacon contribution so the
+# last phase-2 step has no private toxic waste. Prior contribution entropy must still
+# be discarded — for mainnet use a multi-party ceremony (see CEREMONY.md).
 set -euo pipefail
-echo "not implemented" >&2
-exit 1
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BUILD="${ROOT}/circuits/build"
+PTAU_DIR="${ROOT}/circuits/ptau"
+NAME="${1:-warrant}"
+PTAU="${PTAU_DIR}/powersOfTau28_hez_final_16.ptau"
+SNARKJS="${ROOT}/node_modules/snarkjs/cli.js"
+
+mkdir -p "$BUILD" "$PTAU_DIR"
+
+ENTROPY="${WARRANT_CEREMONY_ENTROPY:-}"
+if [[ ${#ENTROPY} -lt 32 ]]; then
+  echo "WARRANT_CEREMONY_ENTROPY must be set to ≥32 characters (got ${#ENTROPY})." >&2
+  echo "Example: WARRANT_CEREMONY_ENTROPY=\$(openssl rand -hex 32) $0" >&2
+  exit 1
+fi
+
+BEACON="${WARRANT_CEREMONY_BEACON:-}"
+if [[ -z "$BEACON" ]]; then
+  # Public deterministic beacon for reproducible demo finals; override for releases.
+  BEACON="$(printf '%s' "warrant/${NAME}/ceremony/v1" | shasum -a 256 | awk '{print $1}')"
+  echo "WARRANT_CEREMONY_BEACON unset — using derived public beacon: $BEACON"
+fi
+# snarkjs expects bare hex (no 0x prefix).
+BEACON="${BEACON#0x}"
+if [[ ! "$BEACON" =~ ^[0-9a-fA-F]+$ ]]; then
+  echo "WARRANT_CEREMONY_BEACON must be hexadecimal" >&2
+  exit 1
+fi
+
+if [[ ! -f "$PTAU" ]]; then
+  echo "Downloading Hermez pot16 final..."
+  curl -L --fail -o "$PTAU" \
+    "https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_16.ptau"
+fi
+
+if [[ ! -f "${BUILD}/${NAME}.r1cs" ]]; then
+  "${ROOT}/scripts/compile-circuit" "$NAME"
+fi
+
+Z0="${BUILD}/${NAME}_0000.zkey"
+Z1="${BUILD}/${NAME}_0001.zkey"
+ZF="${BUILD}/${NAME}_final.zkey"
+VK="${BUILD}/${NAME}_vkey.json"
+
+node "$SNARKJS" groth16 setup "${BUILD}/${NAME}.r1cs" "$PTAU" "$Z0"
+node "$SNARKJS" zkey contribute "$Z0" "$Z1" --name="warrant-operator" -e="$ENTROPY"
+# Beacon finalize: last contribution has no private randomness to leak.
+node "$SNARKJS" zkey beacon "$Z1" "$ZF" "$BEACON" 10 --name="warrant-beacon"
+node "$SNARKJS" zkey verify "${BUILD}/${NAME}.r1cs" "$PTAU" "$ZF"
+node "$SNARKJS" zkey export verificationkey "$ZF" "$VK"
+
+if [[ ! -s "$VK" ]]; then
+  echo "verification key export produced empty file: $VK" >&2
+  exit 1
+fi
+
+# Drop intermediate zkeys that embed contribution state (best-effort local hygiene).
+rm -f "$Z0" "$Z1"
+
+echo "setup complete → ${ZF}"
+echo "vkey → ${VK} ($(wc -c < "$VK") bytes)"
+echo "Discard WARRANT_CEREMONY_ENTROPY from shell history. See CEREMONY.md."
