@@ -82,7 +82,9 @@ export ALLOW_DEMO_ROOT=1
 pnpm --filter @warrant/translate dev
 ```
 
-Production-shaped root check: set `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC` instead of `FIXED_MERKLE_ROOT` (and omit `ALLOW_DEMO_*`).
+Production-shaped root check: set `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC` instead of `FIXED_MERKLE_ROOT` (and omit `ALLOW_DEMO_*`). Prefer `WARRANT_VKEY_PATH` for real Groth16 verify. Optional durable free-quota: `WARRANT_NULLIFIER_PATH=/tmp/warrant-nullifiers.json`.
+
+After on-chain revoke: `warrant sync-root` then re-`delegate` (epoch bump clears local mandates).
 
 ### 3. Call as the translator sub-agent (terminal B)
 
@@ -152,7 +154,14 @@ export WARRANT_PAY=1
 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 ```
 
-Revoke on-chain (or dashboard), then the same call returns **403** `root_revoked`. Sync local `rootEpoch` / members and re-delegate before calling again.
+Revoke on-chain (or dashboard), then:
+
+```bash
+pnpm --filter @warrant/agent cli -- sync-root
+# re-delegate alice→orch→translator at the new epoch
+pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+# expect 403 until sync+delegate, then 200 again
+```
 
 ### Payment flow (Hedera)
 

@@ -37,6 +37,8 @@ export WARRANT_STORE=/tmp/warrant-live/state.json
 | 2:10–2:50 | Revoke | Dashboard **Revoke** (or `cast send revoke`) + failed live-call **403** `root_revoked` | Alice revokes once. Epoch bumps; every agent fails. Server never learned Alice; it still enforced her decision. |
 | 2:50–3:20 | Close | README / ACTA one-liner + repo URL | Answers ACTA’s recursive private delegation gap. World + Hedera feedback docs in-repo. Links. |
 
+After the revoke shot (optional recovery for a second take): `warrant sync-root` then re-delegate.
+
 ## Commands (copy pane)
 
 ```bash

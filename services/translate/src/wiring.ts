@@ -1,9 +1,10 @@
-import { keccak256, toBytes } from "viem";
 import {
   TRANSLATE,
   SnarkjsVerifier,
+  bodyHashFromRaw,
   hashChallenge,
   type ChallengeParts,
+  type INullifierStore,
   type IRootChecker,
   type IVerifier,
 } from "@warrant/core";
@@ -23,6 +24,7 @@ import {
 import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { MemoryChallengeStore } from "./challenges.js";
+import { FileNullifierStore } from "./nullifiers-file.js";
 import { MemoryNullifierStore } from "./nullifiers.js";
 import { CurrentRootChecker, FixedRootChecker } from "./roots.js";
 import { createLogHcsSink, type HcsSink } from "./hcs.js";
@@ -40,6 +42,8 @@ export type WireConfig = {
   vkeyPath?: string;
   /** Injected verifier for tests. */
   verifier?: IVerifier;
+  /** Injected nullifier store (tests). Default: memory, or file via WARRANT_NULLIFIER_PATH. */
+  nullifiers?: INullifierStore;
   payTo?: string;
   feePayer?: string;
   amount?: string;
@@ -51,29 +55,25 @@ export type Wired = {
   http: x402HTTPResourceServer;
   server: x402ResourceServer;
   policy: WarrantPolicy;
-  nullifiers: MemoryNullifierStore;
+  nullifiers: INullifierStore;
   challenges: MemoryChallengeStore;
   roots: IRootChecker;
   hcs: HcsSink;
 };
 
-function bodyHashFromContext(ctx: HTTPRequestContext): string {
+async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
   const getBody = ctx.adapter.getBody;
   if (!getBody) return "";
-  const body = getBody() as unknown;
-  // @x402/hono getBody is async (Promise). Sync resolveChallenge cannot await —
-  // treat pending bodies as unavailable (empty) rather than hashing "{}".
-  if (body != null && typeof (body as { then?: unknown }).then === "function") {
+  let body: unknown;
+  try {
+    body = await Promise.resolve(getBody());
+  } catch {
     return "";
   }
   if (body === undefined || body === null) return "";
-  if (typeof body === "string") {
-    return body.length === 0 ? "" : keccak256(toBytes(body));
-  }
-  if (body instanceof Uint8Array) {
-    return body.length === 0 ? "" : keccak256(body);
-  }
-  return keccak256(toBytes(JSON.stringify(body)));
+  if (typeof body === "string") return bodyHashFromRaw(body);
+  if (body instanceof Uint8Array) return bodyHashFromRaw(body);
+  return bodyHashFromRaw(JSON.stringify(body));
 }
 
 /**
@@ -88,7 +88,11 @@ export function wire(config: WireConfig): Wired {
     freeCallsPerHuman: 3,
   };
 
-  const nullifiers = new MemoryNullifierStore();
+  const nullifiers: INullifierStore =
+    config.nullifiers ??
+    (process.env.WARRANT_NULLIFIER_PATH
+      ? new FileNullifierStore(process.env.WARRANT_NULLIFIER_PATH)
+      : new MemoryNullifierStore());
   const challenges = new MemoryChallengeStore();
   const hcs = config.hcs ?? createLogHcsSink();
 
@@ -169,7 +173,10 @@ export function wire(config: WireConfig): Wired {
 
   const hooks = createWarrantHooks({
     pipeline,
-    resolveChallenge: (ctx: HTTPRequestContext, _route: RouteConfig): ChallengeParts | null => {
+    resolveChallenge: async (
+      ctx: HTTPRequestContext,
+      _route: RouteConfig,
+    ): Promise<ChallengeParts | null> => {
       // Nonce hint only — never trust amount/payTo/merkleRoot/bodyHash from client
       let nonceHint: string | undefined;
       const raw = ctx.adapter.getHeader("warrant");
@@ -194,7 +201,7 @@ export function wire(config: WireConfig): Wired {
         merkleRoot: issued.merkleRoot,
         amount,
         payTo,
-        bodyHash: bodyHashFromContext(ctx),
+        bodyHash: await bodyHashFromContext(ctx),
       };
     },
   });

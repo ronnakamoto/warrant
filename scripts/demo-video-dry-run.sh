@@ -72,5 +72,5 @@ call "pay (Blocky402)" env WARRANT_REAL_PROVE=1 WARRANT_PAY=1 \
 echo ""
 echo "Dry-run complete. For revoke beat: dashboard Revoke or cast send revoke, then:"
 echo "  WARRANT_REAL_PROVE=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts"
-echo "  # expect 403 root_revoked"
+echo "  # expect 403 root_revoked — then: warrant sync-root && re-delegate"
 echo "Shot list: docs/08-demo-runbook.md"
