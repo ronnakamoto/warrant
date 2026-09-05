@@ -198,7 +198,6 @@ Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/0
 | [`docs/02-design.md`](docs/02-design.md) | Threat model, circuit, contracts, x402 |
 | [`docs/03-execution.md`](docs/03-execution.md) | Demo video script and judging self-check |
 | [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md) | Solo recording shot list (skip ENS) |
-| [`docs/09-submission-checklist.md`](docs/09-submission-checklist.md) | ETHOnline submit self-check |
 | [`AI_USAGE.md`](AI_USAGE.md) | ETHOnline AI tool attribution |
 | [`CEREMONY.md`](CEREMONY.md) | Groth16 setup + release artifact checksums |
 | [`docs/04-alternatives.md`](docs/04-alternatives.md) | Alternatives considered |
