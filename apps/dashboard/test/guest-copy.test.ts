@@ -144,6 +144,22 @@ describe("guest first-run copy", function () {
     assert.equal(clientIpFromRequest(req), "203.0.113.9");
   });
 
+  it("forwards one origin on same-origin GET that has no Origin header", function () {
+    const fromReferer = proveForwardHeaders(
+      new Request("https://app.example/api/guest/warrants", {
+        headers: { referer: "https://app.example/" },
+      }),
+      { DASHBOARD_ORIGIN: "https://app.example,https://other.example" },
+    );
+    assert.equal(fromReferer["x-warrant-dashboard-origin"], "https://app.example");
+
+    const fromList = proveForwardHeaders(new Request("https://app.example/api/guest/warrants"), {
+      DASHBOARD_ORIGIN: "https://app.example, https://other.example",
+    });
+    assert.equal(fromList["x-warrant-dashboard-origin"], "https://app.example");
+    assert.equal(fromList["x-warrant-dashboard-origin"]?.includes(","), false);
+  });
+
   it("tells the bot that Warrant sees the witness and the shop does not", function () {
     const skill = agentPrompt("https://app.example", "tok_live_abc");
     assert.match(skill, /Warrant will prove for you/);
