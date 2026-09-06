@@ -34,6 +34,21 @@ export type RevokeClients = {
   revoke?: (siblings: bigint[]) => Promise<Hex>;
 };
 
+export async function waitUntilBalance(
+  getBalance: () => Promise<bigint>,
+  min: bigint,
+  opts?: { tries?: number; delayMs?: number; sleep?: (ms: number) => Promise<void> },
+): Promise<void> {
+  const tries = opts?.tries ?? 20;
+  const delayMs = opts?.delayMs ?? 250;
+  const sleep = opts?.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  for (let i = 0; i < tries; i++) {
+    if ((await getBalance()) >= min) return;
+    if (i < tries - 1) await sleep(delayMs);
+  }
+  throw new Error("guest wallet not funded in time");
+}
+
 export async function revokeSiblingsFor(members: string[], leaf: string): Promise<bigint[]> {
   const tree = new LeanIMT((a, b) => poseidon2([BigInt(a), BigInt(b)]));
   for (const m of members) tree.insert(BigInt(m));
@@ -88,7 +103,13 @@ export async function revokeGuest(args: {
       to: guest.address,
       value: REVOKE_FLOOR,
     });
-    await publicClient.waitForTransactionReceipt({ hash: fundHash });
+    await publicClient.waitForTransactionReceipt({ hash: fundHash, confirmations: 1 });
+    // Public RPCs can return the receipt before the next eth_getBalance / estimateGas
+    // sees the credit — writeContract then fails with "gas required exceeds allowance (0)".
+    await waitUntilBalance(
+      () => publicClient.getBalance({ address: guest.address }),
+      REVOKE_FLOOR,
+    );
   }
 
   const guestWallet = createWalletClient({

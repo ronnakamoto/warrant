@@ -1,7 +1,34 @@
 import assert from "node:assert/strict";
 import { FOUNDER_ETH } from "../src/founders.ts";
-import { revokeGuest, revokeSiblingsFor } from "../src/revoke.ts";
+import { revokeGuest, revokeSiblingsFor, waitUntilBalance } from "../src/revoke.ts";
 import { emptyState } from "@warrant/agent";
+
+describe("waitUntilBalance", function () {
+  it("returns once the credit is visible", async function () {
+    let n = 0n;
+    await waitUntilBalance(
+      async () => {
+        n += 1n;
+        return n;
+      },
+      3n,
+      { delayMs: 1, sleep: async () => undefined },
+    );
+    assert.equal(n, 3n);
+  });
+
+  it("throws if the credit never appears", async function () {
+    await assert.rejects(
+      () =>
+        waitUntilBalance(async () => 0n, 1n, {
+          tries: 2,
+          delayMs: 1,
+          sleep: async () => undefined,
+        }),
+      /not funded in time/,
+    );
+  });
+});
 
 describe("revokeSiblingsFor", function () {
   it("builds siblings for a one-leaf tree", async function () {
