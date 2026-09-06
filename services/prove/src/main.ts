@@ -2,6 +2,7 @@ import { createSnarkjsProver } from "@warrant/agent";
 import { createProveApp } from "./app.js";
 import { createGraphLeafLoader } from "./members.js";
 import { assertProductionProveEnv, shouldEnforceStrictProd } from "./prod-guard.js";
+import { createPersistedSessionStore } from "./persist.js";
 import { createSessionStore } from "./session.js";
 import type { Address, Hex } from "viem";
 
@@ -35,7 +36,10 @@ async function main(): Promise<void> {
   }
 
   const ttlMs = Number(process.env.GUEST_TTL_MS ?? 30 * 60 * 1000);
-  const store = createSessionStore({ ttlMs });
+  const sessionPath = process.env.WARRANT_SESSION_PATH;
+  const store = sessionPath
+    ? createPersistedSessionStore({ path: sessionPath, ttlMs })
+    : createSessionStore({ ttlMs });
   setInterval(() => store.sweep(), 60_000).unref();
 
   const allowedOrigins = (process.env.PROVE_ALLOWED_ORIGINS ?? "")

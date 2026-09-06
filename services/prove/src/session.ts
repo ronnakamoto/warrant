@@ -27,6 +27,7 @@ export type SessionStore = {
   delete(id: string): void;
   sweep(): string[];
   listByDesk(deskId: string): WarrantView[];
+  dump(): GuestSession[];
 };
 
 function wipeKey(session: GuestSession): void {
@@ -104,6 +105,14 @@ export function createSessionStore(opts: {
       }
       views.sort((a, b) => a.createdAt - b.createdAt);
       return views;
+    },
+    dump() {
+      const sessions: GuestSession[] = [];
+      for (const session of map.values()) {
+        if (expired(session)) continue;
+        sessions.push(session);
+      }
+      return sessions;
     },
   };
 }
