@@ -113,10 +113,16 @@ export function dashboardOriginForProve(req: Request, env: Env = process.env): s
       /* fall through */
     }
   }
-  return (env.DASHBOARD_ORIGIN ?? "")
+  const first = (env.DASHBOARD_ORIGIN ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)[0];
+  if (first) return first;
+  try {
+    return new URL(req.url).origin;
+  } catch {
+    return undefined;
+  }
 }
 
 export function proveForwardHeaders(req: Request, env: Env = process.env): Record<string, string> {
