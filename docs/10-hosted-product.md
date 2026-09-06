@@ -40,6 +40,8 @@ This door exists so a human *believes*. It is not how they live.
 **Door 2 — they live it (their bot, every day).**  
 Authorize issues a bearer for that leaf. They paste a skill that calls `{APP}/api/agent/translate` with `Authorization: Bearer …`. The BFF proves; the bot never sees a zkey. Fire everyone is `POST {APP}/api/agent/revoke`. Cloud bots need a public https origin — `127.0.0.1` only works for agents on that machine.
 
+The hosted bearer means Warrant sees the witness. Local CLI prove does not.
+
 Same rails as Door 1. The product is Door 2. Door 1 is how Door 2 becomes obvious.
 
 ### What they never see

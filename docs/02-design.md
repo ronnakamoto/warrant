@@ -114,7 +114,7 @@ Anonymity and exact per-human budget accounting are in tension (exact accounting
 
 ## 8. Why it maps to the newest research
 
-- It is a concrete answer to ACTA's open questions on **recursive OBO delegation** and **private trust graphs**, using ACTA's own vocabulary (policy registry, `ICircuitVerifier`, context nullifiers, personhood credentials).
+- It is a working construction for ACTA's recursive-OBO *predicates*, not a complete ACTA implementation.
 - It reuses the "Obf(P) signs, contract verifies" interface from Vitalik's obfuscation post at the *authorization* layer: verifiers never see the program (the tree), only signed/proven outputs.
 - It anticipates the roadmap: the Semaphore-style circuit is proof-system agnostic; swapping in a hash-based, post-quantum backend is the same `ICircuitVerifier` swap ACTA envisions.
 
