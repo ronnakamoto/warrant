@@ -10,7 +10,8 @@ export function createPersistedSessionStore(opts: {
 }): SessionStore {
   const now = opts.now ?? Date.now;
   const inner = createSessionStore({ ttlMs: opts.ttlMs, now });
-  if (existsSync(opts.path)) {
+  const fileExisted = existsSync(opts.path);
+  if (fileExisted) {
     const parsed = JSON.parse(readFileSync(opts.path, "utf8")) as Disk;
     for (const session of parsed.sessions ?? []) {
       if (now() - session.createdAt <= opts.ttlMs) inner.put(session);
@@ -20,12 +21,18 @@ export function createPersistedSessionStore(opts: {
     const disk: Disk = { version: 1, sessions: inner.dump() };
     writeFileSync(opts.path, JSON.stringify(disk), { mode: 0o600 });
   };
+  if (fileExisted) flush();
   return {
     put(session) {
       inner.put(session);
       flush();
     },
-    get: (id) => inner.get(id),
+    get(id) {
+      const before = inner.dump().length;
+      const found = inner.get(id);
+      if (inner.dump().length !== before) flush();
+      return found;
+    },
     delete(id) {
       inner.delete(id);
       flush();

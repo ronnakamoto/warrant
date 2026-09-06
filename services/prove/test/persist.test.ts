@@ -37,6 +37,17 @@ describe("persisted session store", function () {
     assert.equal(b.get("old"), undefined);
   });
 
+  it("purges expired sessions from disk on load", async function () {
+    const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
+    const path = join(dir, "sessions.json");
+    const a = createPersistedSessionStore({ path, ttlMs: 10, now: () => 0 });
+    a.put(sess("old", "desk-1", 0));
+    createPersistedSessionStore({ path, ttlMs: 10, now: () => 20 });
+    const raw = JSON.parse(await readFile(path, "utf8")) as { sessions: GuestSession[] };
+    assert.equal(raw.sessions.length, 0);
+    assert.equal(raw.sessions.some((s) => s.evmPrivateKey?.startsWith("0xaa")), false);
+  });
+
   it("writes the file mode 0o600", async function () {
     const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
     const path = join(dir, "sessions.json");
