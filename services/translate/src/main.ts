@@ -13,7 +13,9 @@ async function main(): Promise<void> {
     assertProductionTranslateEnv(process.env);
   }
 
-  const port = Number(process.env.PORT ?? 8787);
+  const ports = [...new Set(
+    [Number(process.env.PORT ?? 8787), 8787].filter((n) => Number.isFinite(n) && n > 0),
+  )];
   const facilitatorUrl =
     process.env.BLOCKY402_URL ?? "https://api.testnet.blocky402.com";
 
@@ -43,10 +45,10 @@ async function main(): Promise<void> {
   const app = createApp({ wired });
 
   console.log(
-    `translate listening on :${port} minTier=${wired.policy.minTier} freeCalls=${wired.policy.freeCallsPerHuman}`,
-  )
+    `translate listening on :${ports.join(",")} minTier=${wired.policy.minTier} freeCalls=${wired.policy.freeCallsPerHuman}`,
+  );
   const { serve } = await import("@hono/node-server");
-  serve({ fetch: app.fetch, port });
+  for (const port of ports) serve({ fetch: app.fetch, port });
 }
 
 main().catch((err) => {

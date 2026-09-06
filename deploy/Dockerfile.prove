@@ -16,5 +16,8 @@ RUN pnpm install --frozen-lockfile --filter @warrant/prove... \
 ENV PROVE_PORT=8788
 ENV NODE_ENV=production
 ENV WARRANT_STRICT_PROD=1
+ENV WARRANT_WASM_PATH=/app/circuits/build/warrant_js/warrant.wasm
+ENV WARRANT_ZKEY_PATH=/app/circuits/build/warrant_final.zkey
+ENV WARRANT_VKEY_PATH=/app/circuits/build/warrant_vkey.json
 EXPOSE 8788
 CMD ["pnpm", "--filter", "@warrant/prove", "start"]
