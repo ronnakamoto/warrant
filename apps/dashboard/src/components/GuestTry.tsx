@@ -5,7 +5,15 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { VStack } from "@astryxdesign/core/Layout";
 import { Heading, Text } from "@astryxdesign/core/Text";
-import { agentPrompt, GUEST_COPY, remainingLife, remainingMsUntil } from "../lib/guest-copy";
+import {
+  agentPrompt,
+  GUEST_COPY,
+  HEDERA_FAUCET,
+  hashscanTestnetUrl,
+  remainingLife,
+  remainingMsUntil,
+  shopIsDead,
+} from "../lib/guest-copy";
 
 type Phase = "land" | "minting" | "ready" | "calling" | "done" | "revoked" | "quota" | "limited";
 type WarrantView = {
@@ -60,7 +68,7 @@ async function confirmShopDead(text: string): Promise<boolean> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ text, source: "en", target: "es" }),
   });
-  return denied.status !== 200;
+  return shopIsDead(denied.status);
 }
 
 export function GuestTry() {
@@ -69,9 +77,12 @@ export function GuestTry() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cookieSessionId, setCookieSessionId] = useState<string | null>(null);
   const [text, setText] = useState("Good morning.");
+  const [hederaAccount, setHederaAccount] = useState("");
+  const [hederaKey, setHederaKey] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nullifier, setNullifier] = useState<string | null>(null);
+  const [txId, setTxId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
@@ -156,6 +167,7 @@ export function GuestTry() {
     setSelectedId(null);
     setResult(null);
     setNullifier(null);
+    setTxId(null);
     setNotice(null);
     if (phase === "minting" || phase === "limited" || phase === "revoked") return;
     setPhase("land");
@@ -167,6 +179,7 @@ export function GuestTry() {
     setNotice(null);
     setResult(null);
     setNullifier(null);
+    setTxId(null);
     setPhase("minting");
     const res = await fetch("/api/guest", { method: "POST" });
     if (res.status === 429) {
@@ -202,15 +215,23 @@ export function GuestTry() {
     setError(null);
     setResult(null);
     setPhase("calling");
+    const account = hederaAccount.trim();
+    const key = hederaKey.trim();
     const res = await fetch("/api/guest/translate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, source: "en", target: "es" }),
+      body: JSON.stringify({
+        text,
+        source: "en",
+        target: "es",
+        ...(account && key ? { hederaAccountId: account, hederaPrivateKey: key } : {}),
+      }),
     });
     const body = (await res.json().catch(() => ({}))) as {
       text?: string;
       error?: string;
       nullifier?: string;
+      txId?: string;
     };
     if (res.status === 402) {
       setPhase("quota");
@@ -220,6 +241,7 @@ export function GuestTry() {
       const list = await refreshWarrants();
       setResult(null);
       setNullifier(null);
+      setTxId(null);
       if (latestLive(list)) {
         setPhase("ready");
         return;
@@ -234,6 +256,7 @@ export function GuestTry() {
     }
     setResult(typeof body.text === "string" ? body.text : "");
     setNullifier(typeof body.nullifier === "string" ? body.nullifier : null);
+    setTxId(typeof body.txId === "string" && body.txId.length > 0 ? body.txId : null);
     setPhase("done");
   }
 
@@ -264,6 +287,7 @@ export function GuestTry() {
       const remaining = list.filter(isLive);
       setResult(null);
       setNullifier(null);
+      setTxId(null);
       setCopied(false);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
@@ -299,6 +323,7 @@ export function GuestTry() {
       const remaining = list.filter(isLive);
       setResult(null);
       setNullifier(null);
+      setTxId(null);
       setCopied(false);
       if (remaining.length > 0) {
         if (typeof body.failed === "number" && body.failed > 0) {
@@ -335,6 +360,19 @@ export function GuestTry() {
   const busy = phase === "minting" || phase === "calling" || revoking;
   const live =
     token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
+  const canShop = selectedId === cookieSessionId && cookieSessionId;
+  const heardBack = phase === "done" && result !== null;
+  const wantsPay =
+    phase === "quota" || hederaAccount.trim().length > 0 || hederaKey.trim().length > 0;
+  const canPay = hederaAccount.trim().length > 0 && hederaKey.trim().length > 0;
+
+  function sendAnother() {
+    setResult(null);
+    setNullifier(null);
+    setTxId(null);
+    setError(null);
+    setPhase(canPay ? "quota" : "ready");
+  }
 
   return (
     <VStack gap={5}>
@@ -360,96 +398,81 @@ export function GuestTry() {
       ) : null}
 
       {phase === "minting" ? <Text>{GUEST_COPY.minting}</Text> : null}
-      {phase === "calling" ? <Text>{GUEST_COPY.proving}</Text> : null}
 
       {live ? (
-        <VStack gap={4}>
+        <VStack gap={5}>
           {notice ? <Banner status="success" title={notice} /> : null}
-          <VStack gap={2}>
+          <VStack gap={1}>
             <Text>{GUEST_COPY.authorized}</Text>
-            {liveWarrants.length > 1 ? (
-              <div style={wrapRow}>
-                {liveWarrants.map((w) => (
-                  <Button
-                    key={w.id}
-                    size="sm"
-                    variant={w.id === selectedId ? "primary" : "secondary"}
-                    label={idTail(w.id)}
-                    isDisabled={busy}
-                    onClick={() => {
-                      setSelectedId(w.id);
-                      setCopied(false);
-                      setResult(null);
-                      setNullifier(null);
-                    }}
-                  />
-                ))}
-              </div>
-            ) : null}
-            <Text type="supporting" color="secondary">
-              {GUEST_COPY.promptLead}
-            </Text>
-            {localHost ? (
-              <Text type="supporting" color="secondary">
-                {GUEST_COPY.localhostHint}
-              </Text>
-            ) : null}
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-                fontFamily: "var(--font-family-mono)",
-                fontSize: "var(--font-size-supporting)",
-                margin: 0,
-                padding: "var(--spacing-3)",
-                background: "var(--color-background-input)",
-                border: "1px solid var(--color-border-subtle)",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              {prompt}
-            </pre>
             {selected ? (
               <Text type="supporting" color="secondary">
                 {remainingLife(selected.remainingMs)}
               </Text>
             ) : null}
+          </VStack>
+          {liveWarrants.length > 1 ? (
             <div style={wrapRow}>
-              <Button
-                label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
-                variant="secondary"
-                onClick={() => void copyPrompt()}
-              />
+              {liveWarrants.map((w) => (
+                <Button
+                  key={w.id}
+                  size="sm"
+                  variant={w.id === selectedId ? "primary" : "secondary"}
+                  label={idTail(w.id)}
+                  isDisabled={busy}
+                  onClick={() => {
+                    setSelectedId(w.id);
+                    setCopied(false);
+                    setResult(null);
+                    setNullifier(null);
+                    setTxId(null);
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {canShop && heardBack ? (
+            <VStack gap={3}>
+              <Heading level={2}>{result}</Heading>
+              <Text type="supporting" color="secondary">
+                {txId ? GUEST_COPY.paidFoot : GUEST_COPY.successFoot}
+              </Text>
+              {txId ? (
+                <Text type="supporting">
+                  <a href={hashscanTestnetUrl(txId)} target="_blank" rel="noreferrer">
+                    {GUEST_COPY.paidLink}
+                  </a>
+                </Text>
+              ) : null}
               <Button
                 label={liveWarrants.length > 1 ? GUEST_COPY.fireThis : GUEST_COPY.fireOne}
                 variant="destructive"
                 onClick={() => void fireThis()}
                 isDisabled={busy}
               />
-            </div>
-            {liveWarrants.length > 1 ? (
+              {liveWarrants.length > 1 ? (
+                <Button
+                  label={GUEST_COPY.fireEvery}
+                  variant="destructive"
+                  onClick={() => void fireEvery()}
+                  isDisabled={busy}
+                />
+              ) : null}
               <Button
-                label={GUEST_COPY.fireEvery}
-                variant="destructive"
-                onClick={() => void fireEvery()}
-                isDisabled={busy}
-              />
-            ) : null}
-            <div style={wrapRow}>
-              <Button
-                label={GUEST_COPY.again}
+                label={GUEST_COPY.sendAnother}
                 variant="secondary"
-                onClick={() => void authorize()}
+                onClick={sendAnother}
                 isDisabled={busy}
               />
-            </div>
-          </VStack>
+            </VStack>
+          ) : null}
 
-          {selectedId === cookieSessionId && cookieSessionId ? (
-            <VStack gap={2}>
+          {canShop && !heardBack ? (
+            <VStack gap={3}>
               <Text type="supporting" color="secondary">
                 {GUEST_COPY.shopLead}
               </Text>
+              {phase === "quota" ? <Banner status="info" title={GUEST_COPY.quota} /> : null}
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -458,31 +481,84 @@ export function GuestTry() {
                 aria-label={GUEST_COPY.shopLabel}
                 style={fieldStyle}
               />
+              {phase === "calling" ? <Text>{GUEST_COPY.proving}</Text> : null}
+              {wantsPay ? (
+                <VStack gap={2}>
+                  <Text type="supporting" color="secondary">
+                    {GUEST_COPY.faucetLead}{" "}
+                    <a href={HEDERA_FAUCET} target="_blank" rel="noreferrer">
+                      {GUEST_COPY.faucetLink}
+                    </a>
+                  </Text>
+                  <input
+                    type="text"
+                    value={hederaAccount}
+                    onChange={(e) => setHederaAccount(e.target.value)}
+                    disabled={busy}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label={GUEST_COPY.payAccount}
+                    placeholder={GUEST_COPY.payAccount}
+                    style={fieldStyle}
+                  />
+                  <input
+                    type="password"
+                    value={hederaKey}
+                    onChange={(e) => setHederaKey(e.target.value)}
+                    disabled={busy}
+                    autoComplete="off"
+                    aria-label={GUEST_COPY.payKey}
+                    placeholder={GUEST_COPY.payKey}
+                    style={fieldStyle}
+                  />
+                  <Text type="supporting" color="secondary">
+                    {GUEST_COPY.payHint}
+                  </Text>
+                </VStack>
+              ) : null}
               <Button
-                label={GUEST_COPY.shopCall}
+                label={canPay ? GUEST_COPY.payCall : GUEST_COPY.shopCall}
                 onClick={() => void callShop()}
                 isDisabled={busy || text.trim() === ""}
               />
             </VStack>
           ) : null}
-        </VStack>
-      ) : null}
 
-      {phase === "done" && result !== null ? (
-        <VStack gap={2}>
-          <Text>{result}</Text>
-          <Text type="supporting" color="secondary">
-            {GUEST_COPY.successFoot}
-          </Text>
-          {nullifier ? (
+          <VStack gap={2}>
             <Text type="supporting" color="secondary">
-              {nullifier.length > 16 ? `${nullifier.slice(0, 10)}…${nullifier.slice(-6)}` : nullifier}
+              {GUEST_COPY.botLead}
             </Text>
-          ) : null}
+            {localHost ? (
+              <Text type="supporting" color="secondary">
+                {GUEST_COPY.localhostHint}
+              </Text>
+            ) : null}
+            <div style={wrapRow}>
+              <Button
+                label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
+                variant="secondary"
+                onClick={() => void copyPrompt()}
+              />
+              {!heardBack ? (
+                <Button
+                  label={liveWarrants.length > 1 ? GUEST_COPY.fireThis : GUEST_COPY.fireOne}
+                  variant="destructive"
+                  onClick={() => void fireThis()}
+                  isDisabled={busy}
+                />
+              ) : null}
+            </div>
+            {!heardBack && liveWarrants.length > 1 ? (
+              <Button
+                label={GUEST_COPY.fireEvery}
+                variant="destructive"
+                onClick={() => void fireEvery()}
+                isDisabled={busy}
+              />
+            ) : null}
+          </VStack>
         </VStack>
       ) : null}
-
-      {phase === "quota" ? <Banner status="info" title={GUEST_COPY.quota} /> : null}
 
       {phase === "revoked" ? (
         <VStack gap={3}>

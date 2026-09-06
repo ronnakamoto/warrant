@@ -12,6 +12,11 @@ export type CreateHooksArgs = {
     ctx: HTTPRequestContext,
     route: RouteConfig,
   ) => ChallengeParts | null | Promise<ChallengeParts | null>;
+  /**
+   * Optional host settle after free quota. True → grant this request.
+   * False or missing → 402 so the client can pay.
+   */
+  sponsorGrant?: (nullifier: bigint) => Promise<boolean>;
 };
 
 type ProtectedResult = void | { grantAccess: true } | { abort: true; reason: string };
@@ -61,6 +66,13 @@ export function createWarrantHooks(args: CreateHooksArgs) {
       });
       if (result.kind === "grant") return { grantAccess: true };
       if (result.kind === "abort") return { abort: true, reason: result.reason };
+      if (
+        result.kind === "pay" &&
+        args.sponsorGrant &&
+        (await args.sponsorGrant(result.nullifier))
+      ) {
+        return { grantAccess: true };
+      }
       return;
     },
   };

@@ -28,6 +28,7 @@ export type PipelineRequest = {
 export type PipelineResult =
   | { kind: "continue" }
   | { kind: "grant" }
+  | { kind: "pay"; nullifier: bigint }
   | { kind: "abort"; reason: string };
 
 export type PipelineDeps = {
@@ -125,8 +126,8 @@ export function createWarrantPipeline(deps: PipelineDeps) {
         return { kind: "grant" };
       }
 
-      // 9. Exhausted → continue to 402 (pay)
-      return { kind: "continue" };
+      // 9. Exhausted → pay (402, or host sponsor once)
+      return { kind: "pay", nullifier: publics.nullifier };
     },
   };
 }

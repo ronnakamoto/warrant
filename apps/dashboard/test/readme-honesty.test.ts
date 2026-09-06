@@ -10,4 +10,9 @@ describe("README honesty", function () {
     assert.match(readme, /not a complete ACTA stack/i);
     assert.match(readme, /Warrant will prove|helper sees the witness/i);
   });
+
+  it("points strangers at the live Try host", function () {
+    assert.match(readme, /https:\/\/warrant-beta\.vercel\.app/);
+    assert.match(readme, /translate-production-ed28\.up\.railway\.app/);
+  });
 });

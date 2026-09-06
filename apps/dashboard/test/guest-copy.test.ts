@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
-import { agentPrompt, GUEST_COPY, remainingLife, remainingMsUntil } from "../src/lib/guest-copy.ts";
-import { revokeEachLive } from "../src/lib/guest-act.ts";
+import {
+  agentPrompt,
+  GUEST_COPY,
+  HEDERA_FAUCET,
+  hashscanTestnetUrl,
+  remainingLife,
+  remainingMsUntil,
+  shopIsDead,
+} from "../src/lib/guest-copy.ts";
+import {
+  hederaPayFrom,
+  parseShopBody,
+  revokeEachLive,
+  shopWithWarrant,
+  translateForSession,
+  txIdFromPaymentResponse,
+} from "../src/lib/guest-act.ts";
 import {
   guestCookie,
   deskCookie,
@@ -19,7 +34,7 @@ import {
 describe("guest first-run copy", function () {
   it("keeps protocol words out of the land", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting}`;
-    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT"]) {
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free"]) {
       assert.equal(land.includes(banned), false, banned);
     }
   });
@@ -39,6 +54,9 @@ describe("guest first-run copy", function () {
     assert.match(skill, /Authorization: Bearer tok_live_abc/);
     assert.match(skill, /\/api\/agent\/revoke/);
     assert.equal(skill.includes("127.0.0.1:8787"), false);
+    assert.match(skill, /hederaAccountId/);
+    assert.match(skill, /portal\.hedera\.com\/faucet/);
+    assert.equal(/0x[0-9a-fA-F]{16,}/.test(skill), false);
   });
 
   it("reads the agent bearer and advertises CORS for bots", function () {
@@ -134,6 +152,136 @@ describe("guest first-run copy", function () {
     assert.equal(/fire every warrant on my desk/i.test(skill), false);
     assert.equal(skill.includes('"all":true'), false);
     assert.equal(/merkle|Groth16|zkey|Baby Jubjub/i.test(skill), false);
+  });
+
+  it("builds a HashScan link without showing the raw account", function () {
+    const url = hashscanTestnetUrl("0.0.98@1788502420.541125170");
+    assert.match(url, /hashscan\.io\/testnet\/transaction\//);
+    assert.equal(GUEST_COPY.paidFoot.includes("nullifier"), true);
+  });
+
+  it("does not put the paywall or the key in the first shop sentence", function () {
+    assert.equal(/402|private key|HBAR/i.test(GUEST_COPY.shopLead), false);
+    assert.match(GUEST_COPY.botLead, /bot you already have/i);
+    assert.match(GUEST_COPY.payHint, /does not keep the key/i);
+    assert.equal(/402/i.test(GUEST_COPY.payHint), false);
+  });
+
+  it("asks for a real Hedera pay, not a free quota", function () {
+    assert.equal(/Free calls/i.test(GUEST_COPY.quota), false);
+    assert.match(GUEST_COPY.quota, /testnet HBAR/i);
+    assert.equal(HEDERA_FAUCET, "https://portal.hedera.com/faucet");
+    assert.equal(shopIsDead(402), false);
+    assert.equal(shopIsDead(403), true);
+    assert.equal(shopIsDead(200), false);
+  });
+
+  it("parses optional Hedera pay fields without requiring them", function () {
+    assert.deepEqual(parseShopBody({ text: "hi" }), { text: "hi", source: "en", target: "es" });
+    assert.deepEqual(
+      parseShopBody({
+        text: "hi",
+        hederaAccountId: " 0.0.9 ",
+        hederaPrivateKey: " 302e ",
+      }),
+      {
+        text: "hi",
+        source: "en",
+        target: "es",
+        hederaAccountId: "0.0.9",
+        hederaPrivateKey: "302e",
+      },
+    );
+    assert.equal(hederaPayFrom({ text: "hi", source: "en", target: "es" }), undefined);
+    assert.deepEqual(
+      hederaPayFrom({
+        text: "hi",
+        source: "en",
+        target: "es",
+        hederaAccountId: "0.0.9",
+        hederaPrivateKey: "k",
+      }),
+      { accountId: "0.0.9", privateKey: "k" },
+    );
+  });
+
+  it("reads a settle id from PAYMENT-RESPONSE when the body has none", function () {
+    const headers = new Headers({
+      "payment-response": Buffer.from(
+        JSON.stringify({ transaction: "0.0.98@1788502420.541125170" }),
+        "utf8",
+      ).toString("base64"),
+    });
+    assert.equal(txIdFromPaymentResponse(headers), "0.0.98@1788502420.541125170");
+    assert.equal(txIdFromPaymentResponse(headers, "body-wins"), "body-wins");
+  });
+
+  it("uses a payment fetch when the caller supplied a Hedera account", async function () {
+    let paid = 0;
+    const res = await shopWithWarrant(
+      "http://shop.test/v1/translate",
+      "{}",
+      "warrant",
+      { accountId: "0.0.9", privateKey: "k" },
+      {
+        createPaymentFetch: () => {
+          return async () => {
+            paid += 1;
+            return new Response(JSON.stringify({ text: "hola", txId: "0.0.1@1.2" }), {
+              status: 200,
+            });
+          };
+        },
+      },
+    );
+    assert.equal(paid, 1);
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).txId, "0.0.1@1.2");
+  });
+
+  it("does not prove when the caller has not offered to pay", async function () {
+    let proved = 0;
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const out = await translateForSession(
+      "sess",
+      { text: "hi", source: "en", target: "es" },
+      undefined,
+      {
+        translateUrl: "http://shop.test/v1/translate",
+        fetchImpl: async () => new Response(JSON.stringify(payload), { status: 402, headers }),
+        prove: async () => {
+          proved += 1;
+          return new Response("{}", { status: 500 });
+        },
+      },
+    );
+    assert.equal(proved, 0);
+    assert.equal(out.status, 402);
+    assert.equal(out.body.error, "pay");
+  });
+
+  it("does not invent a payment fetch when the caller did not pay", async function () {
+    let created = 0;
+    const res = await shopWithWarrant(
+      "http://shop.test/v1/translate",
+      "{}",
+      "warrant",
+      undefined,
+      {
+        fetchImpl: async () => new Response(JSON.stringify({ error: "pay" }), { status: 402 }),
+        createPaymentFetch: () => {
+          created += 1;
+          return fetch;
+        },
+      },
+    );
+    assert.equal(created, 0);
+    assert.equal(res.status, 402);
   });
 
   it("names fire verbs without protocol words", function () {

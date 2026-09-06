@@ -45,10 +45,7 @@ After the revoke shot (optional recovery for a second take): `warrant sync-root`
 export WARRANT_STORE=/tmp/warrant-demo-video/state.json
 export TRANSLATE_URL=http://127.0.0.1:8787/v1/translate
 
-# Free calls (real Groth16 by default)
-pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-
-# Paid (after free quota exhausted; HEDERA_PAY_TO ≠ HEDERA_ACCOUNT_ID)
+# Paid (WARRANT_FREE_CALLS=0; HEDERA_PAY_TO ≠ HEDERA_ACCOUNT_ID)
 WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
 # After revoke — expect 403

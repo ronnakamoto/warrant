@@ -176,7 +176,7 @@ Those words may appear in the fold or CLI docs. They may not be the headline.
 | Ready | Paste + remaining life + Copy. Fire, or Fire this + Fire every. Shop stays below. |
 | Proving | “Your agent is calling the shop…” (~1–2s). Do not say merkle / epoch / zkey / Groth16 |
 | Success | Result + nullifier-only receipt |
-| Quota / 402 | “Free calls used. Testnet paywall.” Do not demand they open HashPack on first try. Guest stops here or we sponsor **one** settle (see §6) |
+| Quota / 402 | “The shop wants testnet HBAR.” Faucet link + account + key. This page signs the 402. Do not keep the key. |
 | Revoked | Tombstone + **Authorize another agent** |
 | Rate-limited | “Try again in a few minutes.” |
 | Host error | Fail closed, no stack traces |
@@ -193,8 +193,8 @@ Today’s Graph → Confirm → paste-key Revoke stays as an **operator / founde
 |---|---|---|---|
 | Bind gas | We pay (operator) | We pay (operator); they hold the bound wallet | Request bind against our registry |
 | Prove | Isolated worker, guest store only | Same worker for that session, or later WASM | Local CLI |
-| Free quota | 3 / guest nullifier | 3 / their `humanTag` | Same policy |
-| 402 after quota | Clear paywall. Optional **one** sponsored settle / session | Faucet + optional sponsor | Their Hedera payer |
+| Free quota | 0 — first proof is a 402 | 0 | Same policy |
+| 402 | Caller signs ExactHedera (faucet). Host does not pay. | Same | Their Hedera payer |
 | Revoke | **End session** — worker signs with the throwaway wallet; we sponsor gas | Their wallet signs | CLI |
 
 Sponsor keys are server-only and **distinct** from Alice `ETH_PRIVATE_KEY` and from merchant `HEDERA_PAY_TO`.
@@ -217,7 +217,7 @@ Defects if violated, even if the demo is prettier.
 | S6 | Graph query key is server-only (`/api/graph`). |
 | S7 | HCS and verifier logs: nullifier / scope / tier / txId only. |
 | S8 | `httpOnly` + `Secure` + `SameSite=Lax` session. CSRF on state-changing routes. Rate-limit + captcha on mint. |
-| S9 | Pasted founder keys exist only in memory for one signature. Guests never paste keys. |
+| S9 | Pasted founder EVM keys exist only in memory for one signature. Guests never paste EVM keys. A guest may paste a Hedera testnet key for one 402; the BFF signs and does not persist or log it. |
 | S10 | Default is **non-custodial**. Guest is a labeled throwaway: we hold those keys for minutes. Long-lived custodial backup is opt-in. |
 | S11 | Prove worker is reachable only from the dashboard origin / shared internal secret — not a public anonymous prove API. |
 | S12 | Guest BFF may see one warrant header in flight. It must not log it, persist it, or forward it anywhere except translate. |
@@ -284,6 +284,7 @@ Guest Try + isolated prove worker + on-chain guest revoke + 90-second first-run.
 - Browser sends **text only** → BFF → worker proves → hosted translate
 - **Revoke this session** → worker sends `revoke` from the throwaway wallet
 - TTL wipe (keys + store + funded dust)
+- First shop call is a Hedera 402 (`WARRANT_FREE_CALLS=0`). The guest signs ExactHedera from a faucet-funded testnet account. Host does not pay.
 - One-prompt skill on the same page (Grok / Hermes / OpenClaw): hosted `TRANSLATE_URL`, “do not show me the proof,” “fire everyone” maps to revoke
 - Wallet connect is **stretch** (same security model, later)
 
@@ -386,6 +387,16 @@ Wallet connect and passkeys are stretch. Do not start the prove worker until thi
 
 ## 15. Deploy runbook (testnet hosts)
 
+**Live (Base Sepolia):**
+
+| Role | URL |
+|---|---|
+| Dashboard (Try / Door 1–2) | https://warrant-beta.vercel.app |
+| Translate | https://translate-production-ed28.up.railway.app |
+| Prove | https://prove-production.up.railway.app |
+
+`GET /health` on translate and prove returns `{"ok":true}`. Team `*.vercel.app` aliases are SSO-gated; strangers use the beta host. `PROVE_ALLOWED_ORIGINS` and `DASHBOARD_ORIGIN` are that origin.
+
 Local three-process host (real rails, not theater):
 
 ```bash
@@ -403,10 +414,10 @@ Local three-process host (real rails, not theater):
 
 Prove image expects Groth16 **wasm + zkey** on disk (`scripts/download-zkey.sh` fetches zkey/vkey; wasm is gitignored — copy `circuits/build/warrant_js/warrant.wasm` or set `WARRANT_WASM_PATH`). Persist translate nullifiers with a volume + `WARRANT_NULLIFIER_PATH`.
 
-**Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=3`, Hedera + HCS, `HEDERA_PAY_TO` ≠ `HEDERA_ACCOUNT_ID`. No `ALLOW_DEMO_*`.
+**Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, Hedera + HCS, `HEDERA_PAY_TO` ≠ `HEDERA_ACCOUNT_ID`. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
 
-**Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=1800000`, `PROVE_ALLOWED_ORIGINS=https://app.example`.
+**Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=1800000`, `PROVE_ALLOWED_ORIGINS=https://warrant-beta.vercel.app`.
 
 **Dashboard env:** `PROVE_URL`, `PROVE_SECRET`, `TRANSLATE_URL`, `DASHBOARD_ORIGIN`, `GRAPH_*`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_RPC_URL`. Optional `TURNSTILE_SECRET` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Never put keys in `NEXT_PUBLIC_*`.
 
-Smoke after DNS: Try it → 200 translation → Revoke → next call 403. Registry tab still shows Alice. `GET` `/health` on translate and prove.
+Smoke after DNS: Try it → pay testnet HBAR → 200 translation → Revoke → next call 403. Registry tab still shows Alice. `GET` `/health` on translate and prove.

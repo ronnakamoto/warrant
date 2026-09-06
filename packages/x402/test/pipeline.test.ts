@@ -100,13 +100,17 @@ describe("@warrant/x402 pipeline", function () {
   };
   const policy = { requireScope: TRANSLATE, minTier: 1, freeCallsPerHuman: 3 };
 
-  function pipe(v: IVerifier = verifierOk, n: INullifierStore = memoryNullifiers()) {
+  function pipe(
+    v: IVerifier = verifierOk,
+    n: INullifierStore = memoryNullifiers(),
+    pol: typeof policy = policy,
+  ) {
     return createWarrantPipeline({
       verifier: v,
       roots,
       nullifiers: n,
       hashChallenge,
-      policy,
+      policy: pol,
     });
   }
 
@@ -183,7 +187,19 @@ describe("@warrant/x402 pipeline", function () {
     assert.equal(r.kind, "grant");
   });
 
-  it("fourth call same nullifier after 3 free → continue (402 pay)", async function () {
+  it("zero free calls → first valid warrant is pay", async function () {
+    const p = pipe(verifierOk, memoryNullifiers(), { ...policy, freeCallsPerHuman: 0 });
+    const pub = publics();
+    const r = await p.handle({
+      warrantHeader: header(pub),
+      method: "POST",
+      path,
+      challenge,
+    });
+    assert.deepEqual(r, { kind: "pay", nullifier: pub.nullifier });
+  });
+
+  it("fourth call same nullifier after 3 free → pay (402 or host sponsor)", async function () {
     const store = memoryNullifiers();
     const p = pipe(verifierOk, store);
     const base = {
@@ -204,7 +220,7 @@ describe("@warrant/x402 pipeline", function () {
       requestHash: hashChallenge({ ...ch4, merkleRoot: String(liveRoot) }),
     });
     const r4 = await p.handle({ ...base, challenge: ch4, warrantHeader: header(pub4) });
-    assert.equal(r4.kind, "continue");
+    assert.deepEqual(r4, { kind: "pay", nullifier: pub4.nullifier });
   });
 
   it("replay same nullifier+requestHash → abort replay", async function () {
@@ -216,7 +232,7 @@ describe("@warrant/x402 pipeline", function () {
     assert.deepEqual(await p.handle(req), { kind: "abort", reason: "replay" });
   });
 
-  it("pay fallthrough re-entry same warrant → continue (not replay)", async function () {
+  it("pay fallthrough re-entry same warrant → pay (not replay)", async function () {
     const store = memoryNullifiers();
     const p = pipe(verifierOk, store);
     const base = { method: "POST" as const, path, challenge };
@@ -235,8 +251,8 @@ describe("@warrant/x402 pipeline", function () {
       requestHash: hashChallenge({ ...ch4, merkleRoot: String(liveRoot) }),
     });
     const req4 = { ...base, challenge: ch4, warrantHeader: header(pub4) };
-    assert.equal((await p.handle(req4)).kind, "continue");
-    assert.equal((await p.handle(req4)).kind, "continue", "payment retry");
+    assert.equal((await p.handle(req4)).kind, "pay");
+    assert.equal((await p.handle(req4)).kind, "pay", "payment retry");
   });
 
   it("consumeFree is atomic vs interleaved check/bump", async function () {
