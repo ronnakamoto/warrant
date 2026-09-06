@@ -33,3 +33,4 @@ circuits/build/
 *.wasm
 *.wtns
 *.sym
+.vercel
