@@ -92,11 +92,16 @@ export function GuestTry() {
     async (preferId?: string | null): Promise<WarrantView[]> => {
       const res = await fetch("/api/guest/warrants");
       if (res.status === 401) {
+        setCookieSessionId(null);
         applyList([]);
         return [];
       }
-      const body = (await res.json().catch(() => ({}))) as { warrants?: WarrantView[] };
+      const body = (await res.json().catch(() => ({}))) as {
+        warrants?: WarrantView[];
+        currentId?: string;
+      };
       const list = Array.isArray(body.warrants) ? body.warrants : [];
+      setCookieSessionId(typeof body.currentId === "string" ? body.currentId : null);
       applyList(list, preferId);
       return list;
     },
@@ -106,9 +111,7 @@ export function GuestTry() {
   useEffect(() => {
     void (async () => {
       const list = await refreshWarrants();
-      const live = latestLive(list);
-      if (live) {
-        setCookieSessionId(live.id);
+      if (latestLive(list)) {
         setPhase("ready");
         return;
       }
@@ -403,24 +406,26 @@ export function GuestTry() {
             </div>
           </VStack>
 
-          <VStack gap={2}>
-            <Text type="supporting" color="secondary">
-              {GUEST_COPY.shopLead}
-            </Text>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              disabled={busy}
-              rows={3}
-              aria-label={GUEST_COPY.shopLabel}
-              style={fieldStyle}
-            />
-            <Button
-              label={GUEST_COPY.shopCall}
-              onClick={() => void callShop()}
-              isDisabled={busy || text.trim() === ""}
-            />
-          </VStack>
+          {selectedId === cookieSessionId && cookieSessionId ? (
+            <VStack gap={2}>
+              <Text type="supporting" color="secondary">
+                {GUEST_COPY.shopLead}
+              </Text>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                disabled={busy}
+                rows={3}
+                aria-label={GUEST_COPY.shopLabel}
+                style={fieldStyle}
+              />
+              <Button
+                label={GUEST_COPY.shopCall}
+                onClick={() => void callShop()}
+                isDisabled={busy || text.trim() === ""}
+              />
+            </VStack>
+          ) : null}
         </VStack>
       ) : null}
 

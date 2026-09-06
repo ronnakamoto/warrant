@@ -117,6 +117,14 @@ export function sessionFromCookie(header: string | null): string | undefined {
   return m?.[1];
 }
 
+export function guestWarrantsBody(
+  warrants: unknown[],
+  cookieHeader: string | null,
+): { warrants: unknown[]; currentId?: string } {
+  const currentId = sessionFromCookie(cookieHeader);
+  return currentId ? { warrants, currentId } : { warrants };
+}
+
 export function sessionFromBearer(header: string | null): string | undefined {
   if (!header) return undefined;
   const m = /^\s*Bearer\s+(\S+)\s*$/i.exec(header);
