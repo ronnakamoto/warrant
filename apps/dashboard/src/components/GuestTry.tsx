@@ -66,7 +66,7 @@ async function confirmShopDead(text: string): Promise<boolean> {
   const denied = await fetch("/api/guest/translate", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, source: "en", target: "es" }),
+    body: JSON.stringify({ text, source: "en", target: "es", confirmDead: true }),
   });
   return shopIsDead(denied.status);
 }

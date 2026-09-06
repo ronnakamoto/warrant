@@ -14,6 +14,7 @@ import {
   revokeEachLive,
   shopWithWarrant,
   translateForSession,
+  confirmSessionCannotAct,
   txIdFromPaymentResponse,
 } from "../src/lib/guest-act.ts";
 import {
@@ -253,6 +254,48 @@ describe("guest first-run copy", function () {
     assert.equal(paid, 1);
     assert.equal(res.status, 200);
     assert.equal((await res.json()).txId, "0.0.1@1.2");
+  });
+
+  it("proves without pay only to confirm the shop is dead", async function () {
+    let proved = 0;
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const dead = await confirmSessionCannotAct(
+      "sess",
+      { text: "hi", source: "en", target: "es" },
+      undefined,
+      {
+        translateUrl: "http://shop.test/v1/translate",
+        fetchImpl: async (_url, init) => {
+          const warrant = new Headers(init?.headers).get("warrant");
+          if (warrant) return new Response(JSON.stringify({ error: "root_revoked" }), { status: 403 });
+          return new Response(JSON.stringify(payload), { status: 402, headers });
+        },
+        prove: async () => {
+          proved += 1;
+          return new Response(JSON.stringify({ warrant: "w" }), { status: 200 });
+        },
+      },
+    );
+    assert.equal(proved, 1);
+    assert.equal(dead.status, 403);
+    assert.equal(shopIsDead(dead.status), true);
+
+    const live = await confirmSessionCannotAct(
+      "sess",
+      { text: "hi", source: "en", target: "es" },
+      undefined,
+      {
+        translateUrl: "http://shop.test/v1/translate",
+        fetchImpl: async () => new Response(JSON.stringify(payload), { status: 402, headers }),
+        prove: async () => new Response(JSON.stringify({ warrant: "w" }), { status: 200 }),
+      },
+    );
+    assert.equal(shopIsDead(live.status), false);
   });
 
   it("does not prove when the caller has not offered to pay", async function () {

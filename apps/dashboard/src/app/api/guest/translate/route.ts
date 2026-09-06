@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseShopBody, translateForSession } from "../../../../lib/guest-act";
+import { confirmSessionCannotAct, parseShopBody, translateForSession } from "../../../../lib/guest-act";
 import {
   forbiddenGuestResponse,
   guestOriginAllowed,
@@ -21,8 +21,11 @@ export async function POST(req: Request): Promise<Response> {
   }
   const input = parseShopBody(raw);
   if (!input) return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  const confirmDead = Boolean(raw && typeof raw === "object" && (raw as { confirmDead?: unknown }).confirmDead === true);
   try {
-    const out = await translateForSession(sessionId, input, req);
+    const out = confirmDead
+      ? await confirmSessionCannotAct(sessionId, input, req)
+      : await translateForSession(sessionId, input, req);
     return NextResponse.json(out.body, { status: out.status });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "translate failed";
