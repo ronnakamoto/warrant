@@ -50,9 +50,6 @@ importers:
       '@stylexjs/stylex':
         specifier: ^0.19.0
         version: 0.19.0
-      '@warrant/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@zk-kit/lean-imt':
         specifier: 2.2.5
         version: 2.2.5
@@ -78,6 +75,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.7(@types/react@19.2.18)
+      '@warrant/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@warrant/x402':
         specifier: workspace:*
         version: link:../../packages/x402

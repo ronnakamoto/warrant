@@ -29,24 +29,21 @@ export default function HomePage() {
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               gap: "var(--spacing-3)",
+              flexWrap: "wrap",
             }}
           >
-            <HStack gap={2}>
-              <Button
-                label={GUEST_COPY.warrantTab}
-                size="sm"
-                variant={surface === "try" ? "primary" : "secondary"}
-                onClick={() => setSurface("try")}
-              />
-              <Button
-                label={GUEST_COPY.registry}
-                size="sm"
-                variant={surface === "registry" ? "primary" : "secondary"}
-                onClick={() => setSurface("registry")}
-              />
-            </HStack>
+            {surface === "registry" ? (
+              <div style={{ marginRight: "auto" }}>
+                <Button
+                  label={GUEST_COPY.warrantTab}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setSurface("try")}
+                />
+              </div>
+            ) : null}
             <HStack gap={2} vAlign="center">
               <Text type="supporting" color="secondary">
                 Base Sepolia
@@ -57,6 +54,14 @@ export default function HomePage() {
                 size="sm"
                 onClick={toggle}
               />
+              {surface === "try" ? (
+                <Button
+                  label={GUEST_COPY.registry}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSurface("registry")}
+                />
+              ) : null}
             </HStack>
           </div>
           {surface === "try" ? <GuestTry /> : <Dashboard embedded />}

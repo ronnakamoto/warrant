@@ -136,6 +136,7 @@ describe("prove app prove", function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put({
       id: "sess1",
+      deskId: "desk",
       wallet: "0x0000000000000000000000000000000000000001",
       evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
       createdAt: Date.now(),
@@ -195,6 +196,7 @@ describe("prove app prove", function () {
     assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600));
     store.put({
       id: "slow",
+      deskId: "desk",
       wallet: "0x0000000000000000000000000000000000000002",
       evmPrivateKey: "0x3333333333333333333333333333333333333333333333333333333333333333",
       createdAt: Date.now(),
@@ -239,6 +241,7 @@ describe("prove app revoke", function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put({
       id: "keep",
+      deskId: "desk",
       wallet: "0x00000000000000000000000000000000000000aa",
       evmPrivateKey: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       createdAt: Date.now(),
@@ -266,6 +269,87 @@ describe("prove app revoke", function () {
     assert.ok(kept);
     assert.equal(kept.revoked, true);
     assert.notEqual(kept.evmPrivateKey, "0x");
+  });
+});
+
+describe("prove desk", function () {
+  function deskApp() {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    return { app, store };
+  }
+
+  it("mints two sessions onto the same desk and lists both", async function () {
+    const { app } = deskApp();
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const first = (await (
+      await app.request("/v1/mint", { method: "POST", headers: hdrs, body: "{}" })
+    ).json()) as { sessionId: string; deskId: string };
+    const second = (await (
+      await app.request("/v1/mint", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ deskId: first.deskId }),
+      })
+    ).json()) as { sessionId: string; deskId: string };
+    assert.equal(second.deskId, first.deskId);
+    assert.notEqual(second.sessionId, first.sessionId);
+    const list = await app.request("/v1/desk", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ deskId: first.deskId }),
+    });
+    assert.equal(list.status, 200);
+    const body = (await list.json()) as { warrants: { id: string }[] };
+    assert.deepEqual(body.warrants.map((w) => w.id).sort(), [first.sessionId, second.sessionId].sort());
+  });
+
+  it("refuses to revoke a session from another desk", async function () {
+    const { app, store } = deskApp();
+    store.put({
+      id: "foreign",
+      deskId: "other",
+      createdAt: Date.now(),
+      wallet: "0x0000000000000000000000000000000000000001",
+      evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      state: emptyState(),
+    });
+    const res = await app.request("/v1/revoke", {
+      method: "POST",
+      headers: { "x-warrant-prove-secret": secret, "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "foreign", deskId: "desk-mine" }),
+    });
+    assert.equal(res.status, 403);
+    assert.deepEqual(await res.json(), { error: "wrong_desk" });
+  });
+
+  it("rejects oversized mint and desk bodies", async function () {
+    const { app } = deskApp();
+    const huge = "x".repeat(64 * 1024 + 1);
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const mint = await app.request("/v1/mint", { method: "POST", headers: hdrs, body: huge });
+    assert.equal(mint.status, 413);
+    const desk = await app.request("/v1/desk", { method: "POST", headers: hdrs, body: huge });
+    assert.equal(desk.status, 413);
+  });
+
+  it("rejects invalid json on mint and desk", async function () {
+    const { app } = deskApp();
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const mint = await app.request("/v1/mint", { method: "POST", headers: hdrs, body: "{not-json" });
+    assert.equal(mint.status, 400);
+    assert.deepEqual(await mint.json(), { error: "invalid json" });
+    const desk = await app.request("/v1/desk", { method: "POST", headers: hdrs, body: "{not-json" });
+    assert.equal(desk.status, 400);
+    assert.deepEqual(await desk.json(), { error: "invalid json" });
   });
 });
 

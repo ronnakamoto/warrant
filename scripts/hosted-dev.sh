@@ -19,6 +19,7 @@ export PORT=8787
 export PROVE_PORT="${PROVE_PORT:-8788}"
 export PROVE_URL="${PROVE_URL:-http://127.0.0.1:8788}"
 export TRANSLATE_URL="${TRANSLATE_URL:-http://127.0.0.1:8787/v1/translate}"
+export WARRANT_SESSION_PATH="${WARRANT_SESSION_PATH:-/tmp/warrant-guest-sessions.json}"
 
 echo "hosted-dev: translate :8787  prove :${PROVE_PORT}  dashboard :3001"
 

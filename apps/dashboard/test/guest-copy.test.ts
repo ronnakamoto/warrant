@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { agentPrompt, GUEST_COPY } from "../src/lib/guest-copy.ts";
+import { agentPrompt, GUEST_COPY, remainingLife, remainingMsUntil } from "../src/lib/guest-copy.ts";
+import { revokeEachLive } from "../src/lib/guest-act.ts";
 import {
   guestCookie,
+  deskCookie,
+  deskFromCookie,
   sessionFromCookie,
   sessionFromBearer,
   clearGuestCookie,
@@ -19,6 +22,11 @@ describe("guest first-run copy", function () {
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT"]) {
       assert.equal(land.includes(banned), false, banned);
     }
+  });
+
+  it("does not put Registry in the land sentence", function () {
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
+    assert.equal(/Registry/i.test(land), false);
   });
 
   it("is a warrant for an existing agent, not a hiring demo", function () {
@@ -47,6 +55,15 @@ describe("guest first-run copy", function () {
     assert.equal(set.includes("Secure"), false);
     assert.equal(sessionFromCookie(set), "abc123");
     assert.match(clearGuestCookie(), /Max-Age=0/);
+  });
+
+  it("reads guest and desk cookies independently", function () {
+    const guest = guestCookie("abc123", { NODE_ENV: "development" });
+    const desk = deskCookie("d".repeat(32), { NODE_ENV: "development" });
+    const combined = `${guest}; ${desk.split(";")[0]}`;
+    assert.equal(sessionFromCookie(combined), "abc123");
+    assert.equal(deskFromCookie(combined), "d".repeat(32));
+    assert.equal(sessionFromCookie(desk), undefined);
   });
 
   it("marks the session cookie Secure on the public host", function () {
@@ -107,6 +124,55 @@ describe("guest first-run copy", function () {
     assert.equal(hdrs["x-warrant-client-ip"], "203.0.113.9");
     assert.equal(hdrs["x-warrant-dashboard-origin"], "https://app.example");
     assert.equal(clientIpFromRequest(req), "203.0.113.9");
+  });
+
+  it("tells the bot that Warrant sees the witness and the shop does not", function () {
+    const skill = agentPrompt("https://app.example", "tok_live_abc");
+    assert.match(skill, /Warrant will prove for you/);
+    assert.match(skill, /witness/i);
+    assert.match(skill, /nullifier/i);
+    assert.equal(/fire every warrant on my desk/i.test(skill), false);
+    assert.equal(skill.includes('"all":true'), false);
+    assert.equal(/merkle|Groth16|zkey|Baby Jubjub/i.test(skill), false);
+  });
+
+  it("names fire verbs without protocol words", function () {
+    const words = `${GUEST_COPY.fireThis} ${GUEST_COPY.fireEvery} ${GUEST_COPY.fireOne} ${GUEST_COPY.helperFoot}`;
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "deskId"]) {
+      assert.equal(words.includes(banned), false, banned);
+    }
+  });
+
+  it("speaks remaining life in minutes", function () {
+    assert.equal(remainingLife(29 * 60 * 1000), "29 minutes left");
+    assert.equal(remainingLife(40_000), "Less than a minute left");
+    assert.equal(remainingLife(0), "This warrant has expired");
+  });
+
+  it("recomputes remaining life from an expiry instant", function () {
+    const now = 1_000_000;
+    assert.equal(remainingMsUntil(now + 5_000, now), 5_000);
+    assert.equal(remainingMsUntil(now - 1, now), 0);
+  });
+
+  it("continues fire-all after one live revoke fails", async function () {
+    const seen: string[] = [];
+    const out = await revokeEachLive(
+      [
+        { id: "fired", status: "fired" },
+        { id: "a", status: "live" },
+        { id: "b", status: "live" },
+        { id: "c", status: "live" },
+      ],
+      async (id) => {
+        seen.push(id);
+        if (id === "b") return { ok: false };
+        return { ok: true, txHash: `0x${id}` };
+      },
+    );
+    assert.deepEqual(seen, ["a", "b", "c"]);
+    assert.deepEqual(out.txHashes, ["0xa", "0xc"]);
+    assert.equal(out.failed, 1);
   });
 
   it("reads a warrant challenge from the payment-required header", function () {

@@ -25,7 +25,24 @@ export const GUEST_COPY = {
   warrantTab: "Warrant",
   localhostHint:
     "Cloud agents (Grok) cannot reach 127.0.0.1. OpenClaw or Hermes on this machine can. A public https host is required for agents on the internet.",
+  fireThis: "Fire this warrant",
+  fireEvery: "Fire every warrant",
+  fireOne: "Fire",
+  helperFoot: "Warrant will prove for you. Warrant sees the witness. The shop sees a nullifier.",
+  afterFireThis: "That warrant is done. The shop still does not know who you were.",
 } as const;
+
+export function remainingMsUntil(expiresAt: number, now = Date.now()): number {
+  return Math.max(0, expiresAt - now);
+}
+
+export function remainingLife(ms: number): string {
+  if (ms <= 0) return "This warrant has expired";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "Less than a minute left";
+  if (minutes === 1) return "1 minute left";
+  return `${minutes} minutes left`;
+}
 
 export function agentPrompt(appOrigin: string, token: string): string {
   const origin = appOrigin.replace(/\/$/, "");
@@ -35,6 +52,8 @@ export function agentPrompt(appOrigin: string, token: string): string {
     "Content-Type: application/json",
     "",
     '{"text":"<what I asked you to send>","source":"en","target":"es"}',
+    "",
+    GUEST_COPY.helperFoot,
     "",
     `If I say fire everyone, POST ${origin}/api/agent/revoke with the same Authorization header and {}.`,
     "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",

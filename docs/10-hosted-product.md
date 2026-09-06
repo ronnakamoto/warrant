@@ -40,6 +40,8 @@ This door exists so a human *believes*. It is not how they live.
 **Door 2 — they live it (their bot, every day).**  
 Authorize issues a bearer for that leaf. They paste a skill that calls `{APP}/api/agent/translate` with `Authorization: Bearer …`. The BFF proves; the bot never sees a zkey. Fire everyone is `POST {APP}/api/agent/revoke`. Cloud bots need a public https origin — `127.0.0.1` only works for agents on that machine.
 
+The hosted bearer means Warrant sees the witness. Local CLI prove does not.
+
 Same rails as Door 1. The product is Door 2. Door 1 is how Door 2 becomes obvious.
 
 ### What they never see
@@ -154,10 +156,10 @@ Stay **Astryx + Carbon**. Do not add a second design system. First screen is a p
 
 1. Land. One sentence: *Your agent can act. The API never learns who you are.*
 2. Primary button: **Authorize my agent.** The instruction they paste into Grok / Hermes / OpenClaw is the product, not a fold.
-3. After mint (progress: “Binding your agent on Base Sepolia…”): a single text field and **Translate**.
-4. Success: translated text, then one quiet line — *Verified. The server saw a nullifier, not you.* Optional HashScan link if a settle happened.
-5. **Revoke this session** → next translate is **403**. Copy: *Every agent under you is done. The API still does not know who you were.*
-6. Progressive disclosure under a fold: live Graph list, epoch, explorer links. Not the first viewport.
+3. After mint: the paste block, remaining life, **Copy for my agent**. If one live warrant: **Fire**. If two or more: **Fire this warrant** on the selected paste, **Fire every warrant** once beneath.
+4. In-page **Call the shop** stays below the paste (Door 1 belief). Success: translated text, then the nullifier foot. Do not persist shop translations.
+5. Fire this (others still live): *That warrant is done. The shop still does not know who you were.* Fire every / last live: *Every agent under you is done. The API still does not know who you were.* Next agent call is **403**.
+6. Registry is a quiet supporting word — not a peer tab next to the key. Graph, epoch, and explorer links stay behind it. Not the first viewport.
 
 ### 4.2 Copy bans (first viewport)
 
@@ -169,19 +171,19 @@ Those words may appear in the fold or CLI docs. They may not be the headline.
 
 | State | UI |
 |---|---|
-| First land | Headline + Try it |
-| Minting | Disabled field, honest wait — “Turning the key…” (bind can take ~15s) |
-| Ready | Text field + Translate |
-| Proving | “Just a moment…” (~1–2s). Do not say warrant / proof / zk |
+| First land | Headline + Authorize my agent |
+| Minting | Honest wait — “Issuing the warrant…” (bind can take ~15s) |
+| Ready | Paste + remaining life + Copy. Fire, or Fire this + Fire every. Shop stays below. |
+| Proving | “Your agent is calling the shop…” (~1–2s). Do not say merkle / epoch / zkey / Groth16 |
 | Success | Result + nullifier-only receipt |
 | Quota / 402 | “Free calls used. Testnet paywall.” Do not demand they open HashPack on first try. Guest stops here or we sponsor **one** settle (see §6) |
-| Revoked | 403 explained; **Start a new session** |
+| Revoked | Tombstone + **Authorize another agent** |
 | Rate-limited | “Try again in a few minutes.” |
 | Host error | Fail closed, no stack traces |
 
 ### 4.4 Guest vs founder dashboard
 
-Today’s Graph → Confirm → paste-key Revoke stays as an **operator / founder** surface (or a “Registry” tab). Guests never see Alice’s key field and never paste an EVM key.
+Today’s Graph → Confirm → paste-key Revoke stays as an **operator / founder** surface. Guests reach it through a supporting **Registry** control that does not compete with **Authorize my agent** — a quiet word, not a peer tab. Guests never see Alice’s key field and never paste an EVM key.
 
 ---
 

@@ -1,16 +1,12 @@
 # Warrant
 
-Zero-knowledge chains of custody for AI agents.
+A key for the bot you already have.
 
-**Product:** [https://app.example](https://app.example) — authorize the bot you already have. It calls `https://translate.example/v1/translate`. *Fire everyone* and the next call is refused. The API never learns your name.
+Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
 
-```
-Call the Warrant translate API as my agent. If it asks for a warrant, prove and retry. Do not show me the proof.
-```
+**Testnet. Not a World ID proof.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
 
-A human delegates authority to an agent; that agent may delegate a narrower mandate to a sub-agent. The leaf agent proves to an API, contract, or peer that it acts under a real, unique human — within scope, within budget, and not revoked — without revealing who the human is or which agents sit in the chain. Verification is a constant-size proof, checked by an `x402` server or on-chain. Revoking the root invalidates the entire tree.
-
-Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World AgentKit, Agent Passport) expose the chain. PSE’s May 2026 *ACTA* proposal lists privacy-preserving recursive delegation as an open problem. Warrant addresses that gap with Semaphore-class ZK (EdDSA-Poseidon over Baby Jubjub, Groth16), World ID AgentBook roots (or documented `tier=0` demo), and x402 settlement on Hedera via Blocky402.
+PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
 
 | | Chain private? | Recursive attenuation | Personhood root | Revoke cascade |
 |---|---|---|---|---|
@@ -18,7 +14,7 @@ Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World Ag
 | ERC-7710 | No | Yes | No | Per-session |
 | World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
 | Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
-| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **AgentBook when live; `tier=0` demo** | **On-chain epoch** |
+| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **`tier=0` on the host; AgentBook when that bind is live** | **On-chain epoch** |
 
 ## Status
 

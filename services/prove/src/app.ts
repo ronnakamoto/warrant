@@ -13,6 +13,7 @@ type RevokeFn = typeof revokeGuest;
 export const AUTH_HEADER = "x-warrant-prove-secret";
 const BODY_LIMIT = 64 * 1024;
 const PROVE_TIMEOUT_MS = 30_000;
+const DESK_ID_RE = /^[0-9a-f]{32}$/;
 
 export type ProveAppOpts = {
   authSecret: string;
@@ -71,6 +72,17 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!limiter.take(clientKey(c))) {
       return c.json({ error: "rate_limited" }, 429);
     }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { deskId?: string } = {};
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as { deskId?: string };
+      } catch {
+        return c.json({ error: "invalid json" }, 400);
+      }
+    }
+    const deskId = typeof body.deskId === "string" && DESK_ID_RE.test(body.deskId) ? body.deskId : undefined;
     const minted = await mintGuest({
       store: opts.store,
       bindPrivateKey: opts.bindPrivateKey,
@@ -78,8 +90,25 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       rpc: opts.rpc,
       loadMembers: opts.loadMembers,
       bindRoot: opts.bindRoot,
+      deskId,
     });
-    return c.json({ sessionId: minted.sessionId, wallet: minted.wallet });
+    return c.json({ sessionId: minted.sessionId, wallet: minted.wallet, deskId: minted.deskId });
+  });
+
+  app.post("/v1/desk", async (c) => {
+    if (!opts.store) {
+      return c.json({ error: "desk not configured" }, 503);
+    }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { deskId?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { deskId?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+    if (!body.deskId) return c.json({ error: "deskId required" }, 400);
+    return c.json({ warrants: opts.store.listByDesk(body.deskId) });
   });
 
   app.post("/v1/prove", async (c) => {
@@ -127,13 +156,19 @@ export function createProveApp(opts: ProveAppOpts): Hono {
   });
 
   app.post("/v1/revoke", async (c) => {
-    if (!opts.store || !opts.registry || !opts.rpc || !opts.gasSponsorKey || !opts.loadMembers) {
+    if (!opts.store) {
       return c.json({ error: "revoke not configured" }, 503);
     }
-    const body = await c.req.json<{ sessionId?: string }>();
+    const body = await c.req.json<{ sessionId?: string; deskId?: string }>();
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
+    if (typeof body.deskId === "string" && session.deskId !== body.deskId) {
+      return c.json({ error: "wrong_desk" }, 403);
+    }
+    if (!opts.registry || !opts.rpc || !opts.gasSponsorKey || !opts.loadMembers) {
+      return c.json({ error: "revoke not configured" }, 503);
+    }
     const runRevoke = opts.revokeGuest ?? revokeGuest;
     const out = await runRevoke({
       session,
@@ -143,6 +178,7 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       loadMembers: opts.loadMembers,
     });
     session.revoked = true;
+    opts.store.put(session);
     return c.json({ txHash: out.txHash });
   });
 
