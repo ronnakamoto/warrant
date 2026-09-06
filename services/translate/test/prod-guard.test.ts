@@ -14,6 +14,11 @@ const base = {
   WARRANT_VKEY_PATH: vkeyPath,
   REGISTRY_ADDRESS: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
   BASE_SEPOLIA_RPC: "https://sepolia.base.org",
+  WARRANT_NULLIFIER_PATH: "/tmp/warrant-nullifiers.json",
+  HEDERA_PAY_TO: "0.0.10311260",
+  HEDERA_ACCOUNT_ID: "0.0.10311260",
+  HEDERA_PRIVATE_KEY: "0x11",
+  HEDERA_TOPIC_ID: "0.0.10336558",
 };
 
 describe("assertProductionTranslateEnv", function () {
@@ -76,16 +81,21 @@ describe("assertProductionTranslateEnv", function () {
     );
   });
 
-  it("rejects merchant payTo equal to the Hedera operator account", function () {
-    assert.throws(
-      () =>
-        assertProductionTranslateEnv({
-          ...base,
-          HEDERA_PAY_TO: "0.0.10311260",
-          HEDERA_ACCOUNT_ID: "0.0.10311260",
-        }),
-      /prod-guard:.*HEDERA_PAY_TO/,
+  it("allows merchant payTo to be the HCS operator; the guest payer is separate", function () {
+    assert.doesNotThrow(() =>
+      assertProductionTranslateEnv({
+        ...base,
+        HEDERA_PAY_TO: "0.0.10311260",
+        HEDERA_ACCOUNT_ID: "0.0.10311260",
+      }),
     );
+  });
+
+  it("requires a live HCS trio and a nullifier file path", function () {
+    const { HEDERA_TOPIC_ID: _t, ...noTopic } = base;
+    assert.throws(() => assertProductionTranslateEnv(noTopic), /prod-guard:.*HEDERA_TOPIC_ID/);
+    const { WARRANT_NULLIFIER_PATH: _n, ...noFile } = base;
+    assert.throws(() => assertProductionTranslateEnv(noFile), /prod-guard:.*WARRANT_NULLIFIER_PATH/);
   });
 });
 

@@ -55,9 +55,7 @@ export function createApp(deps: AppDeps): Hono {
           nonce?: string;
         };
         const signals = parsed.publicSignals;
-        const issued = parsed.nonce
-          ? deps.wired.challenges.resolve(parsed.nonce)
-          : deps.wired.challenges.last();
+        const issued = parsed.nonce ? deps.wired.challenges.resolve(parsed.nonce) : undefined;
         if (!(signals && signals.length >= 8 && issued)) return;
         const payHdr =
           c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response");

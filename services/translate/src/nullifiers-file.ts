@@ -1,4 +1,14 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 import type { INullifierStore } from "@warrant/core";
 
@@ -62,8 +72,48 @@ export class FileNullifierStore implements INullifierStore {
       free: Object.fromEntries(this.#free),
     };
     const tmp = `${this.#path}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify(body), { mode: 0o600 });
-    renameSync(tmp, this.#path);
+    const lockPath = `${this.#path}.lock`;
+    withFileLock(lockPath, () => {
+      writeFileSync(tmp, JSON.stringify(body), { mode: 0o600 });
+      renameSync(tmp, this.#path);
+    });
+  }
+}
+
+const LOCK_STALE_MS = 10_000;
+const LOCK_WAIT_MS = 5_000;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function withFileLock(lockPath: string, fn: () => void): void {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      const fd = openSync(lockPath, "wx");
+      try {
+        fn();
+      } finally {
+        closeSync(fd);
+        try {
+          unlinkSync(lockPath);
+        } catch {
+          /* already gone */
+        }
+      }
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code !== "EEXIST") throw e;
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > LOCK_STALE_MS) unlinkSync(lockPath);
+      } catch {
+        /* lock raced away */
+      }
+      if (Date.now() > deadline) throw new Error("nullifier-store: lock timeout");
+      sleepSync(20);
+    }
   }
 }
 

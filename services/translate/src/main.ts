@@ -1,7 +1,8 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { TRANSLATE } from "@warrant/core";
 import { createApp } from "./app.js";
+import { FileChallengeStore } from "./challenges.js";
 import { fixedMerkleRootFromEnv } from "./demo-root.js";
 import { createHcsSinkFromEnv } from "./hcs-hedera.js";
 import { FileNullifierStore } from "./nullifiers-file.js";
@@ -21,6 +22,8 @@ async function main(): Promise<void> {
 
   const nullifierPath =
     process.env.WARRANT_NULLIFIER_PATH ?? join(homedir(), ".warrant", "nullifiers.json");
+  const challengePath =
+    process.env.WARRANT_CHALLENGE_PATH ?? join(dirname(nullifierPath), "challenges.json");
 
   const wired = wire({
     facilitatorUrl,
@@ -31,6 +34,7 @@ async function main(): Promise<void> {
     fixedMerkleRoot: fixedMerkleRootFromEnv(),
     vkeyPath: process.env.WARRANT_VKEY_PATH,
     nullifiers: new FileNullifierStore(nullifierPath),
+    challenges: new FileChallengeStore(challengePath),
     payTo: process.env.HEDERA_PAY_TO ?? process.env.HEDERA_ACCOUNT_ID ?? "0.0.10311260",
     feePayer: process.env.BLOCKY402_FEE_PAYER ?? "0.0.7162784",
     hcs: createHcsSinkFromEnv(),

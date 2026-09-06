@@ -23,7 +23,7 @@ import {
 } from "@x402/core/server";
 import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
-import { MemoryChallengeStore } from "./challenges.js";
+import { MemoryChallengeStore, type ChallengeStore } from "./challenges.js";
 import { FileNullifierStore } from "./nullifiers-file.js";
 import { MemoryNullifierStore } from "./nullifiers.js";
 import { CurrentRootChecker, FixedRootChecker } from "./roots.js";
@@ -53,6 +53,7 @@ export type WireConfig = {
   amount?: string;
   policy?: WarrantPolicy;
   hcs?: HcsSink;
+  challenges?: ChallengeStore;
 };
 
 export type Wired = {
@@ -60,7 +61,7 @@ export type Wired = {
   server: x402ResourceServer;
   policy: WarrantPolicy;
   nullifiers: INullifierStore;
-  challenges: MemoryChallengeStore;
+  challenges: ChallengeStore;
   roots: IRootChecker;
   hcs: HcsSink;
   sponsorTxIds: Map<string, string>;
@@ -100,7 +101,7 @@ export function wire(config: WireConfig): Wired {
     (process.env.WARRANT_NULLIFIER_PATH
       ? new FileNullifierStore(process.env.WARRANT_NULLIFIER_PATH)
       : new MemoryNullifierStore());
-  const challenges = new MemoryChallengeStore();
+  const challenges = config.challenges ?? new MemoryChallengeStore();
   const hcs = config.hcs ?? createLogHcsSink();
 
   let roots: IRootChecker;

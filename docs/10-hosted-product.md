@@ -414,7 +414,7 @@ Local three-process host (real rails, not theater):
 
 Prove image expects Groth16 **wasm + zkey** on disk (`scripts/download-zkey.sh` fetches zkey/vkey; wasm is gitignored — copy `circuits/build/warrant_js/warrant.wasm` or set `WARRANT_WASM_PATH`). Persist translate nullifiers with a volume + `WARRANT_NULLIFIER_PATH`.
 
-**Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, Hedera + HCS, `HEDERA_PAY_TO` ≠ `HEDERA_ACCOUNT_ID`. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
+**Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, Hedera + HCS (`HEDERA_ACCOUNT_ID` + key + `HEDERA_TOPIC_ID`), `WARRANT_NULLIFIER_PATH`. Guest/CLI payer ≠ `HEDERA_PAY_TO`. HCS operator may be the merchant. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
 
 **Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=1800000`, `PROVE_ALLOWED_ORIGINS=https://warrant-beta.vercel.app`.
 
