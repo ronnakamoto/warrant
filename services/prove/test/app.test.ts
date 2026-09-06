@@ -270,6 +270,49 @@ describe("prove app revoke", function () {
     assert.equal(kept.revoked, true);
     assert.notEqual(kept.evmPrivateKey, "0x");
   });
+
+  it("POST /v1/session reports live then fired without leaking keys", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put({
+      id: "look",
+      deskId: "desk",
+      createdAt: Date.now(),
+      wallet: "0x0000000000000000000000000000000000000001",
+      evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      state: emptyState(),
+    });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      gasSponsorKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      loadMembers: async () => ["1"],
+      revokeGuest: async () => ({ txHash: "0xdead" }),
+    });
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const live = await app.request("/v1/session", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "look" }),
+    });
+    assert.equal(live.status, 200);
+    const liveBody = (await live.json()) as Record<string, unknown>;
+    assert.deepEqual(liveBody, { status: "live" });
+    await app.request("/v1/revoke", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "look" }),
+    });
+    const fired = await app.request("/v1/session", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "look" }),
+    });
+    assert.equal(fired.status, 200);
+    const firedBody = (await fired.json()) as Record<string, unknown>;
+    assert.deepEqual(firedBody, { status: "fired" });
+  });
 });
 
 describe("prove desk", function () {

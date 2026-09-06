@@ -111,6 +111,24 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     return c.json({ warrants: opts.store.listByDesk(body.deskId) });
   });
 
+  app.post("/v1/session", async (c) => {
+    if (!opts.store) {
+      return c.json({ error: "session not configured" }, 503);
+    }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { sessionId?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { sessionId?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+    if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
+    const session = opts.store.get(body.sessionId);
+    if (!session) return c.json({ error: "unknown session" }, 404);
+    return c.json({ status: session.revoked ? "fired" : "live" });
+  });
+
   app.post("/v1/prove", async (c) => {
     if (!opts.store || !opts.prover) {
       return c.json({ error: "prove not configured" }, 503);

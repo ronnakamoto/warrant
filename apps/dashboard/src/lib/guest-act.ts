@@ -28,6 +28,17 @@ export type TranslateDeps = {
   prove?: typeof proveRequest;
 };
 
+async function sessionIsFired(
+  sessionId: string,
+  req: Request | undefined,
+  deps: TranslateDeps,
+): Promise<boolean> {
+  const prove = deps.prove ?? proveRequest;
+  const res = await prove("/v1/session", { sessionId }, req);
+  const body = (await res.json().catch(() => ({}))) as { status?: unknown };
+  return body.status === "fired";
+}
+
 export function hederaPayFrom(input: ShopInput): HederaPay | undefined {
   if (input.hederaAccountId && input.hederaPrivateKey) {
     return { accountId: input.hederaAccountId, privateKey: input.hederaPrivateKey };
@@ -142,6 +153,10 @@ export async function translateForSession(
 
   const challenged = await warrantChallengeFrom402(probe, text, source, target, translateUrl);
   if ("status" in challenged) return challenged;
+
+  if (await sessionIsFired(sessionId, req, deps)) {
+    return { status: 403, body: { error: "root_revoked" } };
+  }
 
   const pay = hederaPayFrom(input);
   if (!pay) {
