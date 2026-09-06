@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     throw new Error("GRAPH_WARRANT_QUERY_URL is required so guest proofs see the live tree");
   }
 
-  const ttlMs = Number(process.env.GUEST_TTL_MS ?? 30 * 60 * 1000);
+  const ttlMs = Number(process.env.GUEST_TTL_MS ?? 7 * 24 * 60 * 60 * 1000);
   const sessionPath = process.env.WARRANT_SESSION_PATH;
   const store = sessionPath
     ? createPersistedSessionStore({ path: sessionPath, ttlMs })

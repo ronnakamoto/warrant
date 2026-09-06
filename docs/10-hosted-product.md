@@ -217,7 +217,7 @@ Defects if violated, even if the demo is prettier.
 | S6 | Graph query key is server-only (`/api/graph`). |
 | S7 | HCS and verifier logs: nullifier / scope / tier / txId only. |
 | S8 | `httpOnly` + `Secure` + `SameSite=Lax` session. CSRF on state-changing routes. Rate-limit + captcha on mint. |
-| S9 | Pasted founder EVM keys exist only in memory for one signature. Guests never paste EVM keys. A guest may paste a Hedera testnet key for one 402; the BFF signs and does not persist or log it. |
+| S9 | Founder EVM keys exist only in memory for one signature. Humans never paste Hedera keys. The spender key lives only on the agent's machine. Hosted chat and Vercel never receive it. |
 | S10 | Default is **non-custodial**. Guest is a labeled throwaway: we hold those keys for minutes. Long-lived custodial backup is opt-in. |
 | S11 | Prove worker is reachable only from the dashboard origin / shared internal secret — not a public anonymous prove API. |
 | S12 | Guest BFF may see one warrant header in flight. It must not log it, persist it, or forward it anywhere except translate. |
@@ -416,7 +416,7 @@ Prove image expects Groth16 **wasm + zkey** on disk (`scripts/download-zkey.sh` 
 
 **Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, Hedera + HCS (`HEDERA_ACCOUNT_ID` + key + `HEDERA_TOPIC_ID`), `WARRANT_NULLIFIER_PATH`. Guest/CLI payer ≠ `HEDERA_PAY_TO`. HCS operator may be the merchant. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
 
-**Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=1800000`, `PROVE_ALLOWED_ORIGINS=https://warrant-beta.vercel.app`.
+**Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=604800000`, `PROVE_ALLOWED_ORIGINS=https://warrant-beta.vercel.app`.
 
 **Dashboard env:** `PROVE_URL`, `PROVE_SECRET`, `TRANSLATE_URL`, `DASHBOARD_ORIGIN`, `GRAPH_*`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_RPC_URL`. Optional `TURNSTILE_SECRET` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Never put keys in `NEXT_PUBLIC_*`.
 

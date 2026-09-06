@@ -1,46 +1,43 @@
 ---
 name: warrant
-description: Call a Warrant shop as an authorized agent. Prove on 402 via the hosted agent API. Fire everyone revokes the bound root.
+description: Call a Warrant shop as an authorized agent from this machine. Prove and pay locally with warrant ready + warrant act. Never put a Hedera key in chat.
 ---
 
 # Warrant agent skill
 
-You are calling a shop as the human's agent. They already authorized you. You hold a bearer token for that warrant. You do not hold keys, a zkey, or a proof.
+You are calling a shop as the human's agent.
 
-Hosted origin (live): `https://warrant-beta.vercel.app`. Use that unless the human gave you a different `{APP_ORIGIN}`.
+`@warrant/agent` is 0.0.0 in this repo. There is no published npm package. Install from a clone, then `pnpm warrant`.
 
-## Act
+## If you are on this machine
 
+Clone if needed, then ready, then act. Never print keys.
+
+```bash
+git clone https://github.com/ronnakamoto/warrant.git
+cd warrant
+pnpm install
+pnpm warrant ready
 ```
-POST https://warrant-beta.vercel.app/api/agent/translate
-Authorization: Bearer {TOKEN}
-Content-Type: application/json
 
-{"text":"<their words>","source":"en","target":"es"}
+Leave that running. The human clicks **Let it spend** in the tab.
+
+```bash
+pnpm warrant act --url https://translate-production-ed28.up.railway.app/v1/translate --body '{"text":"<their words>","source":"en","target":"es"}'
 ```
 
-The first shop call is a Hedera 402. If the shop returns 402, retry the same POST with `hederaAccountId` and `hederaPrivateKey` from the environment. Never print those values. Testnet HBAR: https://portal.hedera.com/faucet
+`pnpm warrant status` shows public ids only. Never print purse keys. Show the human only the shop's returned text.
 
-Do not call the raw translate URL yourself. Do not try to build a proof. The agent API proves and retries. Show the human only the shop's returned text. Never print the bearer token, a warrant header, a proof, or any keys.
+Do not `POST /api/agent/translate` with a Hedera key.
+
+## If you are in a hosted chat
+
+I cannot sign Hedera from this chat. POST the bearer they pasted to `{origin}/api/agent/translate` if they gave one. Do not invent a payment. Tell them to open the tab and Let it spend, or run this skill on their machine.
 
 ## Fire everyone
 
-When they say fire everyone / revoke / stop every agent:
+Open the tab and Fire. Do not POST a key.
 
-```
-POST https://warrant-beta.vercel.app/api/agent/revoke
-Authorization: Bearer {TOKEN}
-Content-Type: application/json
+## After fire
 
-{}
-```
-
-After revoke, do not retry. The next call is `403`.
-
-## Local CLI (integrators)
-
-```bash
-pnpm --filter @warrant/agent cli -- fetch --as translator --url http://127.0.0.1:8787/v1/translate --body '{"text":"hi","source":"en","target":"es"}'
-```
-
-That path needs a local `WARRANT_STORE` and zkey. The hosted bearer path does not.
+The next shop call is `403`. Do not retry with a key.

@@ -23,6 +23,7 @@ import {
 } from "@x402/core/server";
 import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
+import { withAllowanceFacilitator } from "./allowance-facilitator.js";
 import { MemoryChallengeStore, type ChallengeStore } from "./challenges.js";
 import { FileNullifierStore } from "./nullifiers-file.js";
 import { MemoryNullifierStore } from "./nullifiers.js";
@@ -217,11 +218,13 @@ export function wire(config: WireConfig): Wired {
     },
   });
 
-  const facilitator: FacilitatorClient =
-    config.facilitatorClient ??
-    new HTTPFacilitatorClient({
-      url: config.facilitatorUrl ?? "https://api.testnet.blocky402.com",
-    });
+  const facilitator: FacilitatorClient = withAllowanceFacilitator({
+    inner:
+      config.facilitatorClient ??
+      new HTTPFacilitatorClient({
+        url: config.facilitatorUrl ?? "https://api.testnet.blocky402.com",
+      }),
+  });
 
   const server = new x402ResourceServer(facilitator);
   // Scheme BEFORE initialize (docs/05 risk table)

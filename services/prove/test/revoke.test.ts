@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { FOUNDER_ETH } from "../src/founders.ts";
-import { revokeGuest, revokeSiblingsFor, waitUntilBalance } from "../src/revoke.ts";
+import {
+  markWalletFired,
+  prepareGuestRevoke,
+  revokeGuest,
+  revokeSiblingsFor,
+  waitUntilBalance,
+} from "../src/revoke.ts";
+import { createSessionStore } from "../src/session.ts";
 import { emptyState } from "@warrant/agent";
 
 describe("waitUntilBalance", function () {
@@ -44,6 +51,7 @@ describe("revokeGuest isolation", function () {
         revokeGuest({
           session: {
             id: "x",
+            deskId: "desk",
             wallet: FOUNDER_ETH,
             evmPrivateKey: "0x11",
             createdAt: Date.now(),
@@ -81,6 +89,7 @@ describe("revokeGuest isolation", function () {
     const out = await revokeGuest({
       session: {
         id: "g",
+        deskId: "desk",
         wallet: "0x00000000000000000000000000000000000000aa",
         evmPrivateKey: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         createdAt: Date.now(),
@@ -99,5 +108,81 @@ describe("revokeGuest isolation", function () {
     });
     assert.equal(out.txHash, "0xdead");
     assert.equal(revokedBySponsor, false);
+  });
+});
+
+describe("prepareGuestRevoke", function () {
+  it("returns siblings and never signs the revoke", async function () {
+    const { assembleGuestTree } = await import("../src/mint.ts");
+    const { ensureIdentity, emptyState, freshFieldTag, appendLeaf, identityOf } =
+      await import("@warrant/agent");
+    const { hashLeaf } = await import("@warrant/core");
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-prep");
+    ensureIdentity(state, "orchestrator", "orch-prep");
+    ensureIdentity(state, "translator", "trans-prep");
+    state.humanTag = freshFieldTag();
+    state.contextHash = freshFieldTag();
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const alice = identityOf(state, "alice");
+    const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+    appendLeaf(state, leaf);
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+
+    let sponsored = 0;
+    const out = await prepareGuestRevoke({
+      session: {
+        id: "g",
+        deskId: "desk",
+        wallet: "0x00000000000000000000000000000000000000aa",
+        evmPrivateKey: "0x",
+        createdAt: Date.now(),
+        state,
+      },
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      gasSponsorKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      loadMembers: async () => [leaf.toString()],
+      sponsor: async () => {
+        sponsored += 1;
+      },
+    });
+    assert.equal(sponsored, 1);
+    assert.equal(out.wallet, "0x00000000000000000000000000000000000000aa");
+    assert.ok(Array.isArray(out.siblings));
+  });
+
+  it("marks every session on that wallet fired", function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put({
+      id: "a",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state: emptyState(),
+    });
+    store.put({
+      id: "b",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state: emptyState(),
+    });
+    store.put({
+      id: "c",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000bb",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state: emptyState(),
+    });
+    markWalletFired(store, "0x00000000000000000000000000000000000000aa");
+    assert.equal(store.get("a")?.revoked, true);
+    assert.equal(store.get("b")?.revoked, true);
+    assert.equal(store.get("c")?.revoked, undefined);
   });
 });

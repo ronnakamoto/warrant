@@ -17,7 +17,7 @@ if (existsSync(repoEnv)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@astryxdesign/core"],
+  transpilePackages: ["@astryxdesign/core", "@hashgraph/hedera-wallet-connect"],
   outputFileTracingRoot: join(root, "../.."),
   allowedDevOrigins: ["http://localhost:3001", "http://127.0.0.1:3001"],
   env: {
@@ -25,6 +25,18 @@ const nextConfig = {
       process.env.NEXT_PUBLIC_TRANSLATE_URL ??
       process.env.TRANSLATE_URL ??
       "http://127.0.0.1:8787/v1/translate",
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        child_process: false,
+      };
+    }
+    return config;
   },
 };
 

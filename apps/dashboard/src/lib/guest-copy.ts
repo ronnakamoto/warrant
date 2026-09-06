@@ -3,6 +3,8 @@ export const GUEST_COPY = {
   standfirst:
     "Give the bot you already have a warrant. When you fire everyone, every shop it called still does not know it was you.",
   world: "Testnet. Not a World ID proof.",
+  twoWallets: "MetaMask stops the bot. HashPack lets it pay. The bot never gets your key.",
+  connectWallet: "You keep the key. Connect to authorize.",
   hostError: "Something went wrong. Try again in a moment.",
   revokeFailed: "Revoke did not take. The agent can still act.",
   authorize: "Authorize my agent",
@@ -12,29 +14,23 @@ export const GUEST_COPY = {
   botLead: "For the bot you already have.",
   copyPrompt: "Copy for my agent",
   copied: "Copied.",
-  shopLead: "Send this. The shop will not know it was you.",
-  shopLabel: "What your agent sends",
-  shopCall: "Call the shop",
-  payCall: "Pay and call",
-  proving: "Your agent is calling the shop…",
-  successFoot: "The shop saw a nullifier, not you.",
-  paidFoot: "Testnet settle. The shop still saw a nullifier, not you.",
-  paidLink: "Open the settle",
-  sendAnother: "Send another",
   revoke: "Fire everyone",
   afterRevoke: "Every agent under you is done. The API still does not know who you were.",
   again: "Authorize another agent",
-  quota: "The shop wants testnet HBAR. Pay, then the call goes through.",
-  faucetLead: "Get testnet HBAR from the Hedera faucet.",
-  faucetLink: "Hedera faucet",
-  payAccount: "Hedera account",
-  payKey: "Hedera private key",
-  payHint: "Warrant does not keep the key.",
+  letSpend: "Let it spend",
+  cutSpend: "Cut spend",
+  spending: "Waiting for HashPack…",
+  spendGranted: "The bot can pay up to 2 HBAR. Cut spend to stop it.",
+  spendCut: "The bot can still prove. It cannot pay.",
+  readyNeeded: "On this machine, run warrant ready, then Let it spend.",
+  pairFallback: "HashPack created the spender. Pair it on the bot with warrant purse bind.",
+  walletRejected: "The wallet did not sign.",
+  signRejected: "The wallet did not sign.",
   rateLimited: "Try again in a few minutes.",
   registry: "Registry",
   warrantTab: "Warrant",
   localhostHint:
-    "Cloud agents (Grok) cannot reach 127.0.0.1. OpenClaw or Hermes on this machine can. A public https host is required for agents on the internet.",
+    "Cloud agents (Grok) cannot reach this machine. OpenClaw or Hermes on this machine can.",
   fireThis: "Fire this warrant",
   fireEvery: "Fire every warrant",
   fireOne: "Fire",
@@ -43,6 +39,8 @@ export const GUEST_COPY = {
 } as const;
 
 export const HEDERA_FAUCET = "https://portal.hedera.com/faucet";
+export const WARRANT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const PAIR_ORIGIN = "http://127.0.0.1:17879";
 
 /** Revoke took only when the shop returns 403. A 402 is still a live warrant. */
 export function shopIsDead(status: number): boolean {
@@ -55,6 +53,9 @@ export function remainingMsUntil(expiresAt: number, now = Date.now()): number {
 
 export function remainingLife(ms: number): string {
   if (ms <= 0) return "This warrant has expired";
+  const days = Math.floor(ms / 86_400_000);
+  if (days >= 2) return `${days} days left`;
+  if (days === 1) return "1 day left";
   const minutes = Math.floor(ms / 60_000);
   if (minutes < 1) return "Less than a minute left";
   if (minutes === 1) return "1 minute left";
@@ -64,18 +65,22 @@ export function remainingLife(ms: number): string {
 export function agentPrompt(appOrigin: string, token: string): string {
   const origin = appOrigin.replace(/\/$/, "");
   return [
-    `POST ${origin}/api/agent/translate`,
-    `Authorization: Bearer ${token}`,
-    "Content-Type: application/json",
+    "You are calling a Warrant shop as my agent.",
     "",
-    '{"text":"<what I asked you to send>","source":"en","target":"es"}',
+    "If you are on this machine:",
+    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`, then `pnpm warrant act --url https://translate-production-ed28.up.railway.app/v1/translate --body '{\"text\":\"<what I asked you to send>\",\"source\":\"en\",\"target\":\"es\"}'`.",
+    "  Never print keys. I will click Let it spend in the tab.",
+    "",
+    "If you are in a hosted chat:",
+    `  POST ${origin}/api/agent/translate`,
+    `  Authorization: Bearer ${token}`,
+    "  Content-Type: application/json",
+    '  {"text":"<what I asked you to send>","source":"en","target":"es"}',
+    "  I cannot sign Hedera from this chat. Do not POST a key.",
     "",
     GUEST_COPY.helperFoot,
     "",
-    "If the shop returns 402, retry the same POST with hederaAccountId and hederaPrivateKey from your environment. Never print those values.",
-    `Testnet HBAR: ${HEDERA_FAUCET}`,
-    "",
-    `If I say fire everyone, POST ${origin}/api/agent/revoke with the same Authorization header and {}.`,
+    "If I say fire everyone, open the tab and Fire. Do not POST a key.",
     "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",
   ].join("\n");
 }

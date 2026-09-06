@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   agentPrompt,
   GUEST_COPY,
@@ -10,13 +13,17 @@ import {
 } from "../src/lib/guest-copy.ts";
 import {
   hederaPayFrom,
+  hasHederaPrivateKey,
+  parseGuestShopBody,
   parseShopBody,
   revokeEachLive,
+  shopWithPaymentHeader,
   shopWithWarrant,
   translateForSession,
   confirmSessionCannotAct,
   txIdFromPaymentResponse,
 } from "../src/lib/guest-act.ts";
+import { hederaWalletPay, requirementsFromPaymentRequired } from "../src/lib/hedera-wallet-pay.ts";
 import {
   guestCookie,
   deskCookie,
@@ -53,10 +60,14 @@ describe("guest first-run copy", function () {
     const skill = agentPrompt("https://app.example", "tok_live_abc");
     assert.match(skill, /https:\/\/app\.example\/api\/agent\/translate/);
     assert.match(skill, /Authorization: Bearer tok_live_abc/);
-    assert.match(skill, /\/api\/agent\/revoke/);
+    assert.match(skill, /open the tab and Fire/);
     assert.equal(skill.includes("127.0.0.1:8787"), false);
-    assert.match(skill, /hederaAccountId/);
-    assert.match(skill, /portal\.hedera\.com\/faucet/);
+    assert.equal(skill.includes("hederaAccountId"), false);
+    assert.equal(skill.includes("hederaPrivateKey"), false);
+    assert.match(skill, /warrant act/);
+    assert.match(skill, /warrant ready/);
+    assert.match(skill, /I cannot sign Hedera from this chat/);
+    assert.match(skill, /Do not POST a key/);
     assert.equal(/0x[0-9a-fA-F]{16,}/.test(skill), false);
   });
 
@@ -94,6 +105,108 @@ describe("guest first-run copy", function () {
   it("says plainly this is not a World ID check", function () {
     assert.match(GUEST_COPY.world, /World ID/i);
     assert.equal(/merkle|Groth16|zkey|epoch/i.test(GUEST_COPY.world), false);
+    assert.match(GUEST_COPY.twoWallets, /MetaMask/);
+    assert.match(GUEST_COPY.twoWallets, /HashPack/);
+    assert.match(GUEST_COPY.twoWallets, /lets it pay/i);
+    assert.match(GUEST_COPY.connectWallet, /You keep the key/);
+  });
+
+  it("pairs Let it spend through a fake listener and never posts a key", async function () {
+    const { createServer } = await import("node:http");
+    const { letSpendFromReady } = await import("../src/lib/hedera-purse.ts");
+    let posted: unknown;
+    const server = createServer((req, res) => {
+      res.setHeader("content-type", "application/json");
+      if (req.method === "GET") {
+        res.end(JSON.stringify({ ready: true, publicKey: "0".repeat(32) }));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      req.on("end", () => {
+        posted = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        res.end(JSON.stringify({ publicKey: "0".repeat(32), accountId: "0.0.9", vaultAccountId: "0.0.8" }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    const granted = await letSpendFromReady({
+      origin: `http://127.0.0.1:${port}`,
+      grant: async (publicKey) => {
+        assert.equal(publicKey, "0".repeat(32));
+        assert.equal(/private|302e/i.test(publicKey), false);
+        return { accountId: "0.0.9", vaultAccountId: "0.0.8" };
+      },
+    });
+    assert.deepEqual(granted, { accountId: "0.0.9", vaultAccountId: "0.0.8" });
+    assert.deepEqual(posted, { accountId: "0.0.9", vaultAccountId: "0.0.8" });
+    assert.equal(JSON.stringify(posted).includes("privateKey"), false);
+    await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  });
+
+  it("falls back to purse bind when the listener will not pair", async function () {
+    const { letSpendFromReady, PairFallbackError } = await import("../src/lib/hedera-purse.ts");
+    const { createServer } = await import("node:http");
+    const server = createServer((req, res) => {
+      res.setHeader("content-type", "application/json");
+      if (req.method === "GET") {
+        res.end(JSON.stringify({ ready: true, publicKey: "1".repeat(32) }));
+        return;
+      }
+      res.statusCode = 500;
+      res.end("{}");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address();
+    const port = typeof addr === "object" && addr ? addr.port : 0;
+    await assert.rejects(
+      () =>
+        letSpendFromReady({
+          origin: `http://127.0.0.1:${port}`,
+          grant: async () => ({ accountId: "0.0.9", vaultAccountId: "0.0.8" }),
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof PairFallbackError);
+        assert.equal(err.accountId, "0.0.9");
+        assert.equal(err.vaultAccountId, "0.0.8");
+        return true;
+      },
+    );
+    await new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
+  });
+
+  it("keeps the vault in HashPack and the spend cut separate from Fire", async function () {
+    assert.match(GUEST_COPY.letSpend, /Let it spend/);
+    assert.match(GUEST_COPY.cutSpend, /Cut spend/);
+    assert.match(GUEST_COPY.spendGranted, /2 HBAR/);
+    assert.equal(/private key|hederaPrivateKey/i.test(GUEST_COPY.letSpend), false);
+    assert.match(agentPrompt("https://app.example", "tok"), /warrant ready/);
+    assert.match(agentPrompt("https://app.example", "tok"), /I cannot sign Hedera from this chat/);
+    const { parseAgentAccount, transactionIdFromExecute } = await import(
+      "../src/lib/hedera-purse.ts"
+    );
+    assert.equal(parseAgentAccount(" 0.0.9 "), "0.0.9");
+    assert.throws(() => parseAgentAccount("0xab"), /Hedera account/);
+    assert.equal(transactionIdFromExecute({ transactionId: "0.0.9@1.2" }), "0.0.9@1.2");
+  });
+
+  it("does not keep a shop or hex pay fields on the console", function () {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    assert.equal(src.includes("hederaPrivateKey"), false);
+    assert.equal(src.includes("hederaAccountId"), false);
+    assert.equal(src.includes('type="password"'), false);
+    assert.equal(src.includes("/api/guest/translate"), false);
+    assert.equal(src.includes("<textarea"), false);
+    assert.equal(/Call the shop|Pay the shop|shopCall|payCall/.test(src), false);
+    assert.match(src, /connectRootWallet/);
+    assert.match(src, /Copy for my agent|copyPrompt/);
+    assert.match(src, /letSpendFromReady|Let it spend/);
+    assert.match(src, /copiedOnce/);
+    assert.match(src, /cutSpend/);
   });
 
   it("rejects cross-origin guest POSTs on the public host", function () {
@@ -191,23 +304,17 @@ describe("guest first-run copy", function () {
   it("builds a HashScan link without showing the raw account", function () {
     const url = hashscanTestnetUrl("0.0.98@1788502420.541125170");
     assert.match(url, /hashscan\.io\/testnet\/transaction\//);
-    assert.equal(GUEST_COPY.paidFoot.includes("nullifier"), true);
-  });
-
-  it("does not put the paywall or the key in the first shop sentence", function () {
-    assert.equal(/402|private key|HBAR/i.test(GUEST_COPY.shopLead), false);
-    assert.match(GUEST_COPY.botLead, /bot you already have/i);
-    assert.match(GUEST_COPY.payHint, /does not keep the key/i);
-    assert.equal(/402/i.test(GUEST_COPY.payHint), false);
-  });
-
-  it("asks for a real Hedera pay, not a free quota", function () {
-    assert.equal(/Free calls/i.test(GUEST_COPY.quota), false);
-    assert.match(GUEST_COPY.quota, /testnet HBAR/i);
     assert.equal(HEDERA_FAUCET, "https://portal.hedera.com/faucet");
     assert.equal(shopIsDead(402), false);
     assert.equal(shopIsDead(403), true);
     assert.equal(shopIsDead(200), false);
+  });
+
+  it("does not put a shop or a key on the console land", function () {
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.botLead} ${GUEST_COPY.copyPrompt}`;
+    assert.equal(/402|private key|Call the shop|Pay the shop/i.test(land), false);
+    assert.match(GUEST_COPY.botLead, /bot you already have/i);
+    assert.match(GUEST_COPY.letSpend, /Let it spend/);
   });
 
   it("parses optional Hedera pay fields without requiring them", function () {
@@ -237,6 +344,111 @@ describe("guest first-run copy", function () {
       }),
       { accountId: "0.0.9", privateKey: "k" },
     );
+  });
+
+  it("guest parse rejects a private key and accepts a payment header", function () {
+    assert.equal(hasHederaPrivateKey({ text: "hi", hederaPrivateKey: " 302e " }), true);
+    assert.equal(parseGuestShopBody({ text: "hi", hederaPrivateKey: "302e" }), "private_key");
+    assert.deepEqual(parseGuestShopBody({ text: "hi", payment: "  signed  " }), {
+      text: "hi",
+      source: "en",
+      target: "es",
+      payment: "signed",
+    });
+    assert.equal(
+      "hederaPrivateKey" in (parseGuestShopBody({ text: "hi", hederaAccountId: "0.0.9" }) as object),
+      false,
+    );
+  });
+
+  it("encodes a payment header from a fake Hedera signer", async function () {
+    const pr = {
+      accepts: [
+        {
+          scheme: "exact",
+          network: "hedera:testnet",
+          amount: "100000",
+          payTo: "0.0.1",
+          extra: { feePayer: "0.0.2" },
+        },
+      ],
+    };
+    const requirements = requirementsFromPaymentRequired(pr);
+    const header = await hederaWalletPay(
+      {
+        accountId: "0.0.9",
+        createPartiallySignedTransferTransaction: async () => "dGVzdA==",
+      },
+      requirements,
+    );
+    assert.ok(header.length > 0);
+    assert.equal(header.includes("302e"), false);
+    const decoded = JSON.parse(Buffer.from(header, "base64").toString("utf8")) as {
+      payload?: { transaction?: string };
+    };
+    assert.equal(decoded.payload?.transaction, "dGVzdA==");
+  });
+
+  it("retries the shop with a payment header and never a private key", async function () {
+    let sawKey = false;
+    const res = await shopWithPaymentHeader(
+      "http://shop.test/v1/translate",
+      "{}",
+      "warrant",
+      "signed-header",
+      async (_url, init) => {
+        const headers = new Headers(init?.headers);
+        if (headers.get("hederaPrivateKey") || JSON.stringify(init?.headers).includes("302e")) {
+          sawKey = true;
+        }
+        assert.equal(headers.get("PAYMENT-SIGNATURE"), "signed-header");
+        assert.equal(headers.get("warrant"), "warrant");
+        return new Response(JSON.stringify({ text: "hola" }), { status: 200 });
+      },
+    );
+    assert.equal(sawKey, false);
+    assert.equal(res.status, 200);
+  });
+
+  it("proves after a signed payment header without using a Hedera key", async function () {
+    let proved = 0;
+    let paid = 0;
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const out = await translateForSession(
+      "sess",
+      { text: "hi", source: "en", target: "es", payment: "signed-header" },
+      undefined,
+      {
+        translateUrl: "http://shop.test/v1/translate",
+        fetchImpl: async (_url, init) => {
+          const hdrs = new Headers(init?.headers);
+          if (hdrs.get("PAYMENT-SIGNATURE") === "signed-header") {
+            paid += 1;
+            return new Response(JSON.stringify({ text: "hola" }), { status: 200 });
+          }
+          return new Response(JSON.stringify(payload), { status: 402, headers });
+        },
+        prove: async (path) => {
+          if (path === "/v1/session") {
+            return new Response(JSON.stringify({ status: "live" }), { status: 200 });
+          }
+          proved += 1;
+          return new Response(JSON.stringify({ warrant: "w", nullifier: "n1" }), { status: 200 });
+        },
+        createPaymentFetch: () => {
+          throw new Error("must not build a key signer");
+        },
+      },
+    );
+    assert.equal(proved, 1);
+    assert.equal(paid, 1);
+    assert.equal(out.status, 200);
+    assert.equal(out.body.text, "hola");
   });
 
   it("reads a settle id from PAYMENT-RESPONSE when the body has none", function () {
@@ -396,7 +608,8 @@ describe("guest first-run copy", function () {
     }
   });
 
-  it("speaks remaining life in minutes", function () {
+  it("speaks remaining life in days or minutes", function () {
+    assert.equal(remainingLife(7 * 86_400_000), "7 days left");
     assert.equal(remainingLife(29 * 60 * 1000), "29 minutes left");
     assert.equal(remainingLife(40_000), "Less than a minute left");
     assert.equal(remainingLife(0), "This warrant has expired");

@@ -19,6 +19,7 @@ export type WarrantFetchOptions = {
    * When omitted, a second 402 after a valid warrant is returned as-is.
    */
   paymentFetch?: typeof globalThis.fetch;
+  fetchImpl?: typeof globalThis.fetch;
   /** Amount/payTo defaults if PaymentRequired accepts[0] lacks them. */
   amount?: string;
   payTo?: string;
@@ -85,8 +86,9 @@ export async function warrantFetch(
     typeof init?.body === "string" || init?.body instanceof Uint8Array ? init.body : undefined,
   );
 
+  const doFetch = opts.fetchImpl ?? globalThis.fetch;
   // Probe without paymentFetch so free-tier warrant challenges are not auto-settled.
-  const res1 = await globalThis.fetch(input, init);
+  const res1 = await doFetch(input, init);
 
   if (res1.status !== 402) return res1;
 
@@ -122,7 +124,7 @@ export async function warrantFetch(
   headers.set("warrant", warrantHeaderJson(proved));
 
   // Retry with warrant; paymentFetch settles quota-exhausted exact/hedera 402s.
-  const retryFetch = opts.paymentFetch ?? globalThis.fetch;
+  const retryFetch = opts.paymentFetch ?? doFetch;
   return retryFetch(input, { ...init, headers });
 }
 

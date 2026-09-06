@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseShopBody, translateForSession } from "../../../../lib/guest-act";
+import { parseGuestShopBody, translateForSession } from "../../../../lib/guest-act";
 import { agentCorsHeaders, publicGuestError, sessionFromBearer } from "../../../../lib/prove-client";
 
 export async function OPTIONS(): Promise<Response> {
@@ -17,7 +17,13 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400, headers: agentCorsHeaders() });
   }
-  const input = parseShopBody(raw);
+  const input = parseGuestShopBody(raw);
+  if (input === "private_key") {
+    return NextResponse.json(
+      { error: "private key not allowed" },
+      { status: 400, headers: agentCorsHeaders() },
+    );
+  }
   if (!input) {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400, headers: agentCorsHeaders() });
   }

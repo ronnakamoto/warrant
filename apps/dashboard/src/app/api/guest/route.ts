@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAddress } from "viem";
 import {
   clientIpFromRequest,
   deskCookie,
@@ -14,18 +15,23 @@ import {
 export async function POST(req: Request): Promise<Response> {
   if (!guestOriginAllowed(req)) return forbiddenGuestResponse();
   let turnstile = "";
+  let wallet = "";
   try {
-    const body = (await req.clone().json()) as { turnstile?: unknown };
+    const body = (await req.clone().json()) as { turnstile?: unknown; wallet?: unknown };
     if (typeof body.turnstile === "string") turnstile = body.turnstile;
+    if (typeof body.wallet === "string") wallet = body.wallet.trim();
   } catch {
     /* empty body is fine */
+  }
+  if (!isAddress(wallet)) {
+    return NextResponse.json({ error: "wallet required" }, { status: 400 });
   }
   try {
     if (!(await verifyTurnstile(turnstile, clientIpFromRequest(req)))) {
       return NextResponse.json({ error: "captcha" }, { status: 403 });
     }
     const deskId = deskFromCookie(req.headers.get("cookie"));
-    const res = await proveRequest("/v1/mint", deskId ? { deskId } : {}, req);
+    const res = await proveRequest("/v1/mint", deskId ? { deskId, wallet } : { wallet }, req);
     const body = await res.json().catch(() => ({}));
     if (res.status === 429) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });

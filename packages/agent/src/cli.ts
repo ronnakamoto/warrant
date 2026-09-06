@@ -29,6 +29,14 @@ import {
   saveState,
   type WarrantState,
 } from "./store.js";
+import {
+  bindPurse,
+  defaultPursePath,
+  initPurse,
+  loadPurse,
+  pursePublicView,
+} from "./purse.js";
+import { startReadyServer } from "./ready.js";
 
 function usage(): never {
   console.error(`warrant — agent CLI
@@ -41,9 +49,15 @@ Usage:
   warrant delegate --from <id> --to <id> --scope translate[,fetch] --budget <n> --ttl <1h>
   warrant prove --as <id> --nonce <n> --merkle-root <n> --path <p> [--amount] [--pay-to] [--body-hash]
   warrant fetch --as <id> --url <url> [--body <json>]
+  warrant ready
+  warrant act --url <url> [--body <json>] [--as translator]
+  warrant status
+  warrant purse init | show | bind --account 0.0.N --vault 0.0.M
   warrant graph-status
 
 Store: $WARRANT_STORE (default ~/.warrant/state.json)
+Purse: $WARRANT_PURSE (default ~/.warrant/purse.json) — never printed
+Ready: http://127.0.0.1:17879 — public ids only
 Graph: GRAPH_API_KEY + GRAPH_WARRANT_QUERY_URL (Studio); Agent0 is composed automatically.
 `);
   process.exit(2);
@@ -334,6 +348,116 @@ async function cmdProve(args: string[]): Promise<void> {
   console.log(warrantHeaderJson(result));
 }
 
+async function cmdReady(args: string[]): Promise<void> {
+  const path = flag(args, "--purse") ?? defaultPursePath();
+  const port = Number(flag(args, "--port") ?? 17879);
+  const { ensurePurse } = await import("./ready.js");
+  const purse = ensurePurse(path);
+  const view = pursePublicView(purse);
+  const handle = await startReadyServer({ port, pursePath: path });
+  console.log(
+    JSON.stringify(
+      {
+        ...view,
+        ready: `http://127.0.0.1:${handle.port}`,
+        next: "Open the tab and Let it spend. Never print keys.",
+      },
+      null,
+      2,
+    ),
+  );
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      void handle.close().finally(() => resolve());
+    };
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+  });
+}
+
+function cmdStatus(args: string[]): void {
+  const path = flag(args, "--purse") ?? defaultPursePath();
+  const purse = loadPurse(path);
+  if (!purse) {
+    console.error("no purse — warrant ready");
+    process.exit(1);
+  }
+  console.log(JSON.stringify(pursePublicView(purse), null, 2));
+}
+
+function cmdPurse(args: string[]): void {
+  const sub = args[0];
+  const rest = args.slice(1);
+  const path = flag(rest, "--store") ?? flag(rest, "--purse") ?? defaultPursePath();
+  if (sub === "init") {
+    const purse = initPurse(path);
+    console.log(
+      JSON.stringify(
+        {
+          ...pursePublicView(purse),
+          next: "Create the purse in the tab with this public key, then warrant purse bind --account 0.0.N --vault 0.0.M",
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (sub === "show") {
+    const purse = loadPurse(path);
+    if (!purse) {
+      console.error("no purse — warrant purse init");
+      process.exit(1);
+    }
+    console.log(JSON.stringify(pursePublicView(purse), null, 2));
+    return;
+  }
+  if (sub === "bind") {
+    const account = requireFlag(rest, "--account");
+    const vault = requireFlag(rest, "--vault");
+    const purse = bindPurse(path, { accountId: account, vaultAccountId: vault });
+    console.log(JSON.stringify(pursePublicView(purse), null, 2));
+    return;
+  }
+  console.error(`warrant purse init | show | bind --account 0.0.N --vault 0.0.M`);
+  process.exit(2);
+}
+
+async function cmdAct(args: string[]): Promise<void> {
+  if (args.includes("-h") || args.includes("--help")) {
+    console.log(`warrant act — prove locally, pay ExactHedera, retry
+
+Usage:
+  warrant act --url <url> [--body <json>] [--as translator]
+
+Store: $WARRANT_STORE (default ~/.warrant/state.json)
+Pay: local purse (spender). HashPack holds the vault. Never print keys.
+Zkey: downloaded via scripts/download-zkey.sh / WARRANT_ZKEY_URL if missing.
+Prints only the shop text.
+`);
+    return;
+  }
+  const url = requireFlag(args, "--url");
+  const body =
+    flag(args, "--body") ?? JSON.stringify({ text: "Good morning.", source: "en", target: "es" });
+  const as = flag(args, "--as") ?? "translator";
+  const storePath = flag(args, "--store") ?? defaultStorePath();
+  const { warrantAct } = await import("./act.js");
+  const { ensureArtifacts } = await import("./ensure-artifacts.js");
+  const out = await warrantAct(url, body, {
+    as,
+    storePath,
+    prover: createSnarkjsProver(),
+    ensureArtifacts,
+  });
+  if (out.status === 200) {
+    console.log(out.text);
+    return;
+  }
+  console.error(out.text);
+  process.exit(1);
+}
+
 async function cmdFetch(args: string[]): Promise<void> {
   const as = requireFlag(args, "--as");
   const url = requireFlag(args, "--url");
@@ -386,6 +510,18 @@ async function main(): Promise<void> {
       break;
     case "fetch":
       await cmdFetch(rest);
+      break;
+    case "ready":
+      await cmdReady(rest);
+      break;
+    case "status":
+      cmdStatus(rest);
+      break;
+    case "act":
+      await cmdAct(rest);
+      break;
+    case "purse":
+      cmdPurse(rest);
       break;
     case "graph-status":
       console.log(JSON.stringify(await loadGraphStatus(), null, 2));

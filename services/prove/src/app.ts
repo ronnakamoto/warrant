@@ -1,14 +1,12 @@
 import { Hono } from "hono";
 import type { ChallengeParts, IProver } from "@warrant/core";
-import type { Address, Hex } from "viem";
-import { mintGuest, type BindRootFn } from "./mint.js";
+import { isAddress, type Address, type Hex } from "viem";
+import { mintGuest, type BindRootFn, type ReadBindingFn } from "./mint.js";
 import { proveGuest } from "./prove.js";
-import { revokeGuest } from "./revoke.js";
+import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
 import type { SessionStore } from "./session.js";
-
-type RevokeFn = typeof revokeGuest;
 
 export const AUTH_HEADER = "x-warrant-prove-secret";
 const BODY_LIMIT = 64 * 1024;
@@ -25,10 +23,11 @@ export type ProveAppOpts = {
   loadMembers?: LeafLoader;
   prover?: IProver;
   bindRoot?: BindRootFn;
+  readBinding?: ReadBindingFn;
+  prepareRevoke?: typeof prepareGuestRevoke;
   mintLimiter?: RateLimiter;
   proveTimeoutMs?: number;
   allowedOrigins?: string[];
-  revokeGuest?: RevokeFn;
 };
 
 function clientKey(c: { req: { header: (n: string) => string | undefined } }): string {
@@ -74,13 +73,16 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     }
     const raw = await c.req.text();
     if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
-    let body: { deskId?: string } = {};
+    let body: { deskId?: string; wallet?: string } = {};
     if (raw) {
       try {
-        body = JSON.parse(raw) as { deskId?: string };
+        body = JSON.parse(raw) as { deskId?: string; wallet?: string };
       } catch {
         return c.json({ error: "invalid json" }, 400);
       }
+    }
+    if (typeof body.wallet !== "string" || !isAddress(body.wallet)) {
+      return c.json({ error: "wallet required" }, 400);
     }
     const deskId = typeof body.deskId === "string" && DESK_ID_RE.test(body.deskId) ? body.deskId : undefined;
     const minted = await mintGuest({
@@ -90,6 +92,8 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       rpc: opts.rpc,
       loadMembers: opts.loadMembers,
       bindRoot: opts.bindRoot,
+      readBinding: opts.readBinding,
+      wallet: body.wallet,
       deskId,
     });
     return c.json({ sessionId: minted.sessionId, wallet: minted.wallet, deskId: minted.deskId });
@@ -177,27 +181,29 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!opts.store) {
       return c.json({ error: "revoke not configured" }, 503);
     }
-    const body = await c.req.json<{ sessionId?: string; deskId?: string }>();
+    const body = await c.req.json<{ sessionId?: string; deskId?: string; txHash?: string }>();
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
     if (typeof body.deskId === "string" && session.deskId !== body.deskId) {
       return c.json({ error: "wrong_desk" }, 403);
     }
+    if (typeof body.txHash === "string" && body.txHash.length > 0) {
+      markWalletFired(opts.store, session.wallet);
+      return c.json({ txHash: body.txHash, wallet: session.wallet });
+    }
     if (!opts.registry || !opts.rpc || !opts.gasSponsorKey || !opts.loadMembers) {
       return c.json({ error: "revoke not configured" }, 503);
     }
-    const runRevoke = opts.revokeGuest ?? revokeGuest;
-    const out = await runRevoke({
+    const prepare = opts.prepareRevoke ?? prepareGuestRevoke;
+    const out = await prepare({
       session,
       registry: opts.registry,
       rpc: opts.rpc,
       gasSponsorKey: opts.gasSponsorKey,
       loadMembers: opts.loadMembers,
     });
-    session.revoked = true;
-    opts.store.put(session);
-    return c.json({ txHash: out.txHash });
+    return c.json(out);
   });
 
   return app;
