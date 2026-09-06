@@ -1,0 +1,25 @@
+[
+  {
+    "type": "event",
+    "name": "Bound",
+    "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "leaf", "type": "uint256", "indexed": false },
+      { "name": "root", "type": "uint256", "indexed": false },
+      { "name": "tier", "type": "uint8", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Revoked",
+    "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "oldLeaf", "type": "uint256", "indexed": false },
+      { "name": "newLeaf", "type": "uint256", "indexed": false },
+      { "name": "root", "type": "uint256", "indexed": false },
+      { "name": "epoch", "type": "uint32", "indexed": false }
+    ],
+    "anonymous": false
+  }
+]

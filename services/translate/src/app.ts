@@ -1,14 +1,16 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { decodePaymentResponseHeader } from "@x402/core/http";
 import { paymentMiddlewareFromHTTPServer } from "@x402/hono";
 import type { Wired } from "./wiring.js";
 import { parseRequestBody, withRequestBody } from "./request-body.js";
-import { translate } from "./translate.js";
+import { translate as defaultTranslate, type Translator } from "./translate.js";
 import type { HcsSink } from "./hcs.js";
 
 export type AppDeps = {
   wired: Wired;
   hcs?: HcsSink;
+  translate?: Translator;
 };
 
 function txIdFromPaymentResponse(header: string | undefined): string | undefined {
@@ -27,6 +29,15 @@ export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const hcs = deps.hcs ?? deps.wired.hcs;
   const paymentMw = paymentMiddlewareFromHTTPServer(deps.wired.http);
+
+  app.use(
+    "*",
+    cors({
+      origin: "*",
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      allowHeaders: ["Content-Type", "warrant"],
+    }),
+  );
 
   // Run payment middleware (incl. after-handler settle), then audit once with optional txId.
   // Must return x402's Response — discarding it leaves Hono unfinalized (500 instead of 402).
@@ -62,11 +73,15 @@ export function createApp(deps: AppDeps): Hono {
     });
   });
 
+  const runTranslate = deps.translate ?? defaultTranslate;
+
   app.post("/v1/translate", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const text = typeof body?.text === "string" ? body.text : "";
-    const out = translate(text);
-    return c.json({ text: out });
+    const source = typeof body?.source === "string" ? body.source : undefined;
+    const target = typeof body?.target === "string" ? body.target : undefined;
+    const out = await runTranslate({ text, source, target });
+    return c.json({ text: out, source: source ?? "en", target: target ?? "es" });
   });
 
   app.get("/health", (c) => c.json({ ok: true }));

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.worktrees
+.git
+.env
+**/.env
+coverage
+broadcast
+cache
+*.md
+.impeccable
+agent-transcripts

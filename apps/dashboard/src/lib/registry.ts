@@ -123,6 +123,34 @@ export async function readCurrentRoot(opts: {
   });
 }
 
+export async function readBinding(opts: {
+  rpcUrl: string;
+  registry: Address;
+  wallet: Address;
+  chain?: Chain;
+}): Promise<{
+  pkX: bigint;
+  pkY: bigint;
+  tier: number;
+  epoch: number;
+  exists: boolean;
+}> {
+  const client = publicClient(opts.rpcUrl, opts.chain);
+  const row = await client.readContract({
+    address: opts.registry,
+    abi: mandateRegistryAbi,
+    functionName: "bindings",
+    args: [opts.wallet],
+  });
+  return {
+    pkX: row[0],
+    pkY: row[1],
+    tier: Number(row[2]),
+    epoch: Number(row[3]),
+    exists: row[4],
+  };
+}
+
 export async function readLeafOf(opts: {
   rpcUrl: string;
   registry: Address;

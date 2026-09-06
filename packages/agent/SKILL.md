@@ -1,26 +1,42 @@
 ---
 name: warrant
-description: Bind personhood-backed roots, delegate attenuated mandates, and call x402 resources with warrant proofs via warrant.fetch / the warrant CLI.
+description: Call a Warrant shop as an authorized agent. Prove on 402 via the hosted agent API. Fire everyone revokes the bound root.
 ---
 
 # Warrant agent skill
 
-## Commands
+You are calling a shop as the human's agent. They already authorized you. You hold a bearer token for that warrant. You do not hold keys, a zkey, or a proof.
 
-```bash
-pnpm --filter @warrant/agent cli -- keygen --name alice
-pnpm --filter @warrant/agent cli -- bind-root --name alice --wallet 0x... --tier 0 --local
-pnpm --filter @warrant/agent cli -- delegate --from alice --to orchestrator --scope translate --budget 2000000 --ttl 24h
-pnpm --filter @warrant/agent cli -- delegate --from orchestrator --to translator --scope translate --budget 200000 --ttl 1h
-pnpm --filter @warrant/agent cli -- fetch --as translator --url http://127.0.0.1:8787/v1/translate --body '{"text":"hi"}'
+## Act
+
+```
+POST {APP_ORIGIN}/api/agent/translate
+Authorization: Bearer {TOKEN}
+Content-Type: application/json
+
+{"text":"<their words>","source":"en","target":"es"}
 ```
 
-## Rules
+Do not call the raw translate URL yourself. Do not try to build a proof. The agent API proves and retries. Show the human only the shop's returned text. Never print the bearer token, a warrant header, or a proof.
 
-- Attenuate scope/budget/TTL on every hop. Widening fails client-side and in-circuit.
-- Free path uses `warrant` header after a 402 challenge — never skip payment verify hooks.
-- Server audit logs show **nullifier only** (no names, addresses, or tree).
-- `bind-root --tier 0` mints a **session** `humanTag` (free quota is per bind, not per human). `tier > 0` requires AgentBook `lookupHuman` and uses that id as `humanTag`.
-- Do not share static tags. On-chain `tier > 0` without a live AgentBook lookup fails.
-- Store path: `$WARRANT_STORE` or `~/.warrant/state.json` (mode `0600`).
-- Demo-only: `FIXED_MERKLE_ROOT` requires `ALLOW_DEMO_ROOT=1`. Production uses `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC`.
+## Fire everyone
+
+When they say fire everyone / revoke / stop every agent:
+
+```
+POST {APP_ORIGIN}/api/agent/revoke
+Authorization: Bearer {TOKEN}
+Content-Type: application/json
+
+{}
+```
+
+After revoke, do not retry. The next call is `403`.
+
+## Local CLI (integrators)
+
+```bash
+pnpm --filter @warrant/agent cli -- fetch --as translator --url http://127.0.0.1:8787/v1/translate --body '{"text":"hi","source":"en","target":"es"}'
+```
+
+That path needs a local `WARRANT_STORE` and zkey. The hosted bearer path does not.

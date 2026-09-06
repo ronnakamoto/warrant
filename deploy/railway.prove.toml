@@ -1,0 +1,12 @@
+# Railway service: prove worker. Volume-mount Groth16 artifacts.
+# Required env: see docs/10-hosted-product.md §15.
+# Set PROVE_ALLOWED_ORIGINS to the dashboard origin.
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "pnpm --filter @warrant/prove start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

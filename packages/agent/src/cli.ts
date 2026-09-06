@@ -13,6 +13,7 @@ import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { createSnarkjsProver } from "./prover.js";
 import { warrantFetch } from "./fetch.js";
 import { personhoodFromEnv } from "./personhood.js";
+import { loadGraphStatus } from "./graph.js";
 import { readBinding } from "./sync-root.js";
 import {
   appendLeaf,
@@ -40,8 +41,10 @@ Usage:
   warrant delegate --from <id> --to <id> --scope translate[,fetch] --budget <n> --ttl <1h>
   warrant prove --as <id> --nonce <n> --merkle-root <n> --path <p> [--amount] [--pay-to] [--body-hash]
   warrant fetch --as <id> --url <url> [--body <json>]
+  warrant graph-status
 
 Store: $WARRANT_STORE (default ~/.warrant/state.json)
+Graph: GRAPH_API_KEY + GRAPH_WARRANT_QUERY_URL (Studio); Agent0 is composed automatically.
 `);
   process.exit(2);
 }
@@ -383,6 +386,9 @@ async function main(): Promise<void> {
       break;
     case "fetch":
       await cmdFetch(rest);
+      break;
+    case "graph-status":
+      console.log(JSON.stringify(await loadGraphStatus(), null, 2));
       break;
     default:
       console.error(`unknown command: ${cmd}`);

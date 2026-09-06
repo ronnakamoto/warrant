@@ -10,9 +10,11 @@ export type MirrorPanelProps = {
   mirrorJson: string;
   /** Empty: drop zone first. Loaded: tucked “Load a different list”. */
   expanded?: boolean;
+  graphBusy?: boolean;
   onMirrorJson: (v: string) => void;
   onImport: () => void;
   onLoadText: (raw: string) => void;
+  onLoadGraph: () => void;
 };
 
 function PasteForm(props: {
@@ -97,12 +99,12 @@ export function MirrorPanel(props: MirrorPanelProps) {
       <VStack gap={4}>
         <Heading level={2}>Start here</Heading>
         <Text type="body">
-          This page stops every agent you delegated. First it needs the list of
-          who that is.
+          This page stops every agent you delegated. It loads who that is from
+          The Graph (live Base Sepolia index), then talks to the registry.
         </Text>
         <VStack gap={1}>
           <Text type="supporting" color="secondary">
-            1. Open dashboard-mirror.json from your agent store
+            1. Load the live list from The Graph
           </Text>
           <Text type="supporting" color="secondary">
             2. Confirm they’re still live on Base Sepolia
@@ -111,7 +113,22 @@ export function MirrorPanel(props: MirrorPanelProps) {
             3. Revoke to cut them off
           </Text>
         </VStack>
-        {drop}
+        <Button
+          label={props.graphBusy ? "Loading from The Graph…" : "Load live list from The Graph"}
+          variant="primary"
+          onClick={props.onLoadGraph}
+        />
+        <details>
+          <summary
+            style={{
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Use a local file instead
+          </summary>
+          {drop}
+        </details>
         <details>
           <summary
             style={{
@@ -122,11 +139,9 @@ export function MirrorPanel(props: MirrorPanelProps) {
             What is this file?
           </summary>
           <Text type="supporting" color="secondary">
-            After `warrant bind-root` and `warrant delegate`, the CLI saves a
-            JSON snapshot next to your store (often
-            dashboard-mirror.json). This page never talks to the agents
-            themselves — it only reads that snapshot, then talks to the
-            registry on Base Sepolia.
+            The Graph indexes MandateRegistry Bound/Revoked. Baby Jubjub keys
+            are read from the contract so revoke can rebuild the Merkle path.
+            A local dashboard-mirror.json is only a fallback.
           </Text>
         </details>
         <details>
@@ -160,6 +175,11 @@ export function MirrorPanel(props: MirrorPanelProps) {
         Load a different list
       </summary>
       <VStack gap={3}>
+        <Button
+          label={props.graphBusy ? "Loading from The Graph…" : "Reload from The Graph"}
+          variant="primary"
+          onClick={props.onLoadGraph}
+        />
         {drop}
         <PasteForm
           mirrorJson={props.mirrorJson}

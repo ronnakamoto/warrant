@@ -46,7 +46,9 @@ export type BindRootArgs = {
   chain?: Chain;
 };
 
-export async function bindRootOnChain(args: BindRootArgs): Promise<{ leaf: bigint; root: bigint }> {
+export async function bindRootOnChain(
+  args: BindRootArgs,
+): Promise<{ leaf: bigint; root: bigint; txHash: Hex }> {
   const account: Account = privateKeyToAccount(args.privateKey);
   const chain = args.chain ?? baseSepolia;
   const wallet = createWalletClient({
@@ -79,7 +81,7 @@ export async function bindRootOnChain(args: BindRootArgs): Promise<{ leaf: bigin
     throw new Error("bindRoot succeeded but currentRoot is still 0");
   }
 
-  return { leaf: 0n, root };
+  return { leaf: 0n, root, txHash: hash };
 }
 
 export async function readCurrentRoot(opts: {

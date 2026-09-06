@@ -25,6 +25,7 @@ spikes/**/*.log
 # Isolated git worktrees
 .worktrees/
 .superpowers/
+docs/superpowers/
 
 # Circom / snarkjs build
 circuits/build/

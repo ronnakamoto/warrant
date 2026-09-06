@@ -79,6 +79,18 @@ const RULES = [
     from: "apps/dashboard",
     forbid: ["snarkjs", "circomlib*", "spikes/", "circuits/"],
   },
+  {
+    from: "services/prove",
+    forbid: [
+      "@x402/",
+      "@hiero-ledger/",
+      "next",
+      "services/translate",
+      "spikes/",
+      "circuits/",
+      "contracts/",
+    ],
+  },
   // Tree isolation: packages / apps / services must not import circuits or contracts.
   { from: "packages", forbid: ["circuits/", "contracts/"] },
   { from: "apps", forbid: ["circuits/", "contracts/"] },
@@ -86,6 +98,7 @@ const RULES = [
   // Circuits and contracts must not pull from packages or each other (TS).
   { from: "circuits", forbid: ["packages/", "contracts/"] },
   { from: "contracts", forbid: ["packages/", "circuits/"] },
+  { from: "subgraphs", forbid: ["packages/", "apps/", "services/"] },
 ];
 
 const PRODUCT_PREFIXES = ["packages/", "apps/", "services/", "scripts/"];
@@ -236,6 +249,7 @@ const scanRoots = [
   "contracts",
   "circuits",
   "deployments",
+  "subgraphs",
 ];
 
 for (const root of scanRoots) {

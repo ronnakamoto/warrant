@@ -1,0 +1,11 @@
+# Railway service: translate. Set root directory to repo root, use this start command.
+# Required env: see docs/10-hosted-product.md §15.
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "pnpm --filter @warrant/translate start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Warrant — revoke",
-  description: "Revoke your Warrant root. Every agent that proves with it stops.",
+  title: "Warrant",
+  description: "Your agent can act. The API never learns who you are.",
 };
 
 export default function RootLayout({

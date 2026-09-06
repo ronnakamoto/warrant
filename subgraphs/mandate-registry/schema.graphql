@@ -1,0 +1,29 @@
+type Registry @entity(immutable: false) {
+  id: ID!
+  currentRoot: BigInt!
+  size: BigInt!
+  updatedAt: BigInt!
+}
+
+type Binding @entity(immutable: false) {
+  id: ID!
+  wallet: Bytes!
+  leaf: BigInt!
+  tier: Int!
+  epoch: Int!
+  index: BigInt!
+  revokedOnce: Boolean!
+  boundAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type RevokeEvent @entity(immutable: true) {
+  id: ID!
+  wallet: Bytes!
+  oldLeaf: BigInt!
+  newLeaf: BigInt!
+  root: BigInt!
+  epoch: Int!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
