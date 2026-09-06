@@ -5,7 +5,7 @@ Zero-knowledge chains of custody for AI agents.
 **Product:** [https://app.example](https://app.example) — authorize the bot you already have. It calls `https://translate.example/v1/translate`. *Fire everyone* and the next call is refused. The API never learns your name.
 
 ```
-Call the Warrant translate API as my agent. If it asks for a warrant, prove and retry. Do not show me the proof.
+Call the Warrant translate API as my agent. Warrant will prove for you. Warrant sees the witness. The shop sees a nullifier. Do not show me the proof.
 ```
 
 A human delegates authority to an agent; that agent may delegate a narrower mandate to a sub-agent. The leaf agent proves to an API, contract, or peer that it acts under a real, unique human — within scope, within budget, and not revoked — without revealing who the human is or which agents sit in the chain. Verification is a constant-size proof, checked by an `x402` server or on-chain. Revoking the root invalidates the entire tree.

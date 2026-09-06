@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { agentPrompt, GUEST_COPY } from "../src/lib/guest-copy.ts";
+import { agentPrompt, GUEST_COPY, remainingLife } from "../src/lib/guest-copy.ts";
 import {
   guestCookie,
   deskCookie,
@@ -118,6 +118,29 @@ describe("guest first-run copy", function () {
     assert.equal(hdrs["x-warrant-client-ip"], "203.0.113.9");
     assert.equal(hdrs["x-warrant-dashboard-origin"], "https://app.example");
     assert.equal(clientIpFromRequest(req), "203.0.113.9");
+  });
+
+  it("tells the bot that Warrant sees the witness and the shop does not", function () {
+    const skill = agentPrompt("https://app.example", "tok_live_abc");
+    assert.match(skill, /Warrant will prove for you/);
+    assert.match(skill, /witness/i);
+    assert.match(skill, /nullifier/i);
+    assert.equal(/fire every warrant on my desk/i.test(skill), false);
+    assert.equal(skill.includes('"all":true'), false);
+    assert.equal(/merkle|Groth16|zkey|Baby Jubjub/i.test(skill), false);
+  });
+
+  it("names fire verbs without protocol words", function () {
+    const words = `${GUEST_COPY.fireThis} ${GUEST_COPY.fireEvery} ${GUEST_COPY.fireOne} ${GUEST_COPY.helperFoot}`;
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "deskId"]) {
+      assert.equal(words.includes(banned), false, banned);
+    }
+  });
+
+  it("speaks remaining life in minutes", function () {
+    assert.equal(remainingLife(29 * 60 * 1000), "29 minutes left");
+    assert.equal(remainingLife(40_000), "Less than a minute left");
+    assert.equal(remainingLife(0), "This warrant has expired");
   });
 
   it("reads a warrant challenge from the payment-required header", function () {
