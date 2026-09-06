@@ -80,7 +80,9 @@ export function TreePanel(props: TreePanelProps) {
   if (props.members.length === 0) return null;
 
   const keyLabel = primary
-    ? `Key for ${who} (${shortWallet(primary.wallet)}) — stays in this browser`
+    ? who && who !== shortWallet(primary.wallet)
+      ? `Key for ${who} (${shortWallet(primary.wallet)}) — stays in this browser`
+      : `Key for ${shortWallet(primary.wallet)} — stays in this browser`
     : "Wallet key (stays in this browser)";
 
   return (

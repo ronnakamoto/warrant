@@ -2,6 +2,12 @@
 
 Zero-knowledge chains of custody for AI agents.
 
+**Product:** [https://app.example](https://app.example) — authorize the bot you already have. It calls `https://translate.example/v1/translate`. *Fire everyone* and the next call is refused. The API never learns your name.
+
+```
+Call the Warrant translate API as my agent. If it asks for a warrant, prove and retry. Do not show me the proof.
+```
+
 A human delegates authority to an agent; that agent may delegate a narrower mandate to a sub-agent. The leaf agent proves to an API, contract, or peer that it acts under a real, unique human — within scope, within budget, and not revoked — without revealing who the human is or which agents sit in the chain. Verification is a constant-size proof, checked by an `x402` server or on-chain. Revoking the root invalidates the entire tree.
 
 Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World AgentKit, Agent Passport) expose the chain. PSE’s May 2026 *ACTA* proposal lists privacy-preserving recursive delegation as an open problem. Warrant addresses that gap with Semaphore-class ZK (EdDSA-Poseidon over Baby Jubjub, Groth16), World ID AgentBook roots (or documented `tier=0` demo), and x402 settlement on Hedera via Blocky402.
@@ -26,6 +32,17 @@ Existing agent-delegation systems (IETF AIP/Biscuit, MetaMask ERC-7710, World Ag
 | 8 | ENSv2 namespaces | **Skipped** (solo path) |
 | 9 | Runnable README + partner feedback | Done |
 | 10 | End-to-end definition of done | Done (`pnpm dod`) |
+
+## Local hosted product (Door 1 on live testnets)
+
+Three processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.example` (`PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GRAPH_WARRANT_QUERY_URL`, `WARRANT_VKEY_PATH`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=3`). Then:
+
+```bash
+./scripts/hosted-dev.sh
+# open http://127.0.0.1:3001  — Authorize my agent
+```
+
+Public hosts: Vercel (dashboard) + Railway/Fly (translate + prove). Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host.
 
 ## Quick start (local paid-path smoke)
 
@@ -186,6 +203,9 @@ flowchart LR
   X402 -->|exhausted| Pay[Blocky402 exact HBAR]
   Human -->|revoke epoch| Reg[MandateRegistry]
   Reg -->|currentRoot| X402
+  Reg -->|Bound/Revoked| G[Studio subgraph]
+  G -->|live list| Dash[Dashboard]
+  A0[Agent0 ERC-8004 subgraph] -->|owner join| Dash
 ```
 
 Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md).
@@ -207,6 +227,7 @@ Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/0
 | [`FEEDBACK_HEDERA.md`](FEEDBACK_HEDERA.md) | Hedera / Blocky402 / HCS notes |
 | [`FEEDBACK_WORLD.md`](FEEDBACK_WORLD.md) | World / AgentBook / tier notes |
 | [`FEEDBACK_ENS.md`](FEEDBACK_ENS.md) | ENSv2 skipped (solo) |
+| [`FEEDBACK_GRAPH.md`](FEEDBACK_GRAPH.md) | Subgraph Studio + Agent0 (ERC-8004) |
 
 ## Properties
 
@@ -226,6 +247,7 @@ packages/agent     CLI, warrant.fetch, demo session
 services/translate Hono resource server + HCS sink
 apps/dashboard     Revoke UI (no snarkjs)
 scripts/           Boundaries, ceremony, zkey download
+subgraphs/         MandateRegistry → Subgraph Studio (Base Sepolia)
 ```
 
 Smell gate (every WP):

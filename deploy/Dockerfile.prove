@@ -1,0 +1,20 @@
+# Isolated prove worker. Build from the monorepo root.
+# Mount or copy Groth16 artifacts (wasm + zkey). download-zkey.sh fetches zkey/vkey.
+#   docker build -f deploy/Dockerfile.prove -t warrant-prove .
+FROM node:22-bookworm-slim
+WORKDIR /app
+RUN corepack enable && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/core ./packages/core
+COPY packages/agent ./packages/agent
+COPY services/prove ./services/prove
+COPY scripts/download-zkey.sh ./scripts/download-zkey.sh
+COPY circuits ./circuits
+RUN pnpm install --frozen-lockfile --filter @warrant/prove... \
+  && bash scripts/download-zkey.sh
+ENV PROVE_PORT=8788
+ENV NODE_ENV=production
+ENV WARRANT_STRICT_PROD=1
+EXPOSE 8788
+CMD ["pnpm", "--filter", "@warrant/prove", "start"]

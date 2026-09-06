@@ -12,7 +12,7 @@ If a change violates a rule here, it is a defect even if the demo still works. P
 2. **Crypto is behind ports.** Swapping Groth16 for Honk is an `IVerifier` impl, not a rewrite of x402.
 3. **Generated artifacts are frozen.** Circom output and `WarrantVerifier.sol` are not edited by hand.
 4. **Spike JS is radioactive.** Copy measurements and API *shapes*. Never `import` from `spikes/`.
-5. **YAGNI.** No Noir stub, no Graph, no mid-tree revoke, no generic plugin framework. One extra hop, one extra public input, or one extra package is a defect.
+5. **YAGNI.** No Noir stub, no mid-tree revoke, no generic plugin framework. One extra hop, one extra public input, or one extra package is a defect. **The Graph is in:** `subgraphs/mandate-registry` (Studio) plus live Agent0 queries — dashboard/CLI data plane, not a second mandate model.
 
 ---
 
@@ -32,6 +32,8 @@ packages/x402                 # ResourceServerExtension + hooks. Depends on core
 packages/agent                # CLI + warrant.fetch. Depends on core + @x402/fetch.
 apps/dashboard                # Next.js + Astryx runtime, Carbon design language. UI only.
 services/translate            # Hono composition root. Wires x402 + Hedera + HCS.
+services/prove                # Isolated guest IProver. No x402, no Hedera, no Next.
+subgraphs/mandate-registry    # Studio subgraph. No TS runtime imports from packages/.
 deployments/                  # JSON addresses. No logic.
 scripts/                      # compile-circuit, setup-groth16, download-zkey, check-boundaries.
 spikes/                       # research only. Not a workspace package. Not imported.
@@ -78,7 +80,7 @@ This package is allowed to know Hono, Blocky402, Hedera, and HCS. **Nothing else
 src/main.ts              # read env, construct adapters, listen
 src/app.ts               # Hono routes. Calls use-cases, not snarkjs
 src/wiring.ts            # SnarkjsVerifier, CurrentRootChecker, MemoryNullifiers, HcsSink
-src/translate.ts         # string reverse / tiny dictionary — the actual resource
+src/translate.ts         # MyMemory translator — the actual resource (injectable)
 src/hcs.ts               # submit {nullifier, scope, tier, txId} after success
 ```
 
@@ -392,7 +394,7 @@ Solo schedule in 05 still applies: skip WP8, shrink the dashboard, do not skip t
 // services/translate/src/wiring.ts — allowed to be ugly. Everywhere else is not.
 const verifier = new SnarkjsVerifier({ vkeyPath, wasmCache: true });
 const roots = new CurrentRootChecker({ rpc: BASE_SEPOLIA_RPC, address: REGISTRY });
-const nullifiers = new MemoryNullifierStore();
+const nullifiers = new FileNullifierStore(process.env.WARRANT_NULLIFIER_PATH);
 const pipeline = createWarrantPipeline({
   verifier,
   roots,

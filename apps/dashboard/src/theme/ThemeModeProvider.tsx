@@ -50,11 +50,19 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggle = useCallback(() => {
-    setMode((m) => (m === "light" ? "dark" : "light"));
-  }, [setMode]);
+    setModeState((m) => {
+      const next = m === "light" ? "dark" : "light";
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
   const value = useMemo(
     () => ({ mode, setMode, toggle }),
-    [mode, toggle],
+    [mode, setMode, toggle],
   );
 
   return (

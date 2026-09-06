@@ -43,7 +43,7 @@ export function treeStatus(
     return {
       kind: "empty",
       title: "No one loaded yet",
-      detail: "Open the list your agent app already saved — then you can stop them.",
+      detail: "Load the live list from The Graph — then you can stop them.",
     };
   }
   if (!chainRoot || chainRoot === "—") {
@@ -83,6 +83,12 @@ export function friendlyError(raw: string): string {
   }
   if (/valid MandateRegistry/i.test(msg)) {
     return "Open Network settings and set the registry address first.";
+  }
+  if (/GRAPH_API_KEY/i.test(msg)) {
+    return "Add a Subgraph Studio API key to .env (GRAPH_API_KEY).";
+  }
+  if (/GRAPH_WARRANT_QUERY_URL|GRAPH_WARRANT_SUBGRAPH_ID/i.test(msg)) {
+    return "Deploy subgraphs/mandate-registry to Studio and set GRAPH_WARRANT_QUERY_URL.";
   }
   return msg;
 }

@@ -12,6 +12,15 @@ import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { Heading, Text } from "@astryxdesign/core/Text";
 import { hashLeaf } from "../lib/leaf";
 import {
+  AGENT0_RECENT_QUERY,
+  WARRANT_MIRROR_QUERY,
+  countAgent0Overlap,
+  expectedLeafByWallet,
+  rowFromOnchain,
+  type Agent0GraphData,
+  type WarrantGraphData,
+} from "../lib/graph";
+import {
   emptyMirror,
   formatMirrorJson,
   loadMirror,
@@ -22,8 +31,10 @@ import {
 import { friendlyError, rootsMatch, shortRoot, treeStatus } from "../lib/status";
 import {
   explorerAddressUrl,
+  explorerTxUrl,
   logFromRevoke,
   preflightRevoke,
+  readBinding,
   readCurrentRoot,
   revokeOnChain,
   type VerifierLogEntry,
@@ -35,12 +46,14 @@ import { MirrorPanel } from "./MirrorPanel";
 import { TreePanel } from "./TreePanel";
 import { VerifierLogPanel } from "./VerifierLogPanel";
 
-type BusyAction = null | "refresh" | "revoke";
+type BusyAction = null | "refresh" | "revoke" | "graph";
 
-export function Dashboard() {
+export function Dashboard({ embedded = false }: { embedded?: boolean }) {
   const defaultRpc =
     process.env.NEXT_PUBLIC_RPC_URL ?? "https://sepolia.base.org";
-  const defaultRegistry = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ?? "";
+  const defaultRegistry =
+    process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ??
+    "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89";
 
   const [rpcUrl, setRpcUrl] = useState(defaultRpc);
   const [registry, setRegistry] = useState(defaultRegistry);
@@ -125,6 +138,101 @@ export function Dashboard() {
   const onImportMirror = useCallback(() => {
     loadFromText(mirrorJson);
   }, [loadFromText, mirrorJson]);
+
+  const onLoadGraph = useCallback(async () => {
+    setError(null);
+    if (!isAddress(registry)) {
+      setError(friendlyError("Set a valid MandateRegistry address"));
+      return;
+    }
+    const gen = ++refreshGen.current;
+    setBusy("graph");
+    try {
+      const warrantRes = await fetch("/api/graph", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ source: "warrant", query: WARRANT_MIRROR_QUERY }),
+      });
+      const warrantJson = (await warrantRes.json()) as {
+        data?: WarrantGraphData;
+        error?: string;
+        errors?: unknown;
+      };
+      if (!warrantRes.ok || warrantJson.error || warrantJson.errors || !warrantJson.data) {
+        throw new Error(
+          warrantJson.error ?? JSON.stringify(warrantJson.errors ?? "Graph query failed"),
+        );
+      }
+
+      let agent0: Agent0GraphData = { agents: [] };
+      try {
+        const agent0Res = await fetch("/api/graph", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ source: "agent0", query: AGENT0_RECENT_QUERY }),
+        });
+        const agent0Json = (await agent0Res.json()) as { data?: Agent0GraphData };
+        if (agent0Res.ok && agent0Json.data) agent0 = agent0Json.data;
+      } catch {
+        /* Agent0 is composition, not required to revoke */
+      }
+
+      if (gen !== refreshGen.current) return;
+
+      const data = warrantJson.data;
+      const expectLeaf = expectedLeafByWallet(data);
+      const bindings: MirrorDoc["bindings"] = [];
+      const members: string[] = [];
+      for (const node of data.bindings ?? []) {
+        const wallet = node.wallet.startsWith("0x") ? node.wallet : `0x${node.wallet}`;
+        if (!isAddress(wallet)) continue;
+        const onchain = await readBinding({
+          rpcUrl,
+          registry: registry as Address,
+          wallet: wallet as Address,
+        });
+        if (!onchain.exists) continue;
+        const leaf = hashLeaf(onchain.pkX, onchain.pkY, BigInt(onchain.tier), BigInt(onchain.epoch));
+        const expected = expectLeaf.get(wallet.toLowerCase());
+        if (expected && expected !== leaf.toString()) {
+          throw new Error(`Graph leaf drifted for ${wallet}`);
+        }
+        bindings.push(rowFromOnchain(wallet, onchain));
+        members.push(leaf.toString());
+      }
+
+      applyMirrorDoc({ members, bindings });
+      setChainRoot("");
+      const overlap = countAgent0Overlap(bindings, agent0.agents ?? []);
+      const revokes = data.revokeEvents?.length ?? 0;
+      pushLog({
+        id: `graph-${Date.now()}`,
+        at: new Date().toISOString(),
+        kind: "loaded",
+        message:
+          members.length === 0
+            ? "The Graph: no bound roots yet"
+            : `The Graph: ${members.length} bound root${members.length === 1 ? "" : "s"}` +
+              (overlap ? ` · ${overlap} also on Agent0 (ERC-8004)` : "") +
+              (revokes ? ` · ${revokes} revoke event${revokes === 1 ? "" : "s"}` : ""),
+      });
+      for (const ev of data.revokeEvents ?? []) {
+        const tx = ev.txHash.startsWith("0x") ? ev.txHash : `0x${ev.txHash}`;
+        pushLog({
+          id: ev.id,
+          at: new Date(Number(ev.timestamp) * 1000).toISOString(),
+          kind: "revoked",
+          message: `Indexed revoke · epoch ${ev.epoch}`,
+          href: explorerTxUrl(tx as `0x${string}`),
+        });
+      }
+    } catch (e) {
+      if (gen !== refreshGen.current) return;
+      setError(friendlyError(e instanceof Error ? e.message : String(e)));
+    } finally {
+      if (gen === refreshGen.current) setBusy(null);
+    }
+  }, [applyMirrorDoc, pushLog, registry, rpcUrl]);
 
   const onRefreshRoot = useCallback(async () => {
     setError(null);
@@ -276,17 +384,9 @@ export function Dashboard() {
     rpcUrl,
   ]);
 
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-background-body)",
-        color: "var(--color-text-primary)",
-        padding: "var(--spacing-6)",
-      }}
-    >
-      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+  const body = (
         <VStack gap={5}>
+          {embedded ? null : (
           <div
             style={{
               display: "flex",
@@ -313,6 +413,7 @@ export function Dashboard() {
               />
             </HStack>
           </div>
+          )}
 
           {error ? (
             <Banner status="error" title="Can’t do that" description={error} />
@@ -344,9 +445,11 @@ export function Dashboard() {
           <MirrorPanel
             mirrorJson={mirrorJson}
             expanded={members.length === 0}
+            graphBusy={busy === "graph"}
             onMirrorJson={setMirrorJson}
             onImport={onImportMirror}
             onLoadText={loadFromText}
+            onLoadGraph={() => void onLoadGraph()}
           />
 
           {members.length > 0 ? <Divider /> : null}
@@ -363,8 +466,41 @@ export function Dashboard() {
 
           <VerifierLogPanel log={log} />
         </VStack>
-      </div>
+  );
 
+  if (embedded) {
+    return (
+      <>
+        {body}
+        {confirmOpen ? (
+          <AlertDialog
+            isOpen
+            onOpenChange={setConfirmOpen}
+            title={revokeWho ? `Revoke ${revokeWho}?` : "Revoke this root?"}
+            description="Every agent you delegated will be rejected. This cannot be undone."
+            cancelLabel="Cancel"
+            actionLabel="Revoke"
+            actionVariant="destructive"
+            isActionLoading={busy === "revoke"}
+            onAction={() => void runRevoke()}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "var(--color-background-body)",
+        color: "var(--color-text-primary)",
+        padding: "var(--spacing-6)",
+      }}
+    >
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
+        {body}
+      </div>
       {confirmOpen ? (
         <AlertDialog
           isOpen

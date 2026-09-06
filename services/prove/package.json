@@ -1,0 +1,24 @@
+{
+  "name": "@warrant/prove",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS='--import tsx' tsx src/main.ts",
+    "start": "NODE_OPTIONS='--import tsx' tsx src/main.ts",
+    "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 60000 --exit services/prove/test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "@warrant/agent": "workspace:*",
+    "@warrant/core": "workspace:*",
+    "@zk-kit/lean-imt": "2.2.5",
+    "hono": "^4.13.7",
+    "poseidon-lite": "^0.3.0",
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "mocha": "^10.8.2",
+    "tsx": "^4.20.5"
+  }
+}
