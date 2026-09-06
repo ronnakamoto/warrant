@@ -23,6 +23,7 @@ export type GuestSession = {
 
 export type SessionStore = {
   put(session: GuestSession): void;
+  has(id: string): boolean;
   get(id: string): GuestSession | undefined;
   delete(id: string): void;
   sweep(): string[];
@@ -69,6 +70,9 @@ export function createSessionStore(opts: {
   return {
     put(session) {
       map.set(session.id, session);
+    },
+    has(id) {
+      return map.has(id);
     },
     get(id) {
       const session = map.get(id);

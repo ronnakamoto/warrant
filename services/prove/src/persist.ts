@@ -28,9 +28,9 @@ export function createPersistedSessionStore(opts: {
       flush();
     },
     get(id) {
-      const before = inner.dump().length;
+      const existed = inner.has(id);
       const found = inner.get(id);
-      if (inner.dump().length !== before) flush();
+      if (existed && !found) flush();
       return found;
     },
     delete(id) {
