@@ -62,7 +62,7 @@ async function main(): Promise<void> {
     prover: createSnarkjsProver(),
   });
 
-  const port = Number(process.env.PROVE_PORT ?? 8788);
+  const port = Number(process.env.PORT ?? process.env.PROVE_PORT ?? 8788);
   const { serve } = await import("@hono/node-server");
   serve({ fetch: app.fetch, port });
   console.log(`prove listening on :${port}`);
