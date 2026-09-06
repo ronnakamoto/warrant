@@ -23,6 +23,11 @@ describe("guest first-run copy", function () {
     }
   });
 
+  it("does not put Registry in the land sentence", function () {
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
+    assert.equal(/Registry/i.test(land), false);
+  });
+
   it("is a warrant for an existing agent, not a hiring demo", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
     assert.equal(/Hire an agent/i.test(land), false);

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
-import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { VStack } from "@astryxdesign/core/Layout";
 import { Heading, Text } from "@astryxdesign/core/Text";
-import { agentPrompt, GUEST_COPY } from "../lib/guest-copy";
+import { agentPrompt, GUEST_COPY, remainingLife } from "../lib/guest-copy";
 
 type Phase = "land" | "minting" | "ready" | "calling" | "done" | "revoked" | "quota" | "limited";
+type WarrantView = { id: string; status: "live" | "fired"; createdAt: number; remainingMs: number };
 
 const fieldStyle = {
   width: "100%",
@@ -25,24 +26,126 @@ const fieldStyle = {
   overflowWrap: "anywhere",
 } as const;
 
+const wrapRow = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "var(--spacing-2)",
+} as const;
+
+function isLive(w: WarrantView): boolean {
+  return w.status === "live" && w.remainingMs > 0;
+}
+
+function latestLive(warrants: WarrantView[]): WarrantView | undefined {
+  return warrants.filter(isLive).sort((a, b) => b.createdAt - a.createdAt)[0];
+}
+
+function idTail(id: string): string {
+  return id.length <= 4 ? id : `…${id.slice(-4)}`;
+}
+
+async function confirmShopDead(text: string): Promise<boolean> {
+  const denied = await fetch("/api/guest/translate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text, source: "en", target: "es" }),
+  });
+  return denied.status !== 200;
+}
+
 export function GuestTry() {
   const [phase, setPhase] = useState<Phase>("land");
+  const [warrants, setWarrants] = useState<WarrantView[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cookieSessionId, setCookieSessionId] = useState<string | null>(null);
   const [text, setText] = useState("Good morning.");
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nullifier, setNullifier] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [origin, setOrigin] = useState("http://127.0.0.1:3001");
+
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  const selected = warrants.find((w) => w.id === selectedId);
+  const liveWarrants = warrants.filter(isLive);
+  const token = selected && isLive(selected) ? selected.id : null;
   const prompt = token ? agentPrompt(origin, token) : "";
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
+
+  const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
+    setWarrants(list);
+    const pick =
+      (preferId ? list.find((w) => w.id === preferId && isLive(w)) : undefined) ?? latestLive(list);
+    if (pick) {
+      setSelectedId(pick.id);
+      return pick;
+    }
+    setSelectedId(null);
+    return undefined;
+  }, []);
+
+  const refreshWarrants = useCallback(
+    async (preferId?: string | null): Promise<WarrantView[]> => {
+      const res = await fetch("/api/guest/warrants");
+      if (res.status === 401) {
+        applyList([]);
+        return [];
+      }
+      const body = (await res.json().catch(() => ({}))) as { warrants?: WarrantView[] };
+      const list = Array.isArray(body.warrants) ? body.warrants : [];
+      applyList(list, preferId);
+      return list;
+    },
+    [applyList],
+  );
+
+  useEffect(() => {
+    void (async () => {
+      const list = await refreshWarrants();
+      const live = latestLive(list);
+      if (live) {
+        setCookieSessionId(live.id);
+        setPhase("ready");
+        return;
+      }
+      setPhase(list.some((w) => w.status === "fired") ? "revoked" : "land");
+    })();
+  }, [refreshWarrants]);
+
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      setWarrants((prev) => prev.map((w) => ({ ...w, remainingMs: w.remainingMs - 30_000 })));
+    }, 30_000);
+    return () => window.clearInterval(tick);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const current = warrants.find((w) => w.id === selectedId);
+    if (current && isLive(current)) return;
+    const next = latestLive(warrants);
+    if (next) {
+      setSelectedId(next.id);
+      return;
+    }
+    setSelectedId(null);
+    setResult(null);
+    setNullifier(null);
+    setNotice(null);
+    if (phase === "minting" || phase === "limited" || phase === "revoked") return;
+    setPhase("land");
+  }, [warrants, selectedId, phase]);
 
   async function authorize() {
     setError(null);
     setCopied(false);
+    setNotice(null);
+    setResult(null);
+    setNullifier(null);
     setPhase("minting");
     const res = await fetch("/api/guest", { method: "POST" });
     if (res.status === 429) {
@@ -52,15 +155,25 @@ export function GuestTry() {
     const body = (await res.json().catch(() => ({}))) as { error?: string; token?: string };
     if (!res.ok) {
       setError(body.error ?? GUEST_COPY.hostError);
-      setPhase("land");
+      setPhase(liveWarrants.length > 0 ? "ready" : "land");
       return;
     }
     if (typeof body.token !== "string" || body.token.length === 0) {
       setError(GUEST_COPY.hostError);
-      setPhase("land");
+      setPhase(liveWarrants.length > 0 ? "ready" : "land");
       return;
     }
-    setToken(body.token);
+    setCookieSessionId(body.token);
+    const list = await refreshWarrants(body.token);
+    if (!list.some((w) => w.id === body.token)) {
+      applyList(
+        [
+          ...list,
+          { id: body.token, status: "live", createdAt: Date.now(), remainingMs: 1_800_000 },
+        ],
+        body.token,
+      );
+    }
     setPhase("ready");
   }
 
@@ -83,6 +196,13 @@ export function GuestTry() {
       return;
     }
     if (res.status === 403) {
+      const list = await refreshWarrants();
+      setResult(null);
+      setNullifier(null);
+      if (latestLive(list)) {
+        setPhase("ready");
+        return;
+      }
       setPhase("revoked");
       return;
     }
@@ -96,26 +216,70 @@ export function GuestTry() {
     setPhase("done");
   }
 
-  async function fireEveryone() {
+  async function fireThis() {
+    if (!selectedId) return;
     setError(null);
-    const res = await fetch("/api/guest/revoke", { method: "POST" });
+    const res = await fetch("/api/guest/revoke", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: selectedId }),
+    });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       setError(body.error ?? GUEST_COPY.hostError);
       return;
     }
-    const denied = await fetch("/api/guest/translate", {
+    if (cookieSessionId === selectedId) {
+      const dead = await confirmShopDead(text);
+      if (!dead) {
+        setError(GUEST_COPY.revokeFailed);
+        setPhase("done");
+        return;
+      }
+    }
+    const list = await refreshWarrants();
+    const remaining = list.filter(isLive);
+    setResult(null);
+    setNullifier(null);
+    setCopied(false);
+    if (remaining.length > 0) {
+      const next = latestLive(remaining);
+      if (next) setSelectedId(next.id);
+      setNotice(GUEST_COPY.afterFireThis);
+      setPhase("ready");
+      return;
+    }
+    setNotice(null);
+    setSelectedId(null);
+    setPhase("revoked");
+  }
+
+  async function fireEvery() {
+    if (liveWarrants.length <= 1) return;
+    setError(null);
+    const res = await fetch("/api/guest/revoke", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, source: "en", target: "es" }),
+      body: JSON.stringify({ all: true }),
     });
-    if (denied.status === 200) {
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(body.error ?? GUEST_COPY.hostError);
+      return;
+    }
+    const dead = await confirmShopDead(text);
+    if (!dead) {
       setError(GUEST_COPY.revokeFailed);
       setPhase("done");
       return;
     }
-    setPhase("revoked");
+    await refreshWarrants();
     setResult(null);
+    setNullifier(null);
+    setCopied(false);
+    setNotice(null);
+    setSelectedId(null);
+    setPhase("revoked");
   }
 
   async function copyPrompt() {
@@ -128,7 +292,8 @@ export function GuestTry() {
   }
 
   const busy = phase === "minting" || phase === "calling";
-  const live = phase === "ready" || phase === "calling" || phase === "done";
+  const live =
+    token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
 
   return (
     <VStack gap={5}>
@@ -158,8 +323,27 @@ export function GuestTry() {
 
       {live ? (
         <VStack gap={4}>
+          {notice ? <Banner status="success" title={notice} /> : null}
           <VStack gap={2}>
             <Text>{GUEST_COPY.authorized}</Text>
+            {liveWarrants.length > 1 ? (
+              <div style={wrapRow}>
+                {liveWarrants.map((w) => (
+                  <Button
+                    key={w.id}
+                    size="sm"
+                    variant={w.id === selectedId ? "primary" : "secondary"}
+                    label={idTail(w.id)}
+                    onClick={() => {
+                      setSelectedId(w.id);
+                      setCopied(false);
+                      setResult(null);
+                      setNullifier(null);
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
             <Text type="supporting" color="secondary">
               {GUEST_COPY.promptLead}
             </Text>
@@ -183,19 +367,40 @@ export function GuestTry() {
             >
               {prompt}
             </pre>
-            <HStack gap={2}>
+            {selected ? (
+              <Text type="supporting" color="secondary">
+                {remainingLife(selected.remainingMs)}
+              </Text>
+            ) : null}
+            <div style={wrapRow}>
               <Button
                 label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
                 variant="secondary"
                 onClick={() => void copyPrompt()}
               />
               <Button
-                label={GUEST_COPY.revoke}
-                variant="secondary"
-                onClick={() => void fireEveryone()}
+                label={liveWarrants.length > 1 ? GUEST_COPY.fireThis : GUEST_COPY.fireOne}
+                variant="destructive"
+                onClick={() => void fireThis()}
                 isDisabled={busy}
               />
-            </HStack>
+            </div>
+            {liveWarrants.length > 1 ? (
+              <Button
+                label={GUEST_COPY.fireEvery}
+                variant="destructive"
+                onClick={() => void fireEvery()}
+                isDisabled={busy}
+              />
+            ) : null}
+            <div style={wrapRow}>
+              <Button
+                label={GUEST_COPY.again}
+                variant="secondary"
+                onClick={() => void authorize()}
+                isDisabled={busy}
+              />
+            </div>
           </VStack>
 
           <VStack gap={2}>
@@ -238,17 +443,7 @@ export function GuestTry() {
       {phase === "revoked" ? (
         <VStack gap={3}>
           <Banner status="success" title={GUEST_COPY.afterRevoke} />
-          <Button
-            label={GUEST_COPY.again}
-            onClick={() => {
-              setPhase("land");
-              setResult(null);
-              setNullifier(null);
-              setError(null);
-              setCopied(false);
-              setToken(null);
-            }}
-          />
+          <Button label={GUEST_COPY.again} onClick={() => void authorize()} isDisabled={busy} />
         </VStack>
       ) : null}
     </VStack>
