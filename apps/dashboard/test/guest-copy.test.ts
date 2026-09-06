@@ -159,6 +159,12 @@ describe("guest first-run copy", function () {
     });
     assert.equal(fromList["x-warrant-dashboard-origin"], "https://app.example");
     assert.equal(fromList["x-warrant-dashboard-origin"]?.includes(","), false);
+
+    const fromUrl = proveForwardHeaders(
+      new Request("https://warrant-beta.vercel.app/api/agent/translate"),
+      {},
+    );
+    assert.equal(fromUrl["x-warrant-dashboard-origin"], "https://warrant-beta.vercel.app");
   });
 
   it("tells the bot that Warrant sees the witness and the shop does not", function () {

@@ -2,7 +2,16 @@ import { existsSync, statSync } from "node:fs";
 
 const DEMO_FLAGS = ["ALLOW_DEMO_VERIFY", "ALLOW_DEMO_ROOT", "FIXED_MERKLE_ROOT"] as const;
 
-const REQUIRED = ["WARRANT_VKEY_PATH", "REGISTRY_ADDRESS", "BASE_SEPOLIA_RPC"] as const;
+const REQUIRED = [
+  "WARRANT_VKEY_PATH",
+  "REGISTRY_ADDRESS",
+  "BASE_SEPOLIA_RPC",
+  "WARRANT_NULLIFIER_PATH",
+  "HEDERA_PAY_TO",
+  "HEDERA_ACCOUNT_ID",
+  "HEDERA_PRIVATE_KEY",
+  "HEDERA_TOPIC_ID",
+] as const;
 
 function isOn(value: string | undefined): boolean {
   if (value === undefined) return false;
@@ -27,11 +36,6 @@ export function assertProductionTranslateEnv(env: NodeJS.Dict<string>): void {
   const vkey = env.WARRANT_VKEY_PATH!;
   if (!existsSync(vkey) || !statSync(vkey).isFile()) {
     throw new Error(`prod-guard: vkey file missing at WARRANT_VKEY_PATH`);
-  }
-  const payTo = env.HEDERA_PAY_TO?.trim();
-  const account = env.HEDERA_ACCOUNT_ID?.trim();
-  if (payTo && account && payTo === account) {
-    throw new Error("prod-guard: HEDERA_PAY_TO must differ from HEDERA_ACCOUNT_ID");
   }
   if (isOn(env.WARRANT_GUEST_SPONSOR)) {
     throw new Error("prod-guard: WARRANT_GUEST_SPONSOR is forbidden on the public host");

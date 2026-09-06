@@ -6,6 +6,7 @@ import {
 } from "@hiero-ledger/sdk";
 import type { AuditEvent, HcsSink } from "./hcs.js";
 import { createLogHcsSink } from "./hcs.js";
+import { shouldEnforceStrictProd } from "./prod-guard.js";
 
 export type HederaHcsConfig = {
   accountId: string;
@@ -51,13 +52,16 @@ export function createHederaHcsSink(config: HederaHcsConfig): HcsSink {
   };
 }
 
-/** Prefer live HCS when keys present; otherwise log-only. */
+/** Live HCS when the trio is set. Public host must not fall back to log-only. */
 export function createHcsSinkFromEnv(env: NodeJS.ProcessEnv = process.env): HcsSink {
-  const accountId = env.HEDERA_ACCOUNT_ID;
-  const privateKey = env.HEDERA_PRIVATE_KEY;
-  const topicId = env.HEDERA_TOPIC_ID;
+  const accountId = env.HEDERA_ACCOUNT_ID?.trim();
+  const privateKey = env.HEDERA_PRIVATE_KEY?.trim();
+  const topicId = env.HEDERA_TOPIC_ID?.trim();
   if (accountId && privateKey && topicId) {
     return createHederaHcsSink({ accountId, privateKey, topicId });
+  }
+  if (shouldEnforceStrictProd(env)) {
+    throw new Error("prod-guard: HCS trio HEDERA_ACCOUNT_ID / HEDERA_PRIVATE_KEY / HEDERA_TOPIC_ID is required");
   }
   return createLogHcsSink();
 }

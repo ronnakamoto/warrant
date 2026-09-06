@@ -167,7 +167,8 @@ pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
 # Settle via Blocky402 (payer ≠ payTo)
 export WARRANT_PAY=1
-# HEDERA_PAY_TO must differ from HEDERA_ACCOUNT_ID (self-transfer → amount mismatch)
+# The guest/CLI payer must differ from HEDERA_PAY_TO (self-transfer → amount mismatch).
+# HCS operator (HEDERA_ACCOUNT_ID) may be the same account as the merchant.
 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 ```
 

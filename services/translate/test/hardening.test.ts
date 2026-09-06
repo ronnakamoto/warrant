@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bodyHashFromCanonical, bodyHashFromRaw } from "@warrant/core";
+import { FileChallengeStore, MemoryChallengeStore } from "../src/challenges.ts";
 import { FileNullifierStore } from "../src/nullifiers-file.ts";
 import {
   cachedRequestBody,
@@ -50,6 +51,29 @@ describe("FileNullifierStore", function () {
       ]);
       assert.equal(results.filter((r) => r === "granted").length, 1);
       assert.equal(results.filter((r) => r === "exhausted").length, 2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("challenge store", function () {
+  it("never resolves without an explicit nonce", function () {
+    const mem = new MemoryChallengeStore();
+    mem.put({ nonce: "n1", merkleRoot: "1", issuedAt: new Date().toISOString() });
+    assert.equal(mem.resolve(), undefined);
+    assert.equal(mem.resolve("n1")?.merkleRoot, "1");
+  });
+
+  it("persists a nonce across instances and drops last-issued guesses", function () {
+    const dir = mkdtempSync(join(tmpdir(), "warrant-ch-"));
+    const path = join(dir, "challenges.json");
+    try {
+      const a = new FileChallengeStore(path);
+      a.put({ nonce: "n1", merkleRoot: "9", issuedAt: new Date().toISOString() });
+      const b = new FileChallengeStore(path);
+      assert.equal(b.resolve(), undefined);
+      assert.equal(b.resolve("n1")?.merkleRoot, "9");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
