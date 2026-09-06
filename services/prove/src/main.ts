@@ -62,10 +62,15 @@ async function main(): Promise<void> {
     prover: createSnarkjsProver(),
   });
 
-  const port = Number(process.env.PORT ?? process.env.PROVE_PORT ?? 8788);
+  const ports = [...new Set(
+    [
+      Number(process.env.PORT ?? process.env.PROVE_PORT ?? 8788),
+      Number(process.env.PROVE_PORT ?? 8788),
+    ].filter((n) => Number.isFinite(n) && n > 0),
+  )];
   const { serve } = await import("@hono/node-server");
-  serve({ fetch: app.fetch, port });
-  console.log(`prove listening on :${port}`);
+  for (const port of ports) serve({ fetch: app.fetch, port });
+  console.log(`prove listening on :${ports.join(",")}`);
 }
 
 main().catch((err) => {
