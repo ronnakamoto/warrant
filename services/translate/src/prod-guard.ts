@@ -33,6 +33,9 @@ export function assertProductionTranslateEnv(env: NodeJS.Dict<string>): void {
   if (payTo && account && payTo === account) {
     throw new Error("prod-guard: HEDERA_PAY_TO must differ from HEDERA_ACCOUNT_ID");
   }
+  if (isOn(env.WARRANT_GUEST_SPONSOR)) {
+    throw new Error("prod-guard: WARRANT_GUEST_SPONSOR is forbidden on the public host");
+  }
 }
 
 export function shouldEnforceStrictProd(env: NodeJS.Dict<string> = process.env): boolean {

@@ -37,7 +37,7 @@ async function main(): Promise<void> {
     policy: {
       requireScope: TRANSLATE,
       minTier: Number(process.env.WARRANT_MIN_TIER ?? 0),
-      freeCallsPerHuman: Number(process.env.WARRANT_FREE_CALLS ?? 3),
+      freeCallsPerHuman: Number(process.env.WARRANT_FREE_CALLS ?? 0),
     },
   });
 

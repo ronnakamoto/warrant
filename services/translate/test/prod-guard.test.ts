@@ -69,6 +69,13 @@ describe("assertProductionTranslateEnv", function () {
     );
   });
 
+  it("rejects WARRANT_GUEST_SPONSOR", function () {
+    assert.throws(
+      () => assertProductionTranslateEnv({ ...base, WARRANT_GUEST_SPONSOR: "1" }),
+      /prod-guard:.*WARRANT_GUEST_SPONSOR/,
+    );
+  });
+
   it("rejects merchant payTo equal to the Hedera operator account", function () {
     assert.throws(
       () =>

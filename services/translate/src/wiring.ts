@@ -45,6 +45,9 @@ export type WireConfig = {
   verifier?: IVerifier;
   /** Injected nullifier store (tests). Default: memory, or file via WARRANT_NULLIFIER_PATH. */
   nullifiers?: INullifierStore;
+  /** Tests inject a one-shot grant after free quota. Production leaves this unset. */
+  sponsorGrant?: (nullifier: bigint) => Promise<boolean>;
+  sponsorTxIds?: Map<string, string>;
   payTo?: string;
   feePayer?: string;
   amount?: string;
@@ -60,6 +63,7 @@ export type Wired = {
   challenges: MemoryChallengeStore;
   roots: IRootChecker;
   hcs: HcsSink;
+  sponsorTxIds: Map<string, string>;
 };
 
 async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
@@ -88,7 +92,7 @@ export function wire(config: WireConfig): Wired {
   const policy: WarrantPolicy = config.policy ?? {
     requireScope: TRANSLATE,
     minTier: 1,
-    freeCallsPerHuman: 3,
+    freeCallsPerHuman: 0,
   };
 
   const nullifiers: INullifierStore =
@@ -174,8 +178,11 @@ export function wire(config: WireConfig): Wired {
     return enriched;
   };
 
+  const sponsorTxIds = config.sponsorTxIds ?? new Map<string, string>();
+
   const hooks = createWarrantHooks({
     pipeline,
+    sponsorGrant: config.sponsorGrant,
     resolveChallenge: async (
       ctx: HTTPRequestContext,
       _route: RouteConfig,
@@ -248,6 +255,7 @@ export function wire(config: WireConfig): Wired {
     challenges,
     roots,
     hcs,
+    sponsorTxIds,
   };
 }
 

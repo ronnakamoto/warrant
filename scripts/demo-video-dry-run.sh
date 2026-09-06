@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Dry-run the solo demo video beats (prove → free×3 → pay).
-# Restarts translate on :8787 so free quota is fresh. Does not record video.
+# Dry-run the solo demo video beats (prove → pay).
+# Restarts translate on :8787 so quota is fresh. Does not record video.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -43,7 +43,7 @@ lsof -i ":${PORT}" -t 2>/dev/null | xargs kill -9 2>/dev/null || true
 sleep 1
 export ALLOW_DEMO_ROOT=1
 export WARRANT_MIN_TIER="${WARRANT_MIN_TIER:-0}"
-export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-3}"
+export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-0}"
 export WARRANT_VKEY_PATH="${WARRANT_VKEY_PATH:-$ROOT/circuits/build/warrant_vkey.json}"
 unset FIXED_MERKLE_ROOT ALLOW_DEMO_VERIFY || true
 pnpm --filter @warrant/translate dev &
@@ -63,10 +63,7 @@ call() {
   "$@"
 }
 
-call "free/prove 1" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "free/prove 2" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "free/prove 3" env WARRANT_PAY=0 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
-call "pay (Blocky402)" env WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
+call "prove + pay (Blocky402)" env WARRANT_PAY=1 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
 echo ""
 echo "Dry-run complete. Revoke beat: dashboard Revoke or cast send revoke, then live-call → 403 root_revoked."

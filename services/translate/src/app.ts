@@ -61,12 +61,25 @@ export function createApp(deps: AppDeps): Hono {
         if (!(signals && signals.length >= 8 && issued)) return;
         const payHdr =
           c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response");
+        const txId =
+          txIdFromPaymentResponse(payHdr ?? undefined) ??
+          deps.wired.sponsorTxIds.get(signals[2]!);
         await hcs.submit({
           nullifier: signals[2]!,
           scope: signals[3]!,
           tier: signals[6]!,
-          txId: txIdFromPaymentResponse(payHdr ?? undefined),
+          txId,
         });
+        if (txId) {
+          try {
+            const raw = (await c.res.clone().json()) as Record<string, unknown>;
+            if (raw && typeof raw === "object" && raw.txId !== txId) {
+              return c.json({ ...raw, txId });
+            }
+          } catch {
+            /* leave the original 200 */
+          }
+        }
       } catch {
         /* ignore audit failures */
       }
@@ -81,7 +94,28 @@ export function createApp(deps: AppDeps): Hono {
     const source = typeof body?.source === "string" ? body.source : undefined;
     const target = typeof body?.target === "string" ? body.target : undefined;
     const out = await runTranslate({ text, source, target });
-    return c.json({ text: out, source: source ?? "en", target: target ?? "es" });
+    let txId: string | undefined;
+    const warrant = c.req.header("warrant");
+    if (warrant) {
+      try {
+        const parsed = JSON.parse(warrant) as { publicSignals?: string[] };
+        const nullifier = parsed.publicSignals?.[2];
+        if (nullifier) txId = deps.wired.sponsorTxIds.get(nullifier);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!txId) {
+      txId = txIdFromPaymentResponse(
+        c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response") ?? undefined,
+      );
+    }
+    return c.json({
+      text: out,
+      source: source ?? "en",
+      target: target ?? "es",
+      ...(txId ? { txId } : {}),
+    });
   });
 
   app.get("/health", (c) => c.json({ ok: true }));

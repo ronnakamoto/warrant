@@ -4,6 +4,10 @@ A key for the bot you already have.
 
 Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
 
+**Try:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize my agent, paste the paragraph, fire the key. Base Sepolia.
+
+Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
+
 **Testnet. Not a World ID proof.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
 
 PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
@@ -31,14 +35,14 @@ PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursi
 
 ## Local hosted product (Door 1 on live testnets)
 
-Three processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.example` (`PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GRAPH_WARRANT_QUERY_URL`, `WARRANT_VKEY_PATH`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=3`). Then:
+Three processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.example` (`PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GRAPH_WARRANT_QUERY_URL`, `WARRANT_VKEY_PATH`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`). Then:
 
 ```bash
 ./scripts/hosted-dev.sh
 # open http://127.0.0.1:3001  — Authorize my agent
 ```
 
-Public hosts: Vercel (dashboard) + Railway/Fly (translate + prove). Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host.
+Public hosts (live): dashboard [warrant-beta.vercel.app](https://warrant-beta.vercel.app), translate `https://translate-production-ed28.up.railway.app`, prove `https://prove-production.up.railway.app`. Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host. Default `*.vercel.app` aliases are SSO-gated; the public door is the beta host.
 
 ## Quick start (local paid-path smoke)
 
@@ -48,7 +52,7 @@ Prerequisites: Node 20+, [pnpm](https://pnpm.io), Foundry (`forge`) optional for
 git clone https://github.com/ronnakamoto/warrant.git
 cd warrant
 pnpm install
-cp .env.example .env   # fill HEDERA_* for live Blocky402 / HCS; leave empty for free-tier-only
+cp .env.example .env   # fill HEDERA_* for live Blocky402 / HCS
 
 # Sanity: boundaries + package tests (no zkey required)
 pnpm check-boundaries
@@ -114,7 +118,7 @@ export WARRANT_REAL_PROVE=1
 pnpm --filter @warrant/agent demo
 ```
 
-Expect **200** on the free quota (3 calls per **session nullifier** at `tier=0`; per AgentBook human id when `tier>0`). A fourth call without a payment-capable fetch returns **402** with Hedera `exact` accepts (Blocky402). Server / HCS logs must show a **nullifier only** — no names, wallets, or tree. Paid settle may include `txId`; free grants do not.
+Expect **402** after a valid warrant when `WARRANT_FREE_CALLS=0` (the hosted default). Set `WARRANT_FREE_CALLS=3` only for a local free-tier smoke. A call without a payment-capable fetch returns **402** with Hedera `exact` accepts (Blocky402). Server / HCS logs must show a **nullifier only** — no names, wallets, or tree. Paid settle may include `txId`.
 
 ### 4. CLI (attenuated delegate)
 
@@ -161,7 +165,7 @@ pnpm --filter @warrant/translate dev
 export WARRANT_REAL_PROVE=1   # needs circuits/build zkey
 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 
-# After free quota: settle via Blocky402 (payer ≠ payTo)
+# Settle via Blocky402 (payer ≠ payTo)
 export WARRANT_PAY=1
 # HEDERA_PAY_TO must differ from HEDERA_ACCOUNT_ID (self-transfer → amount mismatch)
 pnpm --filter @warrant/agent exec tsx demo/live-call.ts
@@ -182,11 +186,11 @@ pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
                 | 402 + warrant.warrant.info (nonce, merkleRoot)
                 | prove → warrant header
-                | free quota → 200 + HCS nullifier
-                | else → 402 exact / hedera:testnet → Blocky402 settle
+                | WARRANT_FREE_CALLS=0 → 402 exact / hedera:testnet → caller signs Blocky402
+                | paid → 200 + HCS nullifier
 ```
 
-`HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`).
+`HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`). Guest Try and the agent API settle the same way the CLI does (`WARRANT_PAY=1`): the caller signs ExactHedera. Testnet HBAR: [Hedera faucet](https://portal.hedera.com/faucet). The shop still logs a nullifier; the settle `txId` is a HashScan link. Do not set `WARRANT_GUEST_SPONSOR` as the door.
 
 ### Architecture (overview)
 
@@ -195,8 +199,8 @@ flowchart LR
   Human[Human root] --> Orch[Orchestrator]
   Orch --> Trans[Translator]
   Trans -->|warrant.fetch + Groth16| X402["@warrant/x402"]
-  X402 -->|free quota| OK[200 + HCS nullifier]
-  X402 -->|exhausted| Pay[Blocky402 exact HBAR]
+  X402 -->|warrant ok| Pay[Blocky402 exact HBAR]
+  X402 -->|paid| OK[200 + HCS nullifier]
   Human -->|revoke epoch| Reg[MandateRegistry]
   Reg -->|currentRoot| X402
   Reg -->|Bound/Revoked| G[Studio subgraph]

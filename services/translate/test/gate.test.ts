@@ -229,6 +229,48 @@ describe("WP5 translate gate (processHTTPRequest)", function () {
     assert.equal(body?.error, "challenge_missing");
   });
 
+  it("fourth call is hosted-sponsored once; fifth is 402", async function () {
+    let settles = 0;
+    const wired = wire({
+      facilitatorClient: mockHederaFacilitator(),
+      fixedMerkleRoot: liveRoot,
+      verifier: verifierOk,
+      amount,
+      payTo,
+      policy: { requireScope: TRANSLATE, minTier: 1, freeCallsPerHuman: 3 },
+      sponsorGrant: async () => {
+        settles += 1;
+        return settles === 1;
+      },
+    });
+    await initializeWired(wired);
+    for (let i = 0; i < 3; i++) {
+      const ch = await issueChallenge(wired);
+      const r = await wired.http.processHTTPRequest({
+        adapter: adapter({ warrant: warrantHeader(publics(ch), ch.nonce) }),
+        path,
+        method: "POST",
+      });
+      assert.equal(r.type, "no-payment-required", `free ${i}`);
+    }
+    const ch4 = await issueChallenge(wired);
+    const r4 = await wired.http.processHTTPRequest({
+      adapter: adapter({ warrant: warrantHeader(publics(ch4), ch4.nonce) }),
+      path,
+      method: "POST",
+    });
+    assert.equal(r4.type, "no-payment-required");
+    const ch5 = await issueChallenge(wired);
+    const r5 = await wired.http.processHTTPRequest({
+      adapter: adapter({ warrant: warrantHeader(publics(ch5), ch5.nonce) }),
+      path,
+      method: "POST",
+    });
+    assert.equal(r5.type, "payment-error");
+    assert.equal(r5.response?.status, 402);
+    assert.equal(settles, 2);
+  });
+
   it("fourth call same nullifier → 402 hedera:testnet", async function () {
     const wired = await setup();
     for (let i = 0; i < 3; i++) {
