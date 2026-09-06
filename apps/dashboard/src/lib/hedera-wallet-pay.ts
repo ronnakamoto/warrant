@@ -38,6 +38,6 @@ export async function hederaWalletPay(
   x402Version = 2,
 ): Promise<string> {
   const scheme = new ExactHederaScheme(signer);
-  const payload = await scheme.createPaymentPayload(x402Version, requirements);
-  return encodePaymentSignatureHeader(payload);
+  const payload = await scheme.createPaymentPayload(x402Version, requirements as never);
+  return encodePaymentSignatureHeader(payload as never);
 }

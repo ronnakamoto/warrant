@@ -204,6 +204,12 @@ describe("guest first-run copy", function () {
     assert.equal(/Call the shop|Pay the shop|shopCall|payCall/.test(src), false);
     assert.match(src, /connectRootWallet/);
     assert.match(src, /Copy for my agent|copyPrompt/);
+    const hashpack = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/lib/hedera-hashpack.ts"),
+      "utf8",
+    );
+    assert.match(hashpack, /import\("@hiero-ledger\/sdk"\)/);
+    assert.match(hashpack, /LedgerId\.TESTNET/);
     assert.match(src, /letSpendFromReady|Let it spend/);
     assert.match(src, /copiedOnce/);
     assert.match(src, /cutSpend/);

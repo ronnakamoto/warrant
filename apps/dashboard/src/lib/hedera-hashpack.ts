@@ -62,7 +62,7 @@ export async function connectHashPack(): Promise<HashPackSession> {
     const [{ DAppConnector, HederaChainId, HederaJsonRpcMethod, HederaSessionEvent }, { LedgerId }] =
       await Promise.all([
         import("@hashgraph/hedera-wallet-connect"),
-        import("@x402/hedera"),
+        import("@hiero-ledger/sdk"),
       ]);
 
     const connector = new DAppConnector(
@@ -72,7 +72,7 @@ export async function connectHashPack(): Promise<HashPackSession> {
         url: typeof window !== "undefined" ? window.location.origin : "https://warrant-beta.vercel.app",
         icons: [`${typeof window !== "undefined" ? window.location.origin : "https://warrant-beta.vercel.app"}/icon.png`],
       },
-      LedgerId.Testnet,
+      LedgerId.TESTNET,
       projectId,
       Object.values(HederaJsonRpcMethod),
       [HederaSessionEvent.ChainChanged, HederaSessionEvent.AccountsChanged],
@@ -87,8 +87,8 @@ export async function connectHashPack(): Promise<HashPackSession> {
     const accountId = signer.getAccountId().toString();
     session = {
       accountId,
-      signTransaction: (tx) => signer.signTransaction(tx),
-      execute: (tx) => signer.call(tx),
+      signTransaction: (tx) => signer.signTransaction(tx as never),
+      execute: (tx) => signer.call(tx as never),
       accountKey: () => signer.getAccountKey(),
     };
     return session;
