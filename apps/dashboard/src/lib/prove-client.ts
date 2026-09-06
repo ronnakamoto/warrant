@@ -39,6 +39,17 @@ export function clearGuestCookie(env: Env = process.env): string {
   return `warrant_guest=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
+export function deskCookie(deskId: string, env: Env = process.env): string {
+  const secure = isStrictHost(env) ? "; Secure" : "";
+  return `warrant_desk=${deskId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800${secure}`;
+}
+
+export function deskFromCookie(header: string | null): string | undefined {
+  if (!header) return undefined;
+  const m = /(?:^|;\s*)warrant_desk=([^;]+)/.exec(header);
+  return m?.[1];
+}
+
 export function guestOriginAllowed(req: Request, env: Env = process.env): boolean {
   if (!isStrictHost(env) && !env.DASHBOARD_ORIGIN) return true;
   const allowed = (env.DASHBOARD_ORIGIN ?? new URL(req.url).origin)
@@ -124,7 +135,7 @@ export function agentCorsHeaders(): Record<string, string> {
 }
 
 export async function proveRequest(
-  path: "/v1/mint" | "/v1/prove" | "/v1/revoke",
+  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk",
   body: unknown,
   req?: Request,
 ): Promise<Response> {

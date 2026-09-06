@@ -5,6 +5,7 @@ export async function OPTIONS(): Promise<Response> {
   return new Response(null, { status: 204, headers: agentCorsHeaders() });
 }
 
+// Bearer-only: one warrant per call. Never accept `all` — a leaked paste must not burn the desk.
 export async function POST(req: Request): Promise<Response> {
   const sessionId = sessionFromBearer(req.headers.get("authorization"));
   if (!sessionId) {

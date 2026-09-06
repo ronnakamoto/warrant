@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   clientIpFromRequest,
+  deskCookie,
+  deskFromCookie,
   forbiddenGuestResponse,
   guestCookie,
   guestOriginAllowed,
@@ -22,7 +24,8 @@ export async function POST(req: Request): Promise<Response> {
     if (!(await verifyTurnstile(turnstile, clientIpFromRequest(req)))) {
       return NextResponse.json({ error: "captcha" }, { status: 403 });
     }
-    const res = await proveRequest("/v1/mint", {}, req);
+    const deskId = deskFromCookie(req.headers.get("cookie"));
+    const res = await proveRequest("/v1/mint", deskId ? { deskId } : {}, req);
     const body = await res.json().catch(() => ({}));
     if (res.status === 429) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -37,12 +40,18 @@ export async function POST(req: Request): Promise<Response> {
     if (!sessionId) {
       return NextResponse.json({ error: publicGuestError("mint returned no session") }, { status: 502 });
     }
+    const mintedDeskId = body.deskId as string | undefined;
+    if (!mintedDeskId) {
+      return NextResponse.json({ error: publicGuestError("mint returned no desk") }, { status: 502 });
+    }
     const out = NextResponse.json({
       token: sessionId,
       wallet: body.wallet,
       ready: true,
+      deskId: mintedDeskId,
     });
-    out.headers.set("set-cookie", guestCookie(sessionId));
+    out.headers.append("set-cookie", guestCookie(sessionId));
+    out.headers.append("set-cookie", deskCookie(mintedDeskId));
     return out;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "mint failed";

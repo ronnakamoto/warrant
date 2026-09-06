@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { agentPrompt, GUEST_COPY } from "../src/lib/guest-copy.ts";
 import {
   guestCookie,
+  deskCookie,
+  deskFromCookie,
   sessionFromCookie,
   sessionFromBearer,
   clearGuestCookie,
@@ -47,6 +49,15 @@ describe("guest first-run copy", function () {
     assert.equal(set.includes("Secure"), false);
     assert.equal(sessionFromCookie(set), "abc123");
     assert.match(clearGuestCookie(), /Max-Age=0/);
+  });
+
+  it("reads guest and desk cookies independently", function () {
+    const guest = guestCookie("abc123", { NODE_ENV: "development" });
+    const desk = deskCookie("d".repeat(32), { NODE_ENV: "development" });
+    const combined = `${guest}; ${desk.split(";")[0]}`;
+    assert.equal(sessionFromCookie(combined), "abc123");
+    assert.equal(deskFromCookie(combined), "d".repeat(32));
+    assert.equal(sessionFromCookie(desk), undefined);
   });
 
   it("marks the session cookie Secure on the public host", function () {
