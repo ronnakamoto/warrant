@@ -34,6 +34,7 @@ export type MintGuestDeps = {
   bindRoot?: BindRootFn;
   generateEvmKey?: () => Hex;
   now?: () => number;
+  deskId?: string;
 };
 
 const PARENT_BUDGET = 2_000_000n;
@@ -107,6 +108,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   sessionId: string;
   wallet: Address;
   txHash: Hex;
+  deskId: string;
 }> {
   const bind = deps.bindRoot ?? bindRootOnChain;
   const evmKey = (deps.generateEvmKey ?? generatePrivateKey)();
@@ -150,9 +152,10 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
   assembleGuestTree(state, expiry);
 
+  const deskId = deps.deskId ?? createDeskId();
   const session: GuestSession = {
     id: createSessionId(),
-    deskId: createDeskId(),
+    deskId,
     state,
     evmPrivateKey: evmKey,
     wallet: account.address,
@@ -164,5 +167,6 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
     sessionId: session.id,
     wallet: account.address,
     txHash: bound.txHash ?? "0x",
+    deskId,
   };
 }

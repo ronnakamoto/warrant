@@ -272,6 +272,66 @@ describe("prove app revoke", function () {
   });
 });
 
+describe("prove desk", function () {
+  function deskApp() {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    return { app, store };
+  }
+
+  it("mints two sessions onto the same desk and lists both", async function () {
+    const { app } = deskApp();
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const first = (await (
+      await app.request("/v1/mint", { method: "POST", headers: hdrs, body: "{}" })
+    ).json()) as { sessionId: string; deskId: string };
+    const second = (await (
+      await app.request("/v1/mint", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ deskId: first.deskId }),
+      })
+    ).json()) as { sessionId: string; deskId: string };
+    assert.equal(second.deskId, first.deskId);
+    assert.notEqual(second.sessionId, first.sessionId);
+    const list = await app.request("/v1/desk", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ deskId: first.deskId }),
+    });
+    assert.equal(list.status, 200);
+    const body = (await list.json()) as { warrants: { id: string }[] };
+    assert.deepEqual(body.warrants.map((w) => w.id).sort(), [first.sessionId, second.sessionId].sort());
+  });
+
+  it("refuses to revoke a session from another desk", async function () {
+    const { app, store } = deskApp();
+    store.put({
+      id: "foreign",
+      deskId: "other",
+      createdAt: Date.now(),
+      wallet: "0x0000000000000000000000000000000000000001",
+      evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      state: emptyState(),
+    });
+    const res = await app.request("/v1/revoke", {
+      method: "POST",
+      headers: { "x-warrant-prove-secret": secret, "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "foreign", deskId: "desk-mine" }),
+    });
+    assert.equal(res.status, 403);
+    assert.deepEqual(await res.json(), { error: "wrong_desk" });
+  });
+});
+
 describe("rate limiter", function () {
   it("rejects after max hits", function () {
     let t = 0;
