@@ -102,11 +102,28 @@ export async function verifyTurnstile(
   return json.success === true;
 }
 
-export function proveForwardHeaders(req: Request): Record<string, string> {
+export function dashboardOriginForProve(req: Request, env: Env = process.env): string | undefined {
+  const requestOrigin = req.headers.get("origin");
+  if (requestOrigin) return requestOrigin;
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+  return (env.DASHBOARD_ORIGIN ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)[0];
+}
+
+export function proveForwardHeaders(req: Request, env: Env = process.env): Record<string, string> {
   const headers: Record<string, string> = {};
   const ip = clientIpFromRequest(req);
   if (ip) headers["x-warrant-client-ip"] = ip;
-  const origin = req.headers.get("origin") ?? process.env.DASHBOARD_ORIGIN;
+  const origin = dashboardOriginForProve(req, env);
   if (origin) headers["x-warrant-dashboard-origin"] = origin;
   return headers;
 }

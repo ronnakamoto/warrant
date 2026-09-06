@@ -118,12 +118,13 @@ export function GuestTry() {
         applyList([]);
         return [];
       }
+      if (!res.ok) return [];
       const body = (await res.json().catch(() => ({}))) as {
         warrants?: WarrantView[];
         currentId?: string;
       };
       const list = Array.isArray(body.warrants) ? body.warrants : [];
-      setCookieSessionId(typeof body.currentId === "string" ? body.currentId : null);
+      if (typeof body.currentId === "string") setCookieSessionId(body.currentId);
       applyList(list, preferId);
       return list;
     },
