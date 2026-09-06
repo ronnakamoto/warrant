@@ -61,6 +61,20 @@ describe("persisted session store", function () {
     assert.equal(raw.sessions.some((s) => s.evmPrivateKey?.startsWith("0xaa")), false);
   });
 
+  it("reloads a revoked session as fired after reopening store on same file", async function () {
+    const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
+    const path = join(dir, "sessions.json");
+    const a = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    const revoked = sess("fired-1", "desk-1", 1000);
+    revoked.revoked = true;
+    a.put(revoked);
+    const b = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    const views = b.listByDesk("desk-1");
+    assert.equal(views.length, 1);
+    assert.equal(views[0]?.id, "fired-1");
+    assert.equal(views[0]?.status, "fired");
+  });
+
   it("writes the file mode 0o600", async function () {
     const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
     const path = join(dir, "sessions.json");

@@ -163,6 +163,7 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       loadMembers: opts.loadMembers,
     });
     session.revoked = true;
+    opts.store.put(session);
     return c.json({ txHash: out.txHash });
   });
 
