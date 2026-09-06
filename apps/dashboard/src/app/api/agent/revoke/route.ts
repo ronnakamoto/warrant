@@ -1,28 +1,18 @@
 import { NextResponse } from "next/server";
-import { agentCorsHeaders, proveRequest, publicGuestError, sessionFromBearer } from "../../../../lib/prove-client";
+import { agentCorsHeaders, sessionFromBearer } from "../../../../lib/prove-client";
 
 export async function OPTIONS(): Promise<Response> {
   return new Response(null, { status: 204, headers: agentCorsHeaders() });
 }
 
-// Bearer-only: one warrant per call. Never accept `all` — a leaked paste must not burn the desk.
+// Hosted agent cannot burn a wallet it does not hold. Fire is MetaMask in the tab.
 export async function POST(req: Request): Promise<Response> {
   const sessionId = sessionFromBearer(req.headers.get("authorization"));
   if (!sessionId) {
     return NextResponse.json({ error: "missing bearer" }, { status: 401, headers: agentCorsHeaders() });
   }
-  try {
-    const res = await proveRequest("/v1/revoke", { sessionId }, req);
-    const body = await res.json().catch(() => ({}));
-    return NextResponse.json(
-      res.ok ? { txHash: body.txHash } : { error: publicGuestError(body.error ?? "revoke failed") },
-      { status: res.ok ? 200 : res.status, headers: agentCorsHeaders() },
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "revoke failed";
-    return NextResponse.json(
-      { error: publicGuestError(msg) },
-      { status: 503, headers: agentCorsHeaders() },
-    );
-  }
+  return NextResponse.json(
+    { error: "Open the tab and Fire." },
+    { status: 409, headers: agentCorsHeaders() },
+  );
 }

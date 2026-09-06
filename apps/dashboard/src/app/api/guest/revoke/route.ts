@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { GUEST_COPY } from "../../../../lib/guest-copy";
-import { revokeEachLive } from "../../../../lib/guest-act";
 import {
   deskFromCookie,
   forbiddenGuestResponse,
@@ -10,7 +9,7 @@ import {
   sessionFromCookie,
 } from "../../../../lib/prove-client";
 
-type RevokeBody = { sessionId?: string; all?: boolean };
+type RevokeBody = { sessionId?: string; all?: boolean; txHash?: string };
 type WarrantView = { id: string; status: string };
 
 export async function POST(req: Request): Promise<Response> {
@@ -24,12 +23,13 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const deskId = deskFromCookie(req.headers.get("cookie"));
+  const txHash = typeof body.txHash === "string" ? body.txHash.trim() : "";
 
-  if (body.all === true) {
-    if (!deskId) {
-      return NextResponse.json({ error: "no desk" }, { status: 401 });
-    }
-    try {
+  try {
+    if (body.all === true && !txHash) {
+      if (!deskId) {
+        return NextResponse.json({ error: "no desk" }, { status: 401 });
+      }
       const listRes = await proveRequest("/v1/desk", { deskId }, req);
       const listBody = await listRes.json().catch(() => ({}));
       if (!listRes.ok) {
@@ -43,33 +43,36 @@ export async function POST(req: Request): Promise<Response> {
         );
       }
       const warrants = (listBody.warrants ?? []) as WarrantView[];
-      const { txHashes, failed } = await revokeEachLive(warrants, async (id) => {
-        const res = await proveRequest("/v1/revoke", { sessionId: id, deskId }, req);
-        const revokeBody = (await res.json().catch(() => ({}))) as { txHash?: string };
-        return { ok: res.ok, txHash: revokeBody.txHash };
-      });
-      if (failed > 0 && txHashes.length === 0) {
-        return NextResponse.json({ error: publicGuestError(GUEST_COPY.revokeFailed) }, { status: 503 });
+      const firstLive = warrants.find((w) => w.status === "live");
+      if (!firstLive) {
+        return NextResponse.json({ error: publicGuestError(GUEST_COPY.revokeFailed) }, { status: 404 });
       }
-      return NextResponse.json({ txHashes, failed });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "revoke failed";
-      return NextResponse.json({ error: publicGuestError(msg) }, { status: 503 });
+      const res = await proveRequest("/v1/revoke", { sessionId: firstLive.id, deskId }, req);
+      const prep = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        res.ok ? { ...prep, sessionId: firstLive.id } : { error: publicGuestError(prep.error ?? "revoke failed") },
+        { status: res.ok ? 200 : res.status },
+      );
     }
-  }
 
-  const sessionId =
-    typeof body.sessionId === "string" ? body.sessionId : sessionFromCookie(req.headers.get("cookie"));
-  if (!sessionId) {
-    return NextResponse.json({ error: "no session" }, { status: 401 });
-  }
-  try {
-    const res = await proveRequest("/v1/revoke", { sessionId, deskId }, req);
-    const resBody = await res.json().catch(() => ({}));
-    return NextResponse.json(
-      res.ok ? { txHash: resBody.txHash } : { error: publicGuestError(resBody.error ?? "revoke failed") },
-      { status: res.ok ? 200 : res.status },
+    const sessionId =
+      typeof body.sessionId === "string" ? body.sessionId : sessionFromCookie(req.headers.get("cookie"));
+    if (!sessionId) {
+      return NextResponse.json({ error: "no session" }, { status: 401 });
+    }
+    const res = await proveRequest(
+      "/v1/revoke",
+      { sessionId, deskId, ...(txHash ? { txHash } : {}) },
+      req,
     );
+    const resBody = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: publicGuestError(resBody.error ?? "revoke failed") },
+        { status: res.status },
+      );
+    }
+    return NextResponse.json(resBody);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "revoke failed";
     return NextResponse.json({ error: publicGuestError(msg) }, { status: 503 });

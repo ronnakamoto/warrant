@@ -16,7 +16,8 @@
     "dod": "NODE_OPTIONS='--import tsx' tsx scripts/dod.ts",
     "demo": "pnpm --filter @warrant/agent demo",
     "demo:live": "./scripts/demo-video-dry-run.sh",
-    "hosted:dev": "./scripts/hosted-dev.sh"
+    "hosted:dev": "./scripts/hosted-dev.sh",
+    "warrant": "tsx packages/agent/src/cli.ts"
   },
   "devDependencies": {
     "@semaphore-protocol/group": "4.14.3",

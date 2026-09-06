@@ -9,8 +9,7 @@ import {
   identityOf,
   type WarrantState,
 } from "@warrant/agent";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import type { Address, Hex } from "viem";
+import { isAddress, type Address, type Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
 import { mergeGuestLeaf, type LeafLoader } from "./members.js";
 import { createSessionId, createDeskId, type GuestSession, type SessionStore } from "./session.js";
@@ -25,17 +24,41 @@ export type BindRootFn = (args: {
   tier: number;
 }) => Promise<{ leaf: bigint; root: bigint; txHash?: Hex }>;
 
+export type ReadBindingFn = (args: {
+  rpcUrl: string;
+  registry: Address;
+  wallet: Address;
+}) => Promise<{ epoch: number; tier: number; leaf: bigint; pkX: bigint; pkY: bigint }>;
+
 export type MintGuestDeps = {
   store: SessionStore;
   bindPrivateKey: Hex;
   registry: Address;
   rpc: string;
   loadMembers: LeafLoader;
+  wallet: Address;
   bindRoot?: BindRootFn;
-  generateEvmKey?: () => Hex;
+  readBinding?: ReadBindingFn;
   now?: () => number;
   deskId?: string;
 };
+
+const EMPTY_EVM_KEY = "0x" as Hex;
+
+function isAlreadyBound(err: unknown): boolean {
+  const msg = err instanceof Error ? `${err.message} ${(err as { shortMessage?: string }).shortMessage ?? ""}` : String(err);
+  return /AlreadyBound|already bound/i.test(msg);
+}
+
+function priorAliceForWallet(store: SessionStore, wallet: Address) {
+  const want = wallet.toLowerCase();
+  for (const session of store.dump()) {
+    if (session.wallet.toLowerCase() === want && session.state.identities.alice) {
+      return session;
+    }
+  }
+  return undefined;
+}
 
 const PARENT_BUDGET = 2_000_000n;
 const LEAF_BUDGET = 200_000n;
@@ -110,29 +133,55 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   txHash: Hex;
   deskId: string;
 }> {
+  if (!isAddress(deps.wallet)) throw new Error("wallet required");
+  assertNotFounder(deps.wallet);
   const bind = deps.bindRoot ?? bindRootOnChain;
-  const evmKey = (deps.generateEvmKey ?? generatePrivateKey)();
-  const account = privateKeyToAccount(evmKey);
-  assertNotFounder(account.address);
 
   const state = emptyState();
   const seed = randomBytes(16).toString("hex");
-  ensureIdentity(state, "alice", `alice-${seed}`);
   ensureIdentity(state, "orchestrator", `orch-${seed}`);
   ensureIdentity(state, "translator", `trans-${seed}`);
-  const alice = identityOf(state, "alice");
 
-  const bound = await bind({
-    rpcUrl: deps.rpc,
-    registry: deps.registry,
-    privateKey: deps.bindPrivateKey,
-    wallet: account.address,
-    pkX: alice.publicKey[0],
-    pkY: alice.publicKey[1],
-    tier: 0,
-  });
+  let txHash: Hex = "0x";
+  let epoch = 0;
+  let leaf: bigint;
 
-  const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+  const prior = priorAliceForWallet(deps.store, deps.wallet);
+  if (prior?.state.identities.alice) {
+    state.identities.alice = structuredClone(prior.state.identities.alice);
+    const reused = identityOf(state, "alice");
+    const read = deps.readBinding ?? (await import("@warrant/agent")).readBinding;
+    const onchain = await read({
+      rpcUrl: deps.rpc,
+      registry: deps.registry,
+      wallet: deps.wallet,
+    });
+    if (reused.publicKey[0] !== onchain.pkX || reused.publicKey[1] !== onchain.pkY) {
+      throw new Error("wallet already bound");
+    }
+    epoch = onchain.epoch;
+    leaf = onchain.leaf;
+  } else {
+    ensureIdentity(state, "alice", `alice-${seed}`);
+    const alice = identityOf(state, "alice");
+    try {
+      const bound = await bind({
+        rpcUrl: deps.rpc,
+        registry: deps.registry,
+        privateKey: deps.bindPrivateKey,
+        wallet: deps.wallet,
+        pkX: alice.publicKey[0],
+        pkY: alice.publicKey[1],
+        tier: 0,
+      });
+      txHash = bound.txHash ?? "0x";
+      leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+    } catch (err) {
+      if (!isAlreadyBound(err)) throw err;
+      throw new Error("wallet already bound");
+    }
+  }
+
   let members: string[];
   try {
     members = mergeGuestLeaf(await deps.loadMembers(), leaf.toString());
@@ -145,9 +194,9 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   state.humanTag = freshFieldTag();
   state.contextHash = freshFieldTag();
   state.rootName = "alice";
-  state.rootWallet = account.address;
+  state.rootWallet = deps.wallet;
   state.rootTier = 0;
-  state.rootEpoch = 0;
+  state.rootEpoch = epoch;
 
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
   assembleGuestTree(state, expiry);
@@ -157,16 +206,16 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
     id: createSessionId(),
     deskId,
     state,
-    evmPrivateKey: evmKey,
-    wallet: account.address,
+    evmPrivateKey: EMPTY_EVM_KEY,
+    wallet: deps.wallet,
     createdAt: (deps.now ?? Date.now)(),
   };
   deps.store.put(session);
 
   return {
     sessionId: session.id,
-    wallet: account.address,
-    txHash: bound.txHash ?? "0x",
+    wallet: deps.wallet,
+    txHash,
     deskId,
   };
 }

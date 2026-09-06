@@ -19,6 +19,7 @@ export type ShopInput = {
   target: string;
   hederaAccountId?: string;
   hederaPrivateKey?: string;
+  payment?: string;
 };
 
 export type TranslateDeps = {
@@ -46,6 +47,12 @@ export function hederaPayFrom(input: ShopInput): HederaPay | undefined {
   return undefined;
 }
 
+export function hasHederaPrivateKey(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  const key = (raw as { hederaPrivateKey?: unknown }).hederaPrivateKey;
+  return typeof key === "string" && key.trim().length > 0;
+}
+
 export function parseShopBody(raw: unknown): ShopInput | null {
   if (!raw || typeof raw !== "object") return null;
   const input = raw as {
@@ -54,15 +61,27 @@ export function parseShopBody(raw: unknown): ShopInput | null {
     target?: unknown;
     hederaAccountId?: unknown;
     hederaPrivateKey?: unknown;
+    payment?: unknown;
   };
   const account = typeof input.hederaAccountId === "string" ? input.hederaAccountId.trim() : "";
   const key = typeof input.hederaPrivateKey === "string" ? input.hederaPrivateKey.trim() : "";
+  const payment = typeof input.payment === "string" ? input.payment.trim() : "";
   return {
     text: typeof input.text === "string" ? input.text : "",
     source: typeof input.source === "string" ? input.source : "en",
     target: typeof input.target === "string" ? input.target : "es",
     ...(account && key ? { hederaAccountId: account, hederaPrivateKey: key } : {}),
+    ...(payment ? { payment } : {}),
   };
+}
+
+/** Hosted agent translate: signed payment header only. A pasted private key is a 400. */
+export function parseGuestShopBody(raw: unknown): ShopInput | "private_key" | null {
+  if (hasHederaPrivateKey(raw)) return "private_key";
+  const parsed = parseShopBody(raw);
+  if (!parsed) return null;
+  const { hederaAccountId: _a, hederaPrivateKey: _k, ...rest } = parsed;
+  return rest;
 }
 
 export async function shopWithWarrant(
@@ -85,8 +104,33 @@ export async function shopWithWarrant(
   });
 }
 
-function paywall(): ActResult {
-  return { status: 402, body: { error: "pay", faucet: HEDERA_FAUCET } };
+export async function shopWithPaymentHeader(
+  translateUrl: string,
+  payload: string,
+  warrant: string,
+  payment: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
+  return fetchImpl(translateUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      warrant,
+      "PAYMENT-SIGNATURE": payment,
+    },
+    body: payload,
+  });
+}
+
+function paywall(pr?: Record<string, unknown>): ActResult {
+  return {
+    status: 402,
+    body: {
+      error: "pay",
+      faucet: HEDERA_FAUCET,
+      ...(pr ? { paymentRequired: pr } : {}),
+    },
+  };
 }
 
 async function warrantChallengeFrom402(
@@ -95,14 +139,18 @@ async function warrantChallengeFrom402(
   source: string,
   target: string,
   translateUrl: string,
-): Promise<{ challenge: ReturnType<typeof challengeFrom402> } | ActResult> {
+): Promise<
+  | { challenge: ReturnType<typeof challengeFrom402>; paymentRequired: Record<string, unknown> }
+  | ActResult
+> {
   const rawBody = (await probe.json().catch(() => ({}))) as Record<string, unknown>;
   const pr = paymentRequiredFromResponse(probe.headers, rawBody) ?? {};
   const extensions = pr.extensions as { warrant?: unknown } | undefined;
-  if (!extensions?.warrant) return paywall();
+  if (!extensions?.warrant) return paywall(pr);
   const url = new URL(translateUrl);
   return {
     challenge: challengeFrom402(pr, "POST", url.pathname, hashTranslateBody(text, source, target)),
+    paymentRequired: pr,
   };
 }
 
@@ -159,8 +207,9 @@ export async function translateForSession(
   }
 
   const pay = hederaPayFrom(input);
-  if (!pay) {
-    return paywall();
+  const payment = input.payment?.trim();
+  if (!pay && !payment) {
+    return paywall(challenged.paymentRequired);
   }
 
   const { challenge } = challenged;
@@ -180,9 +229,17 @@ export async function translateForSession(
 
   let retry: Response;
   try {
-    retry = await shopWithWarrant(translateUrl, payload, provedBody.warrant, pay, deps);
+    retry = payment
+      ? await shopWithPaymentHeader(
+          translateUrl,
+          payload,
+          provedBody.warrant,
+          payment,
+          fetchImpl,
+        )
+      : await shopWithWarrant(translateUrl, payload, provedBody.warrant, pay, deps);
   } catch {
-    return paywall();
+    return paywall(challenged.paymentRequired);
   }
   if (retry.status === 402) return paywall();
   if (retry.status === 403) return { status: 403, body: { error: "root_revoked" } };

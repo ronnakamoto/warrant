@@ -6,6 +6,11 @@ import { emptyState } from "@warrant/agent";
 import type { ChallengeParts, IProver, WarrantProof } from "@warrant/core";
 
 const secret = "test-secret";
+const WALLET = "0x00000000000000000000000000000000000000ab";
+const WALLET_B = "0x00000000000000000000000000000000000000cd";
+const mintBody = (wallet = WALLET, extra: Record<string, unknown> = {}) =>
+  JSON.stringify({ wallet, ...extra });
+const mintHdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
 
 describe("prove app auth", function () {
   const app = createProveApp({ authSecret: secret });
@@ -30,9 +35,15 @@ describe("prove app auth", function () {
       bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
       mintLimiter: createRateLimiter({ max: 1, windowMs: 60_000 }),
     });
-    const hdrs = { "x-warrant-prove-secret": secret };
-    assert.equal((await app.request("/v1/mint", { method: "POST", headers: hdrs })).status, 200);
-    assert.equal((await app.request("/v1/mint", { method: "POST", headers: hdrs })).status, 429);
+    const hdrs = mintHdrs;
+    assert.equal(
+      (await app.request("/v1/mint", { method: "POST", headers: hdrs, body: mintBody() })).status,
+      200,
+    );
+    assert.equal(
+      (await app.request("/v1/mint", { method: "POST", headers: hdrs, body: mintBody() })).status,
+      429,
+    );
   });
 
   it("POST /v1/mint without secret is 401", async function () {
@@ -57,7 +68,8 @@ describe("prove app auth", function () {
       (
         await app.request("/v1/mint", {
           method: "POST",
-          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.1" },
+          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.1", "content-type": "application/json" },
+          body: mintBody(),
         })
       ).status,
       200,
@@ -66,7 +78,8 @@ describe("prove app auth", function () {
       (
         await app.request("/v1/mint", {
           method: "POST",
-          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.2" },
+          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.2", "content-type": "application/json" },
+          body: mintBody(WALLET_B),
         })
       ).status,
       200,
@@ -75,7 +88,8 @@ describe("prove app auth", function () {
       (
         await app.request("/v1/mint", {
           method: "POST",
-          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.1" },
+          headers: { ...hdrs, "x-warrant-client-ip": "203.0.113.1", "content-type": "application/json" },
+          body: mintBody(),
         })
       ).status,
       429,
@@ -119,15 +133,37 @@ describe("prove app mint isolation", function () {
     });
     const res = await app.request("/v1/mint", {
       method: "POST",
-      headers: { "x-warrant-prove-secret": secret },
+      headers: mintHdrs,
+      body: mintBody(),
     });
     assert.equal(res.status, 200);
     const body = (await res.json()) as { sessionId: string; wallet: string };
     assert.ok(body.sessionId);
-    assert.ok(body.wallet.startsWith("0x"));
-    assert.equal(body.wallet.toLowerCase() === "0xa16d90c5f9d2b14133db64d57ac81f46dd1161ef", false);
+    assert.equal(body.wallet.toLowerCase(), WALLET.toLowerCase());
     assert.equal("evmPrivateKey" in body, false);
     assert.equal("state" in body, false);
+    const stored = store.get(body.sessionId);
+    assert.equal(stored?.evmPrivateKey, "0x");
+  });
+
+  it("refuses mint without a client wallet", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0xabc" }),
+    });
+    const res = await app.request("/v1/mint", {
+      method: "POST",
+      headers: mintHdrs,
+      body: "{}",
+    });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: "wallet required" });
   });
 });
 
@@ -237,13 +273,13 @@ describe("prove app prove", function () {
 });
 
 describe("prove app revoke", function () {
-  it("keeps the session so the next prove can show root_revoked", async function () {
+  it("returns siblings and does not mark fired until the wallet tx", async function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put({
       id: "keep",
       deskId: "desk",
       wallet: "0x00000000000000000000000000000000000000aa",
-      evmPrivateKey: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      evmPrivateKey: "0x",
       createdAt: Date.now(),
       state: emptyState(),
     });
@@ -254,7 +290,11 @@ describe("prove app revoke", function () {
       rpc: "https://sepolia.base.org",
       gasSponsorKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
       loadMembers: async () => ["1"],
-      revokeGuest: async () => ({ txHash: "0xdead" }),
+      prepareRevoke: async ({ session, registry }) => ({
+        siblings: ["0"],
+        wallet: session.wallet,
+        registry,
+      }),
     });
     const res = await app.request("/v1/revoke", {
       method: "POST",
@@ -265,10 +305,13 @@ describe("prove app revoke", function () {
       body: JSON.stringify({ sessionId: "keep" }),
     });
     assert.equal(res.status, 200);
+    const prep = (await res.json()) as { siblings: string[]; wallet: string };
+    assert.deepEqual(prep.siblings, ["0"]);
+    assert.equal(prep.wallet, "0x00000000000000000000000000000000000000aa");
     const kept = store.get("keep");
     assert.ok(kept);
-    assert.equal(kept.revoked, true);
-    assert.notEqual(kept.evmPrivateKey, "0x");
+    assert.equal(kept.revoked, undefined);
+    assert.equal(kept.evmPrivateKey, "0x");
   });
 
   it("POST /v1/session reports live then fired without leaking keys", async function () {
@@ -278,7 +321,7 @@ describe("prove app revoke", function () {
       deskId: "desk",
       createdAt: Date.now(),
       wallet: "0x0000000000000000000000000000000000000001",
-      evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      evmPrivateKey: "0x",
       state: emptyState(),
     });
     const app = createProveApp({
@@ -288,7 +331,11 @@ describe("prove app revoke", function () {
       rpc: "https://sepolia.base.org",
       gasSponsorKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
       loadMembers: async () => ["1"],
-      revokeGuest: async () => ({ txHash: "0xdead" }),
+      prepareRevoke: async ({ session, registry }) => ({
+        siblings: ["0"],
+        wallet: session.wallet,
+        registry,
+      }),
     });
     const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
     const live = await app.request("/v1/session", {
@@ -299,10 +346,17 @@ describe("prove app revoke", function () {
     assert.equal(live.status, 200);
     const liveBody = (await live.json()) as Record<string, unknown>;
     assert.deepEqual(liveBody, { status: "live" });
-    await app.request("/v1/revoke", {
+    const prepared = await app.request("/v1/revoke", {
       method: "POST",
       headers: hdrs,
       body: JSON.stringify({ sessionId: "look" }),
+    });
+    assert.equal(prepared.status, 200);
+    assert.equal(store.get("look")?.revoked, undefined);
+    await app.request("/v1/revoke", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "look", txHash: "0xdead" }),
     });
     const fired = await app.request("/v1/session", {
       method: "POST",
@@ -312,6 +366,7 @@ describe("prove app revoke", function () {
     assert.equal(fired.status, 200);
     const firedBody = (await fired.json()) as Record<string, unknown>;
     assert.deepEqual(firedBody, { status: "fired" });
+    assert.equal("evmPrivateKey" in firedBody, false);
   });
 });
 
@@ -334,13 +389,13 @@ describe("prove desk", function () {
     const { app } = deskApp();
     const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
     const first = (await (
-      await app.request("/v1/mint", { method: "POST", headers: hdrs, body: "{}" })
+      await app.request("/v1/mint", { method: "POST", headers: hdrs, body: mintBody() })
     ).json()) as { sessionId: string; deskId: string };
     const second = (await (
       await app.request("/v1/mint", {
         method: "POST",
         headers: hdrs,
-        body: JSON.stringify({ deskId: first.deskId }),
+        body: mintBody(WALLET_B, { deskId: first.deskId }),
       })
     ).json()) as { sessionId: string; deskId: string };
     assert.equal(second.deskId, first.deskId);
