@@ -330,6 +330,27 @@ describe("prove desk", function () {
     assert.equal(res.status, 403);
     assert.deepEqual(await res.json(), { error: "wrong_desk" });
   });
+
+  it("rejects oversized mint and desk bodies", async function () {
+    const { app } = deskApp();
+    const huge = "x".repeat(64 * 1024 + 1);
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const mint = await app.request("/v1/mint", { method: "POST", headers: hdrs, body: huge });
+    assert.equal(mint.status, 413);
+    const desk = await app.request("/v1/desk", { method: "POST", headers: hdrs, body: huge });
+    assert.equal(desk.status, 413);
+  });
+
+  it("rejects invalid json on mint and desk", async function () {
+    const { app } = deskApp();
+    const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+    const mint = await app.request("/v1/mint", { method: "POST", headers: hdrs, body: "{not-json" });
+    assert.equal(mint.status, 400);
+    assert.deepEqual(await mint.json(), { error: "invalid json" });
+    const desk = await app.request("/v1/desk", { method: "POST", headers: hdrs, body: "{not-json" });
+    assert.equal(desk.status, 400);
+    assert.deepEqual(await desk.json(), { error: "invalid json" });
+  });
 });
 
 describe("rate limiter", function () {

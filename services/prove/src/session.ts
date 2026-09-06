@@ -29,6 +29,7 @@ export type SessionStore = {
   sweep(): string[];
   listByDesk(deskId: string): WarrantView[];
   dump(): GuestSession[];
+  clear(): void;
 };
 
 function wipeKey(session: GuestSession): void {
@@ -117,6 +118,10 @@ export function createSessionStore(opts: {
         sessions.push(session);
       }
       return sessions;
+    },
+    clear() {
+      for (const session of map.values()) wipeKey(session);
+      map.clear();
     },
   };
 }

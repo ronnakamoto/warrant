@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { agentPrompt, GUEST_COPY, remainingLife } from "../src/lib/guest-copy.ts";
+import { agentPrompt, GUEST_COPY, remainingLife, remainingMsUntil } from "../src/lib/guest-copy.ts";
+import { revokeEachLive } from "../src/lib/guest-act.ts";
 import {
   guestCookie,
   deskCookie,
@@ -146,6 +147,32 @@ describe("guest first-run copy", function () {
     assert.equal(remainingLife(29 * 60 * 1000), "29 minutes left");
     assert.equal(remainingLife(40_000), "Less than a minute left");
     assert.equal(remainingLife(0), "This warrant has expired");
+  });
+
+  it("recomputes remaining life from an expiry instant", function () {
+    const now = 1_000_000;
+    assert.equal(remainingMsUntil(now + 5_000, now), 5_000);
+    assert.equal(remainingMsUntil(now - 1, now), 0);
+  });
+
+  it("continues fire-all after one live revoke fails", async function () {
+    const seen: string[] = [];
+    const out = await revokeEachLive(
+      [
+        { id: "fired", status: "fired" },
+        { id: "a", status: "live" },
+        { id: "b", status: "live" },
+        { id: "c", status: "live" },
+      ],
+      async (id) => {
+        seen.push(id);
+        if (id === "b") return { ok: false };
+        return { ok: true, txHash: `0x${id}` };
+      },
+    );
+    assert.deepEqual(seen, ["a", "b", "c"]);
+    assert.deepEqual(out.txHashes, ["0xa", "0xc"]);
+    assert.equal(out.failed, 1);
   });
 
   it("reads a warrant challenge from the payment-required header", function () {

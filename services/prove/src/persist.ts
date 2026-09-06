@@ -1,7 +1,81 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { createSessionStore, type GuestSession, type SessionStore } from "./session.js";
 
 type Disk = { version: 1; sessions: GuestSession[] };
+
+const LOCK_STALE_MS = 10_000;
+const LOCK_WAIT_MS = 5_000;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function withFileLock(lockPath: string, fn: () => void): void {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      const fd = openSync(lockPath, "wx");
+      try {
+        fn();
+      } finally {
+        closeSync(fd);
+        try {
+          unlinkSync(lockPath);
+        } catch {
+          /* already gone */
+        }
+      }
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code !== "EEXIST") throw e;
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > LOCK_STALE_MS) unlinkSync(lockPath);
+      } catch {
+        /* lock raced away */
+      }
+      if (Date.now() > deadline) throw new Error("session-store: lock timeout");
+      sleepSync(20);
+    }
+  }
+}
+
+function atomicWrite(path: string, data: string): void {
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, data, { mode: 0o600 });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, path);
+  chmodSync(path, 0o600);
+}
+
+function cloneSession(session: GuestSession): GuestSession {
+  return structuredClone(session);
+}
+
+function loadDisk(path: string): GuestSession[] {
+  if (!existsSync(path)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as Disk;
+    return parsed.sessions ?? [];
+  } catch {
+    try {
+      renameSync(path, `${path}.corrupt`);
+    } catch {
+      /* keep going with empty */
+    }
+    return [];
+  }
+}
 
 export function createPersistedSessionStore(opts: {
   path: string;
@@ -10,39 +84,87 @@ export function createPersistedSessionStore(opts: {
 }): SessionStore {
   const now = opts.now ?? Date.now;
   const inner = createSessionStore({ ttlMs: opts.ttlMs, now });
-  const fileExisted = existsSync(opts.path);
-  if (fileExisted) {
-    const parsed = JSON.parse(readFileSync(opts.path, "utf8")) as Disk;
-    for (const session of parsed.sessions ?? []) {
-      if (now() - session.createdAt <= opts.ttlMs) inner.put(session);
-    }
-  }
+  const lockPath = `${opts.path}.lock`;
+
+  const hydrate = (): void => {
+    inner.clear();
+    for (const session of loadDisk(opts.path)) inner.put(session);
+  };
+
   const flush = (): void => {
     const disk: Disk = { version: 1, sessions: inner.dump() };
-    writeFileSync(opts.path, JSON.stringify(disk), { mode: 0o600 });
+    atomicWrite(opts.path, JSON.stringify(disk));
   };
-  if (fileExisted) flush();
+
+  const locked = (fn: () => void): void => {
+    withFileLock(lockPath, () => {
+      hydrate();
+      fn();
+    });
+  };
+
+  withFileLock(lockPath, () => {
+    hydrate();
+    if (existsSync(opts.path)) flush();
+  });
+
   return {
     put(session) {
-      inner.put(session);
-      flush();
+      locked(() => {
+        inner.put(session);
+        flush();
+      });
+    },
+    has(id) {
+      let present = false;
+      locked(() => {
+        present = inner.has(id);
+      });
+      return present;
     },
     get(id) {
-      const existed = inner.has(id);
-      const found = inner.get(id);
-      if (existed && !found) flush();
+      let found: GuestSession | undefined;
+      locked(() => {
+        const existed = inner.has(id);
+        found = inner.get(id);
+        if (existed && !found) flush();
+        if (found) found = cloneSession(found);
+      });
       return found;
     },
     delete(id) {
-      inner.delete(id);
-      flush();
+      locked(() => {
+        inner.delete(id);
+        flush();
+      });
     },
     sweep() {
-      const wiped = inner.sweep();
-      flush();
+      let wiped: string[] = [];
+      locked(() => {
+        wiped = inner.sweep();
+        flush();
+      });
       return wiped;
     },
-    listByDesk: (deskId) => inner.listByDesk(deskId),
-    dump: () => inner.dump(),
+    listByDesk(deskId) {
+      let views = [] as ReturnType<SessionStore["listByDesk"]>;
+      locked(() => {
+        views = inner.listByDesk(deskId);
+      });
+      return views;
+    },
+    dump() {
+      let sessions: GuestSession[] = [];
+      locked(() => {
+        sessions = inner.dump().map(cloneSession);
+      });
+      return sessions;
+    },
+    clear() {
+      locked(() => {
+        inner.clear();
+        flush();
+      });
+    },
   };
 }

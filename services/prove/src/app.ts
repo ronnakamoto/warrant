@@ -73,7 +73,15 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       return c.json({ error: "rate_limited" }, 429);
     }
     const raw = await c.req.text();
-    const body = raw ? (JSON.parse(raw) as { deskId?: string }) : {};
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { deskId?: string } = {};
+    if (raw) {
+      try {
+        body = JSON.parse(raw) as { deskId?: string };
+      } catch {
+        return c.json({ error: "invalid json" }, 400);
+      }
+    }
     const deskId = typeof body.deskId === "string" && DESK_ID_RE.test(body.deskId) ? body.deskId : undefined;
     const minted = await mintGuest({
       store: opts.store,
@@ -91,7 +99,14 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!opts.store) {
       return c.json({ error: "desk not configured" }, 503);
     }
-    const body = await c.req.json<{ deskId?: string }>();
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { deskId?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { deskId?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
     if (!body.deskId) return c.json({ error: "deskId required" }, 400);
     return c.json({ warrants: opts.store.listByDesk(body.deskId) });
   });

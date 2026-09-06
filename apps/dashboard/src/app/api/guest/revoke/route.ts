@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GUEST_COPY } from "../../../../lib/guest-copy";
+import { revokeEachLive } from "../../../../lib/guest-act";
 import {
   deskFromCookie,
   forbiddenGuestResponse,
@@ -42,20 +43,15 @@ export async function POST(req: Request): Promise<Response> {
         );
       }
       const warrants = (listBody.warrants ?? []) as WarrantView[];
-      const txHashes: string[] = [];
-      for (const warrant of warrants) {
-        if (warrant.status !== "live") continue;
-        const res = await proveRequest("/v1/revoke", { sessionId: warrant.id, deskId }, req);
-        const revokeBody = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          return NextResponse.json(
-            { error: publicGuestError(GUEST_COPY.revokeFailed) },
-            { status: 503 },
-          );
-        }
-        if (typeof revokeBody.txHash === "string") txHashes.push(revokeBody.txHash);
+      const { txHashes, failed } = await revokeEachLive(warrants, async (id) => {
+        const res = await proveRequest("/v1/revoke", { sessionId: id, deskId }, req);
+        const revokeBody = (await res.json().catch(() => ({}))) as { txHash?: string };
+        return { ok: res.ok, txHash: revokeBody.txHash };
+      });
+      if (failed > 0 && txHashes.length === 0) {
+        return NextResponse.json({ error: publicGuestError(GUEST_COPY.revokeFailed) }, { status: 503 });
       }
-      return NextResponse.json({ txHashes });
+      return NextResponse.json({ txHashes, failed });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "revoke failed";
       return NextResponse.json({ error: publicGuestError(msg) }, { status: 503 });

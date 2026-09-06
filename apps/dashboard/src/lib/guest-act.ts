@@ -9,6 +9,26 @@ import {
 
 export type ActResult = { status: number; body: Record<string, unknown> };
 
+export type LiveWarrant = { id: string; status: string };
+
+export async function revokeEachLive(
+  warrants: LiveWarrant[],
+  revoke: (id: string) => Promise<{ ok: boolean; txHash?: string }>,
+): Promise<{ txHashes: string[]; failed: number }> {
+  const txHashes: string[] = [];
+  let failed = 0;
+  for (const warrant of warrants) {
+    if (warrant.status !== "live") continue;
+    const out = await revoke(warrant.id);
+    if (out.ok) {
+      if (typeof out.txHash === "string" && out.txHash.length > 0) txHashes.push(out.txHash);
+    } else {
+      failed += 1;
+    }
+  }
+  return { txHashes, failed };
+}
+
 export async function translateForSession(
   sessionId: string,
   input: { text: string; source: string; target: string },

@@ -81,4 +81,13 @@ describe("guest session store", function () {
     assert.match(a, /^[0-9a-f]{32}$/);
     assert.notEqual(a, b);
   });
+
+  it("clear wipes keys and empties the map", function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1000 });
+    const s = session("z", 1000);
+    store.put(s);
+    store.clear();
+    assert.equal(store.get("z"), undefined);
+    assert.equal(s.evmPrivateKey, "0x");
+  });
 });

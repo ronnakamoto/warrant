@@ -5,10 +5,20 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { VStack } from "@astryxdesign/core/Layout";
 import { Heading, Text } from "@astryxdesign/core/Text";
-import { agentPrompt, GUEST_COPY, remainingLife } from "../lib/guest-copy";
+import { agentPrompt, GUEST_COPY, remainingLife, remainingMsUntil } from "../lib/guest-copy";
 
 type Phase = "land" | "minting" | "ready" | "calling" | "done" | "revoked" | "quota" | "limited";
-type WarrantView = { id: string; status: "live" | "fired"; createdAt: number; remainingMs: number };
+type WarrantView = {
+  id: string;
+  status: "live" | "fired";
+  createdAt: number;
+  remainingMs: number;
+  expiresAt?: number;
+};
+
+function stampExpiry(w: WarrantView, now = Date.now()): WarrantView {
+  return { ...w, expiresAt: now + Math.max(0, w.remainingMs) };
+}
 
 const fieldStyle = {
   width: "100%",
@@ -64,6 +74,7 @@ export function GuestTry() {
   const [nullifier, setNullifier] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState(false);
   const [origin, setOrigin] = useState("http://127.0.0.1:3001");
 
   useEffect(() => {
@@ -77,7 +88,7 @@ export function GuestTry() {
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
 
   const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
-    setWarrants(list);
+    setWarrants(list.map((w) => stampExpiry(w)));
     const pick =
       (preferId ? list.find((w) => w.id === preferId && isLive(w)) : undefined) ?? latestLive(list);
     if (pick) {
@@ -121,8 +132,15 @@ export function GuestTry() {
 
   useEffect(() => {
     const tick = window.setInterval(() => {
-      setWarrants((prev) => prev.map((w) => ({ ...w, remainingMs: w.remainingMs - 30_000 })));
-    }, 30_000);
+      const now = Date.now();
+      setWarrants((prev) =>
+        prev.map((w) => ({
+          ...w,
+          remainingMs:
+            typeof w.expiresAt === "number" ? remainingMsUntil(w.expiresAt, now) : w.remainingMs,
+        })),
+      );
+    }, 1_000);
     return () => window.clearInterval(tick);
   }, []);
 
@@ -222,67 +240,87 @@ export function GuestTry() {
   async function fireThis() {
     if (!selectedId) return;
     setError(null);
-    const res = await fetch("/api/guest/revoke", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: selectedId }),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(body.error ?? GUEST_COPY.hostError);
-      return;
+    setRevoking(true);
+    try {
+      const res = await fetch("/api/guest/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: selectedId }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? GUEST_COPY.hostError);
+        return;
+      }
+      if (cookieSessionId === selectedId) {
+        const dead = await confirmShopDead(text);
+        if (!dead) {
+          setError(GUEST_COPY.revokeFailed);
+          setPhase("done");
+          return;
+        }
+      }
+      const list = await refreshWarrants();
+      const remaining = list.filter(isLive);
+      setResult(null);
+      setNullifier(null);
+      setCopied(false);
+      if (remaining.length > 0) {
+        const next = latestLive(remaining);
+        if (next) setSelectedId(next.id);
+        setNotice(GUEST_COPY.afterFireThis);
+        setPhase("ready");
+        return;
+      }
+      setNotice(null);
+      setSelectedId(null);
+      setPhase("revoked");
+    } finally {
+      setRevoking(false);
     }
-    if (cookieSessionId === selectedId) {
+  }
+
+  async function fireEvery() {
+    if (liveWarrants.length <= 1) return;
+    setError(null);
+    setRevoking(true);
+    try {
+      const res = await fetch("/api/guest/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string; failed?: number };
+      if (!res.ok) {
+        setError(body.error ?? GUEST_COPY.hostError);
+        return;
+      }
+      const list = await refreshWarrants();
+      const remaining = list.filter(isLive);
+      setResult(null);
+      setNullifier(null);
+      setCopied(false);
+      if (remaining.length > 0) {
+        if (typeof body.failed === "number" && body.failed > 0) {
+          setError(GUEST_COPY.revokeFailed);
+        }
+        const next = latestLive(remaining);
+        if (next) setSelectedId(next.id);
+        setPhase("ready");
+        return;
+      }
       const dead = await confirmShopDead(text);
       if (!dead) {
         setError(GUEST_COPY.revokeFailed);
         setPhase("done");
         return;
       }
+      setNotice(null);
+      setSelectedId(null);
+      setPhase("revoked");
+    } finally {
+      setRevoking(false);
     }
-    const list = await refreshWarrants();
-    const remaining = list.filter(isLive);
-    setResult(null);
-    setNullifier(null);
-    setCopied(false);
-    if (remaining.length > 0) {
-      const next = latestLive(remaining);
-      if (next) setSelectedId(next.id);
-      setNotice(GUEST_COPY.afterFireThis);
-      setPhase("ready");
-      return;
-    }
-    setNotice(null);
-    setSelectedId(null);
-    setPhase("revoked");
-  }
-
-  async function fireEvery() {
-    if (liveWarrants.length <= 1) return;
-    setError(null);
-    const res = await fetch("/api/guest/revoke", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ all: true }),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(body.error ?? GUEST_COPY.hostError);
-      return;
-    }
-    const dead = await confirmShopDead(text);
-    if (!dead) {
-      setError(GUEST_COPY.revokeFailed);
-      setPhase("done");
-      return;
-    }
-    await refreshWarrants();
-    setResult(null);
-    setNullifier(null);
-    setCopied(false);
-    setNotice(null);
-    setSelectedId(null);
-    setPhase("revoked");
   }
 
   async function copyPrompt() {
@@ -294,7 +332,7 @@ export function GuestTry() {
     }
   }
 
-  const busy = phase === "minting" || phase === "calling";
+  const busy = phase === "minting" || phase === "calling" || revoking;
   const live =
     token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
 
@@ -337,6 +375,7 @@ export function GuestTry() {
                     size="sm"
                     variant={w.id === selectedId ? "primary" : "secondary"}
                     label={idTail(w.id)}
+                    isDisabled={busy}
                     onClick={() => {
                       setSelectedId(w.id);
                       setCopied(false);

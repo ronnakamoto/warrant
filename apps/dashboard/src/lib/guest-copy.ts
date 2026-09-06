@@ -32,6 +32,10 @@ export const GUEST_COPY = {
   afterFireThis: "That warrant is done. The shop still does not know who you were.",
 } as const;
 
+export function remainingMsUntil(expiresAt: number, now = Date.now()): number {
+  return Math.max(0, expiresAt - now);
+}
+
 export function remainingLife(ms: number): string {
   if (ms <= 0) return "This warrant has expired";
   const minutes = Math.floor(ms / 60_000);
