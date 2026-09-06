@@ -2,8 +2,18 @@ import { randomBytes } from "node:crypto";
 import type { WarrantState } from "@warrant/agent";
 import type { Address, Hex } from "viem";
 
+export type WarrantStatus = "live" | "fired";
+
+export type WarrantView = {
+  id: string;
+  status: WarrantStatus;
+  createdAt: number;
+  remainingMs: number;
+};
+
 export type GuestSession = {
   id: string;
+  deskId: string;
   state: WarrantState;
   evmPrivateKey: Hex;
   wallet: Address;
@@ -16,6 +26,7 @@ export type SessionStore = {
   get(id: string): GuestSession | undefined;
   delete(id: string): void;
   sweep(): string[];
+  listByDesk(deskId: string): WarrantView[];
 };
 
 function wipeKey(session: GuestSession): void {
@@ -30,6 +41,18 @@ function wipeKey(session: GuestSession): void {
 
 export function createSessionId(): string {
   return randomBytes(16).toString("hex");
+}
+
+export const createDeskId = createSessionId;
+
+export function warrantView(session: GuestSession, now: number, ttlMs: number): WarrantView {
+  const remainingMs = Math.max(0, session.createdAt + ttlMs - now);
+  return {
+    id: session.id,
+    status: session.revoked ? "fired" : "live",
+    createdAt: session.createdAt,
+    remainingMs,
+  };
 }
 
 export function createSessionStore(opts: {
@@ -71,6 +94,16 @@ export function createSessionStore(opts: {
         }
       }
       return wiped;
+    },
+    listByDesk(deskId) {
+      const views: WarrantView[] = [];
+      for (const session of map.values()) {
+        if (session.deskId !== deskId) continue;
+        if (expired(session)) continue;
+        views.push(warrantView(session, now(), opts.ttlMs));
+      }
+      views.sort((a, b) => a.createdAt - b.createdAt);
+      return views;
     },
   };
 }

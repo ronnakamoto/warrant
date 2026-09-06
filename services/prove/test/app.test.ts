@@ -136,6 +136,7 @@ describe("prove app prove", function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put({
       id: "sess1",
+      deskId: "desk",
       wallet: "0x0000000000000000000000000000000000000001",
       evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
       createdAt: Date.now(),
@@ -195,6 +196,7 @@ describe("prove app prove", function () {
     assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600));
     store.put({
       id: "slow",
+      deskId: "desk",
       wallet: "0x0000000000000000000000000000000000000002",
       evmPrivateKey: "0x3333333333333333333333333333333333333333333333333333333333333333",
       createdAt: Date.now(),
@@ -239,6 +241,7 @@ describe("prove app revoke", function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put({
       id: "keep",
+      deskId: "desk",
       wallet: "0x00000000000000000000000000000000000000aa",
       evmPrivateKey: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       createdAt: Date.now(),

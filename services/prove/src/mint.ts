@@ -13,7 +13,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import type { Address, Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
 import { mergeGuestLeaf, type LeafLoader } from "./members.js";
-import { createSessionId, type GuestSession, type SessionStore } from "./session.js";
+import { createSessionId, createDeskId, type GuestSession, type SessionStore } from "./session.js";
 
 export type BindRootFn = (args: {
   rpcUrl: string;
@@ -152,6 +152,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
 
   const session: GuestSession = {
     id: createSessionId(),
+    deskId: createDeskId(),
     state,
     evmPrivateKey: evmKey,
     wallet: account.address,
