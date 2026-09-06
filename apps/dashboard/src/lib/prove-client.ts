@@ -102,6 +102,16 @@ export async function verifyTurnstile(
   return json.success === true;
 }
 
+function originFromForwardedHost(req: Request): string | undefined {
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host"))
+    ?.split(",")[0]
+    ?.trim();
+  if (!host) return undefined;
+  const proto = (req.headers.get("x-forwarded-proto") ?? "https").split(",")[0]?.trim() || "https";
+  const scheme = proto.includes(":") ? proto.split(":")[0] : proto;
+  return `${scheme}://${host}`;
+}
+
 export function dashboardOriginForProve(req: Request, env: Env = process.env): string | undefined {
   const requestOrigin = req.headers.get("origin");
   if (requestOrigin) return requestOrigin;
@@ -113,6 +123,10 @@ export function dashboardOriginForProve(req: Request, env: Env = process.env): s
       /* fall through */
     }
   }
+  // Bots send no Origin/Referer. The host they hit is the dashboard origin prove
+  // must see — DASHBOARD_ORIGIN's first entry may be a different public alias.
+  const fromHost = originFromForwardedHost(req);
+  if (fromHost) return fromHost;
   const first = (env.DASHBOARD_ORIGIN ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -166,7 +180,7 @@ export function agentCorsHeaders(): Record<string, string> {
 }
 
 export async function proveRequest(
-  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk",
+  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk" | "/v1/session",
   body: unknown,
   req?: Request,
 ): Promise<Response> {

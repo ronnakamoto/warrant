@@ -165,6 +165,17 @@ describe("guest first-run copy", function () {
       {},
     );
     assert.equal(fromUrl["x-warrant-dashboard-origin"], "https://warrant-beta.vercel.app");
+
+    const fromForwardedHost = proveForwardHeaders(
+      new Request("https://warrant-n2pm2op0o-ronnakamotos-projects.vercel.app/api/agent/translate", {
+        headers: {
+          "x-forwarded-host": "warrant-beta.vercel.app",
+          "x-forwarded-proto": "https",
+        },
+      }),
+      { DASHBOARD_ORIGIN: "https://warrant-ronnakamotos-projects.vercel.app,https://warrant-beta.vercel.app" },
+    );
+    assert.equal(fromForwardedHost["x-warrant-dashboard-origin"], "https://warrant-beta.vercel.app");
   });
 
   it("tells the bot that Warrant sees the witness and the shop does not", function () {
@@ -319,7 +330,10 @@ describe("guest first-run copy", function () {
       {
         translateUrl: "http://shop.test/v1/translate",
         fetchImpl: async () => new Response(JSON.stringify(payload), { status: 402, headers }),
-        prove: async () => {
+        prove: async (path) => {
+          if (path === "/v1/session") {
+            return new Response(JSON.stringify({ status: "live" }), { status: 200 });
+          }
           proved += 1;
           return new Response("{}", { status: 500 });
         },
@@ -328,6 +342,32 @@ describe("guest first-run copy", function () {
     assert.equal(proved, 0);
     assert.equal(out.status, 402);
     assert.equal(out.body.error, "pay");
+  });
+
+  it("returns 403 on an unpaid retry after the warrant is fired", async function () {
+    let proved = 0;
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const out = await translateForSession(
+      "sess",
+      { text: "hi", source: "en", target: "es" },
+      undefined,
+      {
+        translateUrl: "http://shop.test/v1/translate",
+        fetchImpl: async () => new Response(JSON.stringify(payload), { status: 402, headers }),
+        prove: async (path) => {
+          if (path === "/v1/prove") proved += 1;
+          return new Response(JSON.stringify({ status: "fired" }), { status: 200 });
+        },
+      },
+    );
+    assert.equal(proved, 0);
+    assert.equal(out.status, 403);
+    assert.equal(out.body.error, "root_revoked");
   });
 
   it("does not invent a payment fetch when the caller did not pay", async function () {
