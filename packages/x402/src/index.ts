@@ -14,3 +14,9 @@ export {
 } from "./pipeline.js";
 export { createWarrantExtension, type CreateExtensionArgs } from "./extension.js";
 export { createWarrantHooks, type CreateHooksArgs } from "./hooks.js";
+export {
+  MemoryChallengeStore,
+  FileChallengeStore,
+  type ChallengeStore,
+  type IssuedChallenge,
+} from "./challenges.js";
