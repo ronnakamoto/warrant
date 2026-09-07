@@ -20,11 +20,14 @@ export type Purse = {
 
 export type PursePublic = {
   publicKey: string;
+  evmAddress: string;
   accountId?: string;
   vaultAccountId?: string;
 };
 
 const ACCOUNT_RE = /^\d+\.\d+\.\d+$/;
+export const FUND_HBAR = 2;
+export const MIRROR_ACCOUNT_URL = "https://testnet.mirrornode.hedera.com/api/v1/accounts";
 
 export function defaultPursePath(): string {
   return process.env.WARRANT_PURSE ?? join(homedir(), ".warrant", "purse.json");
@@ -36,9 +39,22 @@ export function parseHederaAccount(raw: string, label = "account"): string {
   return id;
 }
 
+export function parsePursePrivateKey(raw: string): PrivateKey {
+  return raw.startsWith("0x") || raw.length === 64
+    ? PrivateKey.fromStringECDSA(raw)
+    : PrivateKey.fromString(raw);
+}
+
+export function evmAddressOf(purse: Purse): string {
+  const raw = parsePursePrivateKey(purse.privateKey).publicKey.toEvmAddress();
+  const hex = raw.replace(/^0x/i, "").toLowerCase();
+  return `0x${hex}`;
+}
+
 export function pursePublicView(purse: Purse): PursePublic {
   return {
     publicKey: purse.publicKey,
+    evmAddress: evmAddressOf(purse),
     ...(purse.accountId ? { accountId: purse.accountId } : {}),
     ...(purse.vaultAccountId ? { vaultAccountId: purse.vaultAccountId } : {}),
   };
@@ -105,22 +121,90 @@ export function bindPurse(
   return purse;
 }
 
-export function requireReadyPurse(path = defaultPursePath()): Purse & {
-  accountId: string;
-  vaultAccountId: string;
-} {
+export function requireReadyPurse(path = defaultPursePath()): Purse & { accountId: string } {
   const purse = loadPurse(path);
   if (!purse) throw new Error("no purse — `warrant purse init`");
-  if (!purse.accountId || !purse.vaultAccountId) {
-    throw new Error(
-      "purse is not bound — create it in the tab, then `warrant purse bind --account 0.0.N --vault 0.0.M`",
-    );
+  if (!purse.accountId) {
+    throw new Error("purse is not funded — send HBAR to the 0x address, then warrant act");
   }
-  return purse as Purse & { accountId: string; vaultAccountId: string };
+  return purse as Purse & { accountId: string };
 }
 
-export function parsePursePrivateKey(raw: string): PrivateKey {
-  return raw.startsWith("0x") || raw.length === 64
-    ? PrivateKey.fromStringECDSA(raw)
-    : PrivateKey.fromString(raw);
+export async function lookupAccountByEvm(
+  evmAddress: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | undefined> {
+  const hex = evmAddress.replace(/^0x/i, "").toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(hex)) return undefined;
+  const res = await fetchImpl(`${MIRROR_ACCOUNT_URL}/0x${hex}`);
+  if (!res.ok) return undefined;
+  const body = (await res.json().catch(() => ({}))) as { account?: unknown };
+  return typeof body.account === "string" && ACCOUNT_RE.test(body.account)
+    ? body.account
+    : undefined;
+}
+
+export const FUND_POLL_MS = 2_000;
+
+/** Bind 0.0.N from the testnet mirror if the 0x alias already exists. */
+export async function tryBindPurseFromMirror(
+  path: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Purse | undefined> {
+  const purse = loadPurse(path);
+  if (!purse) return undefined;
+  if (purse.accountId) return purse;
+  const accountId = await lookupAccountByEvm(evmAddressOf(purse), fetchImpl);
+  if (!accountId) return undefined;
+  return bindPurse(path, { accountId });
+}
+
+/** Bind 0.0.N from the testnet mirror once the 0x alias has been funded. */
+export async function bindPurseFromMirror(
+  path: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Purse> {
+  const purse = await tryBindPurseFromMirror(path, fetchImpl);
+  if (purse?.accountId) return purse;
+  const existing = loadPurse(path);
+  throw new Error(
+    existing
+      ? `not funded yet — send about ${FUND_HBAR} HBAR to ${evmAddressOf(existing)}`
+      : "no purse — `warrant purse init`",
+  );
+}
+
+/** Poll the mirror until the alias is funded. Stops after the first bind. */
+export function watchPurseFunding(opts: {
+  path: string;
+  fetchImpl?: typeof fetch;
+  intervalMs?: number;
+  onFunded?: (accountId: string) => void;
+}): { stop: () => void } {
+  let stopped = false;
+  let inflight = false;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const tick = async () => {
+    if (stopped || inflight) return;
+    inflight = true;
+    try {
+      const purse = await tryBindPurseFromMirror(opts.path, fetchImpl);
+      if (purse?.accountId) {
+        opts.onFunded?.(purse.accountId);
+        stop();
+      }
+    } catch {
+      /* keep waiting */
+    } finally {
+      inflight = false;
+    }
+  };
+  const timer = setInterval(() => void tick(), opts.intervalMs ?? FUND_POLL_MS);
+  void tick();
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+  }
+  return { stop };
 }

@@ -52,7 +52,7 @@ Usage:
   warrant ready
   warrant act --url <url> [--body <json>] [--as translator]
   warrant status
-  warrant purse init | show | bind --account 0.0.N --vault 0.0.M
+  warrant purse init | show | bind --account 0.0.N [--vault 0.0.M]
   warrant graph-status
 
 Store: $WARRANT_STORE (default ~/.warrant/state.json)
@@ -360,7 +360,8 @@ async function cmdReady(args: string[]): Promise<void> {
       {
         ...view,
         ready: `http://127.0.0.1:${handle.port}`,
-        next: "Open the tab and Let it spend. Never print keys.",
+        fund: `http://127.0.0.1:${handle.port}/fund`,
+        next: "Show the human the evmAddress and fund URL. This process notices the send and prints funded. Never print keys.",
       },
       null,
       2,
@@ -395,7 +396,7 @@ function cmdPurse(args: string[]): void {
       JSON.stringify(
         {
           ...pursePublicView(purse),
-          next: "Create the purse in the tab with this public key, then warrant purse bind --account 0.0.N --vault 0.0.M",
+          next: "Show the human the evmAddress. They send about 2 HBAR, then warrant act.",
         },
         null,
         2,
@@ -414,12 +415,15 @@ function cmdPurse(args: string[]): void {
   }
   if (sub === "bind") {
     const account = requireFlag(rest, "--account");
-    const vault = requireFlag(rest, "--vault");
-    const purse = bindPurse(path, { accountId: account, vaultAccountId: vault });
+    const vault = flag(rest, "--vault");
+    const purse = bindPurse(path, {
+      accountId: account,
+      ...(vault ? { vaultAccountId: vault } : {}),
+    });
     console.log(JSON.stringify(pursePublicView(purse), null, 2));
     return;
   }
-  console.error(`warrant purse init | show | bind --account 0.0.N --vault 0.0.M`);
+  console.error(`warrant purse init | show | bind --account 0.0.N [--vault 0.0.M]`);
   process.exit(2);
 }
 
@@ -431,7 +435,7 @@ Usage:
   warrant act --url <url> [--body <json>] [--as translator]
 
 Store: $WARRANT_STORE (default ~/.warrant/state.json)
-Pay: local purse (spender). HashPack holds the vault. Never print keys.
+Pay: local purse. Human sends HBAR to the 0x address. Never print keys.
 Zkey: downloaded via scripts/download-zkey.sh / WARRANT_ZKEY_URL if missing.
 Prints only the shop text.
 `);

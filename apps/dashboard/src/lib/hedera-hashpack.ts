@@ -13,6 +13,13 @@ export function walletConnectProjectId(): string {
   return process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim() ?? "";
 }
 
+export class WalletConnectMissingError extends Error {
+  constructor() {
+    super("WalletConnect is not configured");
+    this.name = "WalletConnectMissingError";
+  }
+}
+
 export class WalletRejectedError extends Error {
   constructor() {
     super("wallet rejected");
@@ -55,7 +62,7 @@ export async function connectHashPack(): Promise<HashPackSession> {
   if (session) return session;
   const projectId = walletConnectProjectId();
   if (!projectId) {
-    throw new Error("WalletConnect is not configured");
+    throw new WalletConnectMissingError();
   }
 
   try {

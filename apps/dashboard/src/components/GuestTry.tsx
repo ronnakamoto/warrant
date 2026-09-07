@@ -8,7 +8,6 @@ import { Heading, Text } from "@astryxdesign/core/Text";
 import {
   agentPrompt,
   GUEST_COPY,
-  PAIR_ORIGIN,
   WARRANT_TTL_MS,
   remainingLife,
   remainingMsUntil,
@@ -54,14 +53,9 @@ export function GuestTry() {
   const [notice, setNotice] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [origin, setOrigin] = useState("http://127.0.0.1:3001");
-  const [agentAccount, setAgentAccount] = useState("");
-  const [purseBusy, setPurseBusy] = useState(false);
-  const [copiedOnce, setCopiedOnce] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    const saved = window.localStorage.getItem("warrant.purse.account");
-    if (saved) setAgentAccount(saved);
   }, []);
 
   const selected = warrants.find((w) => w.id === selectedId);
@@ -294,66 +288,12 @@ export function GuestTry() {
     try {
       await navigator.clipboard.writeText(prompt);
       setCopied(true);
-      setCopiedOnce(true);
     } catch {
       setError(GUEST_COPY.hostError);
     }
   }
 
-  async function letSpend() {
-    setError(null);
-    setPurseBusy(true);
-    try {
-      const { letSpendFromReady } = await import("../lib/hedera-purse");
-      const granted = await letSpendFromReady({ origin: PAIR_ORIGIN });
-      setAgentAccount(granted.accountId);
-      window.localStorage.setItem("warrant.purse.account", granted.accountId);
-      setNotice(GUEST_COPY.spendGranted);
-    } catch (e) {
-      const { ReadyNeededError, PairFallbackError } = await import("../lib/hedera-purse");
-      if (e instanceof ReadyNeededError) {
-        setError(GUEST_COPY.readyNeeded);
-        return;
-      }
-      if (e instanceof PairFallbackError) {
-        setAgentAccount(e.accountId);
-        window.localStorage.setItem("warrant.purse.account", e.accountId);
-        setNotice(
-          `${GUEST_COPY.pairFallback} --account ${e.accountId} --vault ${e.vaultAccountId}`,
-        );
-        return;
-      }
-      const { WalletRejectedError } = await import("../lib/hedera-hashpack");
-      if (e instanceof WalletRejectedError) {
-        setError(GUEST_COPY.walletRejected);
-        return;
-      }
-      setError(e instanceof Error ? e.message : GUEST_COPY.hostError);
-    } finally {
-      setPurseBusy(false);
-    }
-  }
-
-  async function cutSpend() {
-    setError(null);
-    setPurseBusy(true);
-    try {
-      const { cutSpendOnChain } = await import("../lib/hedera-purse");
-      await cutSpendOnChain(agentAccount);
-      setNotice(GUEST_COPY.spendCut);
-    } catch (e) {
-      const { WalletRejectedError } = await import("../lib/hedera-hashpack");
-      if (e instanceof WalletRejectedError) {
-        setError(GUEST_COPY.walletRejected);
-        return;
-      }
-      setError(e instanceof Error ? e.message : GUEST_COPY.hostError);
-    } finally {
-      setPurseBusy(false);
-    }
-  }
-
-  const busy = phase === "minting" || revoking || purseBusy;
+  const busy = phase === "minting" || revoking;
   const live = token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
 
   return (
@@ -423,6 +363,9 @@ export function GuestTry() {
                 {GUEST_COPY.localhostHint}
               </Text>
             ) : null}
+            <Text type="supporting" color="secondary">
+              {GUEST_COPY.fundHint}
+            </Text>
             <div style={wrapRow}>
               <Button
                 label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
@@ -445,25 +388,6 @@ export function GuestTry() {
               />
             ) : null}
           </VStack>
-
-          {copiedOnce ? (
-            <VStack gap={2}>
-              <div style={wrapRow}>
-                <Button
-                  label={purseBusy ? GUEST_COPY.spending : GUEST_COPY.letSpend}
-                  variant="secondary"
-                  onClick={() => void letSpend()}
-                  isDisabled={busy}
-                />
-                <Button
-                  label={GUEST_COPY.cutSpend}
-                  variant="secondary"
-                  onClick={() => void cutSpend()}
-                  isDisabled={busy || agentAccount.trim() === ""}
-                />
-              </div>
-            </VStack>
-          ) : null}
         </VStack>
       ) : null}
 
