@@ -35,7 +35,6 @@ export {
   withRequestBody,
   cachedRequestBody,
   hasRequestBodyStore,
-  warrantHono,
-  type WarrantAuditEvent,
-} from "./hono.js";
+} from "./body-als.js";
+export { warrantHono, type WarrantAuditEvent } from "./hono.js";
 export { assertNoDemoRails, shouldEnforceStrictProd, SHOP_DEMO_FLAGS } from "./prod-flags.js";

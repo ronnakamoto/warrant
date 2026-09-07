@@ -31,7 +31,7 @@ packages/core                 # domain + prove/verify. No HTTP, no React, no Hed
 packages/x402                 # ResourceServerExtension + hooks. Depends on core + @x402/*.
 packages/agent                # CLI + warrant.fetch. Depends on core + @x402/fetch.
 apps/dashboard                # Next.js + Astryx runtime, Carbon design language. UI only.
-services/translate            # Hono composition root. Wires x402 + Hedera + HCS.
+services/translate            # Shop process: MyMemory + HCS. Factory lives in @warrant/x402.
 services/echo                 # Second shop: POST /v1/echo, FETCH. Factory proof, not a hosted proxy.
 services/prove                # Isolated guest IProver. No x402, no Hedera, no Next.
 subgraphs/mandate-registry    # Studio subgraph. No TS runtime imports from packages/.
@@ -72,10 +72,12 @@ Split by responsibility, not by “utils”:
 | `src/extension.ts` | `registerExtension({ key: "warrant" })` + `enrichPaymentRequiredResponse` |
 | `src/hooks.ts` | `onProtectedRequest` adapter around `pipeline` (AgentKit slot, not `onBeforeVerify`) |
 | `src/challenges.ts` | Server-issued nonce store (`MemoryChallengeStore`, `FileChallengeStore`) |
-| `src/nullifiers.ts` | `MemoryNullifierStore` / `FileNullifierStore` — replay seal + free quota |
+| `src/nullifiers.ts` | `MemoryNullifierStore` — replay seal + free quota |
+| `src/nullifiers-file.ts` | `FileNullifierStore` |
+| `src/body-als.ts` | Request-body ALS — no Hono. Used by shop hash + `warrantHono` |
 | `src/roots.ts` | `FixedRootChecker`, `CurrentRootChecker` (`currentRoot` only) |
 | `src/shop.ts` | `createWarrantShop` — repeated wire: pipeline + extension + ExactHedera + HTTP server |
-| `src/hono.ts` | Body ALS + `warrantHono` payment middleware + optional nullifier audit |
+| `src/hono.ts` | `warrantHono` payment middleware + post-settle `txId` + optional nullifier audit |
 | `src/prod-flags.ts` | `assertNoDemoRails` — S3 demo flags boot-fatal on public shops |
 | `src/index.ts` | `createWarrantShop`, `warrantHono`, stores, extension/hooks |
 

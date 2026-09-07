@@ -17,7 +17,7 @@ import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { MemoryChallengeStore, type ChallengeStore } from "./challenges.js";
 import { createWarrantExtension } from "./extension.js";
-import { cachedRequestBody, hasRequestBodyStore } from "./hono.js";
+import { cachedRequestBody, hasRequestBodyStore } from "./body-als.js";
 import { createWarrantHooks } from "./hooks.js";
 import { createWarrantPipeline } from "./pipeline.js";
 import type { WarrantPolicy } from "./policy.js";

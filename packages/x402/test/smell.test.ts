@@ -40,4 +40,12 @@ describe("WP5 smell gate", function () {
       }
     }
   });
+
+  it("shop factory and body ALS do not import hono", function () {
+    for (const rel of ["src/shop.ts", "src/body-als.ts"]) {
+      const text = readFileSync(join(root, rel), "utf8");
+      assert.ok(!/from\s+['"]hono['"]/.test(text), `${rel}: no hono`);
+      assert.ok(!/from\s+['"]\.\/hono/.test(text), `${rel}: no ./hono`);
+    }
+  });
 });
