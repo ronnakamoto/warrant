@@ -247,4 +247,28 @@ describe("createWarrantShop", function () {
     assert.equal(result.response?.status, 403);
     assert.equal((result.response?.body as { error?: string }).error, "root_revoked");
   });
+
+  it("getBody consumed without ALS → 403, not an empty-hash grant", async function () {
+    const shop = await setup();
+    const ch = await issueChallenge(shop);
+    const consumed = {
+      getHeader: (name: string) =>
+        name.toLowerCase() === "warrant"
+          ? warrantHeader(publics(ch), ch.nonce)
+          : undefined,
+      getMethod: () => "POST",
+      getPath: () => path,
+      getUrl: () => `https://echo.warrant.example${path}`,
+      getAcceptHeader: () => "application/json",
+      getUserAgent: () => "warrant-shop-test",
+      getBody: async () => undefined,
+    };
+    const result = await shop.http.processHTTPRequest({
+      adapter: consumed,
+      path,
+      method: "POST",
+    });
+    assert.equal(result.response?.status, 403);
+    assert.equal((result.response?.body as { error?: string }).error, "challenge_missing");
+  });
 });

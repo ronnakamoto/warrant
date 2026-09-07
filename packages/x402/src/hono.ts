@@ -30,6 +30,11 @@ export function cachedRequestBody(): unknown {
   return als.getStore()?.body;
 }
 
+/** True inside `withRequestBody` (including an empty POST). */
+export function hasRequestBodyStore(): boolean {
+  return als.getStore() !== undefined;
+}
+
 export type WarrantAuditEvent = {
   nullifier: string;
   scope: string;

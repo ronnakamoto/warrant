@@ -1,38 +1,14 @@
-import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { FETCH } from "@warrant/core";
-import { FileChallengeStore, FileNullifierStore } from "@warrant/x402";
+import {
+  FileChallengeStore,
+  FileNullifierStore,
+  shouldEnforceStrictProd,
+} from "@warrant/x402";
 import { createEchoApp } from "./app.js";
+import { assertProductionEchoEnv } from "./prod-guard.js";
 import { wireEcho } from "./wiring.js";
-
-const PROD_REQUIRED = [
-  "WARRANT_VKEY_PATH",
-  "REGISTRY_ADDRESS",
-  "BASE_SEPOLIA_RPC",
-  "HEDERA_PAY_TO",
-] as const;
-
-function isOn(value: string | undefined): boolean {
-  if (value === undefined) return false;
-  const v = value.trim().toLowerCase();
-  if (v === "" || v === "0" || v === "false") return false;
-  return true;
-}
-
-/** Fail closed in production: verify rails + payTo, not an HCS trio. */
-function assertProductionEchoEnv(env: NodeJS.Dict<string>): void {
-  for (const key of PROD_REQUIRED) {
-    const v = env[key];
-    if (typeof v !== "string" || v.trim() === "") {
-      throw new Error(`prod-guard: ${key} is required`);
-    }
-  }
-  const vkey = env.WARRANT_VKEY_PATH!;
-  if (!existsSync(vkey) || !statSync(vkey).isFile()) {
-    throw new Error(`prod-guard: vkey file missing at WARRANT_VKEY_PATH`);
-  }
-}
 
 function fixedMerkleRootFromEnv(env: NodeJS.ProcessEnv = process.env): bigint | undefined {
   if (!env.FIXED_MERKLE_ROOT) return undefined;
@@ -45,7 +21,7 @@ function fixedMerkleRootFromEnv(env: NodeJS.ProcessEnv = process.env): bigint | 
 }
 
 async function main(): Promise<void> {
-  if (process.env.NODE_ENV === "production" || isOn(process.env.WARRANT_STRICT_PROD)) {
+  if (shouldEnforceStrictProd()) {
     assertProductionEchoEnv(process.env);
   }
 

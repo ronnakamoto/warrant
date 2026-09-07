@@ -76,6 +76,7 @@ Split by responsibility, not by “utils”:
 | `src/roots.ts` | `FixedRootChecker`, `CurrentRootChecker` (`currentRoot` only) |
 | `src/shop.ts` | `createWarrantShop` — repeated wire: pipeline + extension + ExactHedera + HTTP server |
 | `src/hono.ts` | Body ALS + `warrantHono` payment middleware + optional nullifier audit |
+| `src/prod-flags.ts` | `assertNoDemoRails` — S3 demo flags boot-fatal on public shops |
 | `src/index.ts` | `createWarrantShop`, `warrantHono`, stores, extension/hooks |
 
 ### 2.4 `services/translate` (shop process)

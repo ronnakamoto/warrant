@@ -17,7 +17,7 @@ import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { MemoryChallengeStore, type ChallengeStore } from "./challenges.js";
 import { createWarrantExtension } from "./extension.js";
-import { cachedRequestBody } from "./hono.js";
+import { cachedRequestBody, hasRequestBodyStore } from "./hono.js";
 import { createWarrantHooks } from "./hooks.js";
 import { createWarrantPipeline } from "./pipeline.js";
 import type { WarrantPolicy } from "./policy.js";
@@ -53,10 +53,15 @@ export type WarrantShop = {
   payTo: string;
 };
 
-async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
-  const cached = cachedRequestBody();
-  if (cached !== undefined && cached !== null) {
-    return bodyHashFromCanonical(cached);
+/**
+ * Authoritative body hash for this request.
+ * ALS (warrantHono) wins, including empty POST.
+ * No getBody → empty hash (processHTTPRequest tests).
+ * getBody present but empty/throws → undefined (fail closed; do not hash "").
+ */
+async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string | undefined> {
+  if (hasRequestBodyStore()) {
+    return bodyHashFromCanonical(cachedRequestBody());
   }
   const getBody = ctx.adapter.getBody;
   if (!getBody) return "";
@@ -64,9 +69,9 @@ async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
   try {
     body = await Promise.resolve(getBody());
   } catch {
-    return "";
+    return undefined;
   }
-  if (body === undefined || body === null) return "";
+  if (body === undefined || body === null) return undefined;
   return bodyHashFromCanonical(body);
 }
 
@@ -134,6 +139,9 @@ export function createWarrantShop(config: WarrantShopConfig): WarrantShop {
       const issued = challenges.resolve(nonceHint);
       if (!issued) return null;
 
+      const bodyHash = await bodyHashFromContext(ctx);
+      if (bodyHash === undefined) return null;
+
       return {
         method: ctx.adapter.getMethod(),
         path: ctx.adapter.getPath() || config.defaultPath || "/",
@@ -141,7 +149,7 @@ export function createWarrantShop(config: WarrantShopConfig): WarrantShop {
         merkleRoot: issued.merkleRoot,
         amount,
         payTo,
-        bodyHash: await bodyHashFromContext(ctx),
+        bodyHash,
       };
     },
   });
