@@ -20,6 +20,7 @@ describe("WP5 smell gate", function () {
     const dirs = [
       join(root, "src"),
       join(root, "../../services/translate/src"),
+      join(root, "../../services/echo/src"),
     ];
     for (const dir of dirs) {
       for (const file of walk(dir)) {
