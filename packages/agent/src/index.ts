@@ -6,7 +6,12 @@ export {
   initPurse,
   loadPurse,
   bindPurse,
+  bindPurseFromMirror,
+  tryBindPurseFromMirror,
+  watchPurseFunding,
+  evmAddressOf,
   pursePublicView,
+  FUND_HBAR,
   type Purse,
 } from "./purse.js";
 export { createAllowanceSigner, allowancePaymentFetch } from "./allowance-pay.js";

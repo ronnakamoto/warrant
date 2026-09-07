@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { fundPageHtml } from "./fund-page.js";
 import {
   bindPurse,
   defaultPursePath,
@@ -6,6 +7,7 @@ import {
   loadPurse,
   parseHederaAccount,
   pursePublicView,
+  watchPurseFunding,
 } from "./purse.js";
 
 export const READY_PORT = 17879;
@@ -34,6 +36,12 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   cors(res);
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
+}
+
+function html(res: ServerResponse, status: number, body: string): void {
+  cors(res);
+  res.writeHead(status, { "content-type": "text/html; charset=utf-8" });
+  res.end(body);
 }
 
 function hasPrivateKey(raw: unknown): boolean {
@@ -66,20 +74,23 @@ export async function handleReadyRequest(
     return;
   }
   if (method === "GET" && (path === "/" || path === "/ready")) {
-    const purse = ensurePurse(pursePath);
-    json(res, 200, { ready: true, ...pursePublicView(purse) });
+    json(res, 200, { ready: true, ...pursePublicView(ensurePurse(pursePath)) });
+    return;
+  }
+  if (method === "GET" && path === "/fund") {
+    html(res, 200, fundPageHtml(pursePublicView(ensurePurse(pursePath))));
     return;
   }
   if (method === "POST" && path === "/pair") {
     const rec = body && typeof body === "object" ? (body as { accountId?: unknown; vaultAccountId?: unknown }) : {};
     try {
       const accountId = parseHederaAccount(typeof rec.accountId === "string" ? rec.accountId : "", "account");
-      const vaultAccountId = parseHederaAccount(
-        typeof rec.vaultAccountId === "string" ? rec.vaultAccountId : "",
-        "vault",
-      );
+      const vaultRaw = typeof rec.vaultAccountId === "string" ? rec.vaultAccountId.trim() : "";
       ensurePurse(pursePath);
-      const purse = bindPurse(pursePath, { accountId, vaultAccountId });
+      const purse = bindPurse(pursePath, {
+        accountId,
+        ...(vaultRaw ? { vaultAccountId: vaultRaw } : {}),
+      });
       json(res, 200, pursePublicView(purse));
     } catch (err) {
       json(res, 400, { error: err instanceof Error ? err.message : "bad pair" });
@@ -90,12 +101,35 @@ export async function handleReadyRequest(
 }
 
 export async function startReadyServer(
-  opts: { port?: number; pursePath?: string; host?: string } = {},
+  opts: {
+    port?: number;
+    pursePath?: string;
+    host?: string;
+    fetchImpl?: typeof fetch;
+    pollMs?: number;
+    onFunded?: (accountId: string) => void;
+  } = {},
 ): Promise<ReadyHandle> {
   const port = opts.port ?? READY_PORT;
   const host = opts.host ?? "127.0.0.1";
   const pursePath = opts.pursePath ?? defaultPursePath();
   ensurePurse(pursePath);
+  const watch = watchPurseFunding({
+    path: pursePath,
+    fetchImpl: opts.fetchImpl,
+    intervalMs: opts.pollMs,
+    onFunded:
+      opts.onFunded ??
+      ((accountId) => {
+        console.log(
+          JSON.stringify({
+            funded: true,
+            accountId,
+            next: "warrant act can pay. Never print keys.",
+          }),
+        );
+      }),
+  });
   const server = createServer(async (req, res) => {
     let body: unknown = undefined;
     if (req.method === "POST") {
@@ -117,6 +151,7 @@ export async function startReadyServer(
     port,
     close: () =>
       new Promise((resolve, reject) => {
+        watch.stop();
         server.close((err) => (err ? reject(err) : resolve()));
       }),
   };

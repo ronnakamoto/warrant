@@ -1,9 +1,15 @@
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { createClientHederaSigner, ExactHederaScheme, PrivateKey } from "@x402/hedera";
 import type { IProver } from "@warrant/core";
-import { allowancePaymentFetch } from "./allowance-pay.js";
 import { warrantFetch } from "./fetch.js";
-import { defaultPursePath, loadPurse } from "./purse.js";
+import {
+  bindPurseFromMirror,
+  defaultPursePath,
+  evmAddressOf,
+  FUND_HBAR,
+  loadPurse,
+  parsePursePrivateKey,
+} from "./purse.js";
 import { loadState, type WarrantState } from "./store.js";
 
 export type ActDeps = {
@@ -16,29 +22,46 @@ export type ActDeps = {
   ensureArtifacts?: () => void | Promise<void>;
 };
 
-export function hederaPaymentFetchFromEnv(
-  env: NodeJS.Dict<string> = process.env,
-): typeof fetch {
-  const purse = loadPurse(env.WARRANT_PURSE ?? defaultPursePath());
-  if (purse?.accountId && purse.vaultAccountId) {
-    return allowancePaymentFetch(purse);
-  }
-  const accountId = env.HEDERA_ACCOUNT_ID;
-  const keyRaw = env.HEDERA_PRIVATE_KEY;
-  if (!accountId || !keyRaw) {
-    throw new Error(
-      "no spender — `warrant purse init`, approve spend in the tab, then `warrant purse bind`. Or set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY for a float.",
-    );
-  }
-  const key = keyRaw.startsWith("0x")
-    ? PrivateKey.fromStringECDSA(keyRaw)
-    : PrivateKey.fromString(keyRaw);
+function ownBalancePaymentFetch(accountId: string, keyRaw: string): typeof fetch {
+  const key =
+    keyRaw.startsWith("0x") || keyRaw.length === 64
+      ? PrivateKey.fromStringECDSA(keyRaw)
+      : parsePursePrivateKey(keyRaw);
   const signer = createClientHederaSigner(accountId, key, { network: "hedera:testnet" });
   const client = x402Client.fromConfig({
     schemes: [{ network: "hedera:*", client: new ExactHederaScheme(signer) }],
     spendControls: false,
   });
   return wrapFetchWithPayment(globalThis.fetch, client);
+}
+
+export async function hederaPaymentFetchFromEnv(
+  env: NodeJS.Dict<string> = process.env,
+  fetchImpl: typeof fetch = fetch,
+): Promise<typeof fetch> {
+  const path = env.WARRANT_PURSE ?? defaultPursePath();
+  let purse = loadPurse(path);
+  if (purse && !purse.accountId) {
+    try {
+      purse = await bindPurseFromMirror(path, fetchImpl);
+    } catch {
+      /* still unfunded */
+    }
+  }
+  if (purse?.accountId) {
+    return ownBalancePaymentFetch(purse.accountId, purse.privateKey);
+  }
+  const accountId = env.HEDERA_ACCOUNT_ID;
+  const keyRaw = env.HEDERA_PRIVATE_KEY;
+  if (accountId && keyRaw) {
+    return ownBalancePaymentFetch(accountId, keyRaw);
+  }
+  const evm = purse ? evmAddressOf(purse) : undefined;
+  throw new Error(
+    evm
+      ? `not funded yet — send about ${FUND_HBAR} HBAR to ${evm}, then warrant act`
+      : "no spender — `warrant ready`, send HBAR to the 0x address, then `warrant act`. Or set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY.",
+  );
 }
 
 function shopText(status: number, raw: string): string {
@@ -52,7 +75,7 @@ function shopText(status: number, raw: string): string {
   return raw.slice(0, 500);
 }
 
-/** Prove locally, pay ExactHedera, retry. Never print keys, bearer, warrant, or proof. */
+/** Prove locally, pay ExactHedera from the funded purse. Never print keys, bearer, warrant, or proof. */
 export async function warrantAct(
   url: string,
   body: string,
@@ -60,7 +83,7 @@ export async function warrantAct(
 ): Promise<{ status: number; text: string }> {
   await deps.ensureArtifacts?.();
   const state = deps.state ?? loadState(deps.storePath);
-  const paymentFetch = await (deps.createPaymentFetch ?? hederaPaymentFetchFromEnv)();
+  const paymentFetch = await (deps.createPaymentFetch ?? (() => hederaPaymentFetchFromEnv(process.env, deps.fetchImpl)))();
   const res = await warrantFetch(
     url,
     {

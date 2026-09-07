@@ -373,6 +373,9 @@ describe("warrant act", function () {
     const skill = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../SKILL.md"), "utf8");
     assert.match(skill, /warrant act/);
     assert.match(skill, /warrant ready/);
+    assert.match(skill, /17879\/fund/);
+    assert.match(skill, /funded/);
+    assert.equal(/Let it spend/i.test(skill), false);
     assert.equal(skill.includes("hederaPrivateKey"), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     assert.equal(/npx @warrant\/agent/.test(skill), false);
@@ -393,12 +396,13 @@ describe("@warrant/agent purse", function () {
     const view = pursePublicView(purse);
     assert.equal("privateKey" in view, false);
     assert.equal(JSON.stringify(view).includes(purse.privateKey), false);
+    assert.match(view.evmAddress, /^0x[0-9a-f]{40}$/);
     assert.equal(statSync(path).mode & 0o777, 0o600);
-    const bound = bindPurse(path, { accountId: "0.0.9", vaultAccountId: "0.0.8" });
+    const bound = bindPurse(path, { accountId: "0.0.9" });
     assert.deepEqual(pursePublicView(bound), {
       publicKey: purse.publicKey,
+      evmAddress: view.evmAddress,
       accountId: "0.0.9",
-      vaultAccountId: "0.0.8",
     });
     const raw = readFileSync(path, "utf8");
     assert.match(raw, /privateKey/);
@@ -453,7 +457,9 @@ describe("@warrant/agent purse", function () {
     } as unknown as InstanceType<typeof ServerResponse>;
     await handleReadyRequest({ method: "GET", url: "/" }, res, undefined, path);
     assert.equal(sent.status, 200);
-    assert.equal(JSON.parse(sent.body ?? "{}").publicKey, purse.publicKey);
+    const readyBody = JSON.parse(sent.body ?? "{}") as { publicKey: string; evmAddress: string };
+    assert.equal(readyBody.publicKey, purse.publicKey);
+    assert.equal(readyBody.evmAddress, pursePublicView(purse).evmAddress);
     assert.equal(JSON.stringify(sent.body).includes(purse.privateKey), false);
     await handleReadyRequest(
       { method: "POST", url: "/pair" },
@@ -469,11 +475,127 @@ describe("@warrant/agent purse", function () {
       path,
     );
     assert.equal(sent.status, 200);
-    assert.deepEqual(pursePublicView(JSON.parse(sent.body ?? "{}") as never), {
+    assert.deepEqual(JSON.parse(sent.body ?? "{}"), {
       publicKey: purse.publicKey,
+      evmAddress: pursePublicView(purse).evmAddress,
       accountId: "0.0.9",
       vaultAccountId: "0.0.8",
     });
+  });
+
+  it("binds accountId from the mirror without a vault", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { initPurse, evmAddressOf, bindPurseFromMirror, pursePublicView } = await import(
+      "../src/purse.ts"
+    );
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-mirror-")), "purse.json");
+    const purse = initPurse(path);
+    const evm = evmAddressOf(purse);
+    const bound = await bindPurseFromMirror(path, async (url) => {
+      assert.match(String(url), new RegExp(evm.slice(2), "i"));
+      return new Response(JSON.stringify({ account: "0.0.42" }), { status: 200 });
+    });
+    assert.equal(bound.accountId, "0.0.42");
+    assert.equal(bound.vaultAccountId, undefined);
+    assert.equal(pursePublicView(bound).evmAddress, evm);
+  });
+
+  it("fund page shows the 0x address and never the private key", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { ServerResponse } = await import("node:http");
+    const { handleReadyRequest, ensurePurse } = await import("../src/ready.ts");
+    const { evmAddressOf } = await import("../src/purse.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-fund-")), "purse.json");
+    const purse = ensurePurse(path);
+    const sent: { status?: number; body?: string } = {};
+    const res = {
+      writeHead(status: number) {
+        sent.status = status;
+        return this;
+      },
+      setHeader() {
+        return this;
+      },
+      end(body?: string) {
+        sent.body = body;
+      },
+    } as unknown as InstanceType<typeof ServerResponse>;
+    await handleReadyRequest({ method: "GET", url: "/fund" }, res, undefined, path);
+    assert.equal(sent.status, 200);
+    assert.match(sent.body ?? "", new RegExp(evmAddressOf(purse), "i"));
+    assert.match(sent.body ?? "", /2 HBAR/);
+    assert.match(sent.body ?? "", /<svg/i);
+    assert.match(sent.body ?? "", /fetch\("\/ready"\)/);
+    assert.equal((sent.body ?? "").includes(purse.privateKey), false);
+  });
+
+  it("notices a fund on the next mirror poll", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { initPurse, loadPurse, watchPurseFunding } = await import("../src/purse.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-watch-")), "purse.json");
+    initPurse(path);
+    let hits = 0;
+    const accountId = await new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("watch timed out")), 2000);
+      const watch = watchPurseFunding({
+        path,
+        intervalMs: 20,
+        fetchImpl: async () => {
+          hits += 1;
+          if (hits < 2) return new Response("{}", { status: 404 });
+          return new Response(JSON.stringify({ account: "0.0.77" }), { status: 200 });
+        },
+        onFunded: (id) => {
+          clearTimeout(timer);
+          watch.stop();
+          resolve(id);
+        },
+      });
+    });
+    assert.equal(accountId, "0.0.77");
+    assert.equal(loadPurse(path)?.accountId, "0.0.77");
+  });
+
+  it("pays from a funded purse without a vault", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { initPurse, bindPurse } = await import("../src/purse.ts");
+    const { hederaPaymentFetchFromEnv } = await import("../src/act.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-act-")), "purse.json");
+    initPurse(path);
+    bindPurse(path, { accountId: "0.0.9" });
+    const pay = await hederaPaymentFetchFromEnv({ WARRANT_PURSE: path });
+    assert.equal(typeof pay, "function");
+  });
+
+  it("asks to fund the evm address when the purse has no account", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { initPurse, evmAddressOf } = await import("../src/purse.ts");
+    const { hederaPaymentFetchFromEnv } = await import("../src/act.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-unfunded-")), "purse.json");
+    const purse = initPurse(path);
+    await assert.rejects(
+      () =>
+        hederaPaymentFetchFromEnv(
+          { WARRANT_PURSE: path },
+          async () => new Response("{}", { status: 404 }),
+        ),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match(err.message, /not funded yet/);
+        assert.match(err.message, new RegExp(evmAddressOf(purse), "i"));
+        return true;
+      },
+    );
   });
 });
 

@@ -106,8 +106,7 @@ describe("guest first-run copy", function () {
     assert.match(GUEST_COPY.world, /World ID/i);
     assert.equal(/merkle|Groth16|zkey|epoch/i.test(GUEST_COPY.world), false);
     assert.match(GUEST_COPY.twoWallets, /MetaMask/);
-    assert.match(GUEST_COPY.twoWallets, /HashPack/);
-    assert.match(GUEST_COPY.twoWallets, /lets it pay/i);
+    assert.match(GUEST_COPY.twoWallets, /Send HBAR/i);
     assert.match(GUEST_COPY.connectWallet, /You keep the key/);
   });
 
@@ -176,13 +175,15 @@ describe("guest first-run copy", function () {
     await new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
   });
 
-  it("keeps the vault in HashPack and the spend cut separate from Fire", async function () {
-    assert.match(GUEST_COPY.letSpend, /Let it spend/);
-    assert.match(GUEST_COPY.cutSpend, /Cut spend/);
-    assert.match(GUEST_COPY.spendGranted, /2 HBAR/);
-    assert.equal(/private key|hederaPrivateKey/i.test(GUEST_COPY.letSpend), false);
-    assert.match(agentPrompt("https://app.example", "tok"), /warrant ready/);
-    assert.match(agentPrompt("https://app.example", "tok"), /I cannot sign Hedera from this chat/);
+  it("tells the machine agent to show a fund address, not Let it spend", async function () {
+    const skill = agentPrompt("https://app.example", "tok");
+    assert.match(GUEST_COPY.fundHint, /send HBAR/i);
+    assert.match(skill, /warrant ready/);
+    assert.match(skill, /127\.0\.0\.1:17879\/fund/);
+    assert.match(skill, /evmAddress/);
+    assert.match(skill, /funded|received/i);
+    assert.equal(/Let it spend/i.test(skill), false);
+    assert.match(skill, /I cannot sign Hedera from this chat/);
     const { parseAgentAccount, transactionIdFromExecute } = await import(
       "../src/lib/hedera-purse.ts"
     );
@@ -204,15 +205,8 @@ describe("guest first-run copy", function () {
     assert.equal(/Call the shop|Pay the shop|shopCall|payCall/.test(src), false);
     assert.match(src, /connectRootWallet/);
     assert.match(src, /Copy for my agent|copyPrompt/);
-    const hashpack = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "../src/lib/hedera-hashpack.ts"),
-      "utf8",
-    );
-    assert.match(hashpack, /import\("@hiero-ledger\/sdk"\)/);
-    assert.match(hashpack, /LedgerId\.TESTNET/);
-    assert.match(src, /letSpendFromReady|Let it spend/);
-    assert.match(src, /copiedOnce/);
-    assert.match(src, /cutSpend/);
+    assert.match(src, /fundHint/);
+    assert.equal(/letSpendFromReady|Let it spend|cutSpend|copiedOnce/.test(src), false);
   });
 
   it("rejects cross-origin guest POSTs on the public host", function () {
@@ -320,7 +314,7 @@ describe("guest first-run copy", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.botLead} ${GUEST_COPY.copyPrompt}`;
     assert.equal(/402|private key|Call the shop|Pay the shop/i.test(land), false);
     assert.match(GUEST_COPY.botLead, /bot you already have/i);
-    assert.match(GUEST_COPY.letSpend, /Let it spend/);
+    assert.match(GUEST_COPY.fundHint, /send HBAR/i);
   });
 
   it("parses optional Hedera pay fields without requiring them", function () {

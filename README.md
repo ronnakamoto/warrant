@@ -4,7 +4,7 @@ A key for the bot you already have.
 
 Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
 
-**Try:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize my agent, paste the paragraph, fire the key. Base Sepolia.
+**Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, copy for the agent, send HBAR to the address it shows, fire. Base Sepolia + Hedera testnet.
 
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 
