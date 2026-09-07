@@ -8,6 +8,55 @@ Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call 
 
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 
+We do **not** host a reverse proxy and do **not** “protect any URL” you paste. Wrap your own Hono `POST` with `createWarrantShop` + `warrantHono`. The request body stays in your process.
+
+```ts
+import { Hono } from "hono";
+import { FETCH, SnarkjsVerifier } from "@warrant/core";
+import {
+  createWarrantShop,
+  initializeWarrantShop,
+  CurrentRootChecker,
+  FileNullifierStore,
+  FileChallengeStore,
+  warrantHono,
+} from "@warrant/x402";
+
+const roots = new CurrentRootChecker({
+  rpcUrl: process.env.BASE_SEPOLIA_RPC!,
+  registry: process.env.REGISTRY_ADDRESS as `0x${string}`,
+});
+const shop = createWarrantShop({
+  route: "POST /v1/orders",
+  description: "orders",
+  policy: { requireScope: FETCH, minTier: 0, freeCallsPerHuman: 0 },
+  amount: process.env.X402_AMOUNT ?? "100000",
+  payTo: process.env.HEDERA_PAY_TO!,
+  verifier: SnarkjsVerifier.fromPath(process.env.WARRANT_VKEY_PATH!),
+  roots,
+  getMerkleRoot: async () => (await roots.currentRoot()).toString(),
+  nullifiers: new FileNullifierStore(process.env.WARRANT_NULLIFIER_PATH!),
+  challenges: new FileChallengeStore(process.env.WARRANT_CHALLENGE_PATH!),
+  defaultPath: "/v1/orders",
+});
+await initializeWarrantShop(shop);
+
+const app = new Hono();
+app.use("/v1/*", warrantHono(shop));
+app.post("/v1/orders", async (c) => {
+  const order = await createOrder(await c.req.json());
+  return c.json(order);
+});
+```
+
+`pnpm warrant act --url` already takes any shop. A mandate that includes `fetch` can hit the in-repo echo shop (`services/echo`, port 8788):
+
+```bash
+# mandate must include fetch
+pnpm warrant delegate --from alice --to helper --scope fetch --budget 1 --ttl 1h
+pnpm warrant act --url http://127.0.0.1:8788/v1/echo --body '{"text":"ping"}'
+```
+
 **Testnet. Not a World ID proof.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
 
 PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
@@ -246,6 +295,7 @@ packages/core      Hashes, prove/verify ports
 packages/x402      Pipeline + extension (no onBeforeVerify skip)
 packages/agent     CLI, warrant.fetch, demo session
 services/translate Hono resource server + HCS sink
+services/echo      Second shop (`POST /v1/echo`, FETCH) — factory proof, not a hosted proxy
 apps/dashboard     Revoke UI (no snarkjs)
 scripts/           Boundaries, ceremony, zkey download
 subgraphs/         MandateRegistry → Subgraph Studio (Base Sepolia)

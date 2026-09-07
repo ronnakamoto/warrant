@@ -259,7 +259,7 @@ Do not build plaintext key backup. Passkey-wrapped ciphertext is Phase 2.
 
 - Mainnet registry, mainnet HBAR, or a new ceremony
 - Mid-tree revoke, Noir, ENS, recursive PCD
-- Multi-tenant “protect any URL” (Phase 3)
+- A hosted reverse proxy or multi-tenant “protect any URL” — we do **not** host a proxy; Phase 3 is the integrator wrapping their own Hono route
 - World Selfie Check until sandbox exists (keep `IPersonhood`, stay `tier=0` and say so)
 - Prove inside `services/translate`
 - A second dashboard stack
@@ -296,7 +296,7 @@ Passkey vault (ciphertext only). Redis nullifiers. Tighter abuse budget. Wallet-
 
 ### Phase 3 — Beyond the demo leaf
 
-Protect an upstream URL. Operator queue if we stop auto-bind. World when sandbox exists. Hard spend limits.
+Integrator wraps their Hono route with `createWarrantShop`. We do **not** host a reverse proxy and do **not** “protect any URL” they paste — their process stays theirs. Operator queue if we stop auto-bind. World when sandbox exists. Hard spend limits.
 
 ---
 

@@ -32,6 +32,7 @@ packages/x402                 # ResourceServerExtension + hooks. Depends on core
 packages/agent                # CLI + warrant.fetch. Depends on core + @x402/fetch.
 apps/dashboard                # Next.js + Astryx runtime, Carbon design language. UI only.
 services/translate            # Hono composition root. Wires x402 + Hedera + HCS.
+services/echo                 # Second shop: POST /v1/echo, FETCH. Factory proof, not a hosted proxy.
 services/prove                # Isolated guest IProver. No x402, no Hedera, no Next.
 subgraphs/mandate-registry    # Studio subgraph. No TS runtime imports from packages/.
 deployments/                  # JSON addresses. No logic.

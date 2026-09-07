@@ -26,9 +26,17 @@ Leave that running. Show the human the `evmAddress` and `http://127.0.0.1:17879/
 pnpm warrant act --url https://translate-production-ed28.up.railway.app/v1/translate --body '{"text":"<their words>","source":"en","target":"es"}'
 ```
 
+Hosted paste still points at translate. `pnpm warrant act --url` is any shop — we do not host a reverse proxy. A machine agent with `FETCH` in the leaf can call other shops. Example — in-repo echo:
+
+```bash
+# mandate must include fetch
+pnpm warrant delegate --from alice --to helper --scope fetch --budget 1 --ttl 1h
+pnpm warrant act --url http://127.0.0.1:8788/v1/echo --body '{"text":"ping"}'
+```
+
 `pnpm warrant status` shows public ids only. Never print purse keys. Show the human only the shop's returned text.
 
-Do not `POST /api/agent/translate` with a Hedera key.
+Do not `POST /api/agent/translate` with a Hedera key. Do not POST a Hedera key.
 
 ## If you are in a hosted chat
 
