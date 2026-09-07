@@ -23,3 +23,10 @@ export {
 export { MemoryNullifierStore } from "./nullifiers.js";
 export { FileNullifierStore } from "./nullifiers-file.js";
 export { FixedRootChecker, CurrentRootChecker } from "./roots.js";
+export {
+  createWarrantShop,
+  initializeWarrantShop,
+  mockHederaFacilitator,
+  type WarrantShopConfig,
+  type WarrantShop,
+} from "./shop.js";

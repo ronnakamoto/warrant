@@ -13,6 +13,7 @@
   "dependencies": {
     "@warrant/core": "workspace:*",
     "@x402/core": "2.24.0",
+    "@x402/hedera": "2.24.0",
     "@x402/hono": "2.24.0",
     "viem": "^2.56.3"
   },
