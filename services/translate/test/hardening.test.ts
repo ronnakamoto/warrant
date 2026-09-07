@@ -3,13 +3,14 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bodyHashFromCanonical, bodyHashFromRaw } from "@warrant/core";
-import { FileChallengeStore, MemoryChallengeStore } from "../src/challenges.ts";
-import { FileNullifierStore } from "../src/nullifiers-file.ts";
 import {
+  FileChallengeStore,
+  FileNullifierStore,
+  MemoryChallengeStore,
   cachedRequestBody,
   parseRequestBody,
   withRequestBody,
-} from "../src/request-body.ts";
+} from "@warrant/x402";
 
 describe("FileNullifierStore", function () {
   it("persists takeRequest and consumeFree across instances", async function () {

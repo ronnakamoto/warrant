@@ -14,3 +14,28 @@ export {
 } from "./pipeline.js";
 export { createWarrantExtension, type CreateExtensionArgs } from "./extension.js";
 export { createWarrantHooks, type CreateHooksArgs } from "./hooks.js";
+export {
+  MemoryChallengeStore,
+  FileChallengeStore,
+  type ChallengeStore,
+  type IssuedChallenge,
+} from "./challenges.js";
+export { MemoryNullifierStore } from "./nullifiers.js";
+export { FileNullifierStore } from "./nullifiers-file.js";
+export { FixedRootChecker, CurrentRootChecker } from "./roots.js";
+export {
+  createWarrantShop,
+  initializeWarrantShop,
+  mockHederaFacilitator,
+  type WarrantShopConfig,
+  type WarrantShop,
+} from "./shop.js";
+export {
+  parseRequestBody,
+  withRequestBody,
+  cachedRequestBody,
+  hasRequestBodyStore,
+  warrantHono,
+  type WarrantAuditEvent,
+} from "./hono.js";
+export { assertNoDemoRails, shouldEnforceStrictProd, SHOP_DEMO_FLAGS } from "./prod-flags.js";

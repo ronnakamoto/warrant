@@ -167,9 +167,52 @@ importers:
       '@x402/core':
         specifier: 2.24.0
         version: 2.24.0
+      '@x402/hedera':
+        specifier: 2.24.0
+        version: 2.24.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.3)(debug@4.4.3)(protobufjs@8.2.0)(react-native@0.87.1(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.8))(strip-ansi@7.1.2)
       '@x402/hono':
         specifier: 2.24.0
         version: 2.24.0(ethers@6.16.0)(hono@4.13.7)(typescript@5.9.3)
+      hono:
+        specifier: ^4.13.7
+        version: 4.13.7
+      viem:
+        specifier: ^2.56.3
+        version: 2.56.3(typescript@5.9.3)(zod@4.5.4)
+    devDependencies:
+      mocha:
+        specifier: ^10.8.2
+        version: 10.8.2
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+
+  services/echo:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.19.0
+        version: 1.19.17(hono@4.13.7)
+      '@warrant/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@warrant/x402':
+        specifier: workspace:*
+        version: link:../../packages/x402
+      '@x402/core':
+        specifier: 2.24.0
+        version: 2.24.0
+      '@x402/hedera':
+        specifier: 2.24.0
+        version: 2.24.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.3)(debug@4.4.3)(protobufjs@8.2.0)(react-native@0.87.1(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.8))(strip-ansi@7.1.2)
+      '@x402/hono':
+        specifier: 2.24.0
+        version: 2.24.0(ethers@6.16.0)(hono@4.13.7)(typescript@5.9.3)
+      hono:
+        specifier: ^4.13.7
+        version: 4.13.7
+      viem:
+        specifier: ^2.56.3
+        version: 2.56.3(typescript@5.9.3)(zod@4.5.4)
     devDependencies:
       mocha:
         specifier: ^10.8.2
