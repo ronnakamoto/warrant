@@ -20,3 +20,6 @@ export {
   type ChallengeStore,
   type IssuedChallenge,
 } from "./challenges.js";
+export { MemoryNullifierStore } from "./nullifiers.js";
+export { FileNullifierStore } from "./nullifiers-file.js";
+export { FixedRootChecker, CurrentRootChecker } from "./roots.js";

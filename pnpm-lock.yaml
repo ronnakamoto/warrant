@@ -170,6 +170,9 @@ importers:
       '@x402/hono':
         specifier: 2.24.0
         version: 2.24.0(ethers@6.16.0)(hono@4.13.7)(typescript@5.9.3)
+      viem:
+        specifier: ^2.56.3
+        version: 2.56.3(typescript@5.9.3)(zod@4.5.4)
     devDependencies:
       mocha:
         specifier: ^10.8.2
@@ -5095,12 +5098,12 @@ snapshots:
       '@noble/hashes': 1.8.0
       apg-js: 4.4.0
 
-  '@signinwithethereum/siwe@4.2.1(ethers@6.16.0)(viem@2.56.3(typescript@5.9.3)(zod@3.25.76))':
+  '@signinwithethereum/siwe@4.2.1(ethers@6.16.0)(viem@2.56.3(typescript@5.9.3)(zod@4.5.4))':
     dependencies:
       '@signinwithethereum/siwe-parser': 4.2.1
     optionalDependencies:
       ethers: 6.16.0
-      viem: 2.56.3(typescript@5.9.3)(zod@3.25.76)
+      viem: 2.56.3(typescript@5.9.3)(zod@4.5.4)
 
   '@sinclair/typebox@0.27.12': {}
 
@@ -6141,7 +6144,7 @@ snapshots:
     dependencies:
       '@noble/curves': 1.9.7
       '@scure/base': 1.2.6
-      '@signinwithethereum/siwe': 4.2.1(ethers@6.16.0)(viem@2.56.3(typescript@5.9.3)(zod@3.25.76))
+      '@signinwithethereum/siwe': 4.2.1(ethers@6.16.0)(viem@2.56.3(typescript@5.9.3)(zod@4.5.4))
       '@x402/core': 2.24.0
       ajv: 8.20.0
       jose: 5.10.0
