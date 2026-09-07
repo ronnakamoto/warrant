@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { decodePaymentResponseHeader } from "@x402/core/http";
-import { paymentMiddlewareFromHTTPServer } from "@x402/hono";
+import { warrantHono } from "@warrant/x402";
 import type { Wired } from "./wiring.js";
-import { parseRequestBody, withRequestBody } from "./request-body.js";
 import { translate as defaultTranslate, type Translator } from "./translate.js";
 import type { HcsSink } from "./hcs.js";
 
@@ -28,7 +27,6 @@ function txIdFromPaymentResponse(header: string | undefined): string | undefined
 export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   const hcs = deps.hcs ?? deps.wired.hcs;
-  const paymentMw = paymentMiddlewareFromHTTPServer(deps.wired.http);
 
   app.use(
     "*",
@@ -39,50 +37,7 @@ export function createApp(deps: AppDeps): Hono {
     }),
   );
 
-  // Run payment middleware (incl. after-handler settle), then audit once with optional txId.
-  // Must return x402's Response — discarding it leaves Hono unfinalized (500 instead of 402).
-  app.use("/v1/*", async (c, next) => {
-    const parsedBody = await parseRequestBody(c.req.raw);
-    return withRequestBody(parsedBody, async () => {
-      const out = await paymentMw(c, next);
-      if (out instanceof Response) return out;
-      if (c.res.status !== 200) return;
-      const warrant = c.req.header("warrant");
-      if (!warrant) return;
-      try {
-        const parsed = JSON.parse(warrant) as {
-          publicSignals?: string[];
-          nonce?: string;
-        };
-        const signals = parsed.publicSignals;
-        const issued = parsed.nonce ? deps.wired.challenges.resolve(parsed.nonce) : undefined;
-        if (!(signals && signals.length >= 8 && issued)) return;
-        const payHdr =
-          c.res.headers.get("PAYMENT-RESPONSE") ?? c.res.headers.get("payment-response");
-        const txId =
-          txIdFromPaymentResponse(payHdr ?? undefined) ??
-          deps.wired.sponsorTxIds.get(signals[2]!);
-        await hcs.submit({
-          nullifier: signals[2]!,
-          scope: signals[3]!,
-          tier: signals[6]!,
-          txId,
-        });
-        if (txId) {
-          try {
-            const raw = (await c.res.clone().json()) as Record<string, unknown>;
-            if (raw && typeof raw === "object" && raw.txId !== txId) {
-              return c.json({ ...raw, txId });
-            }
-          } catch {
-            /* leave the original 200 */
-          }
-        }
-      } catch {
-        /* ignore audit failures */
-      }
-    });
-  });
+  app.use("/v1/*", warrantHono(deps.wired, { audit: hcs.submit }));
 
   const runTranslate = deps.translate ?? defaultTranslate;
 

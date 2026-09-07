@@ -1,11 +1,10 @@
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { TRANSLATE } from "@warrant/core";
+import { FileChallengeStore, FileNullifierStore } from "@warrant/x402";
 import { createApp } from "./app.js";
-import { FileChallengeStore } from "./challenges.js";
 import { fixedMerkleRootFromEnv } from "./demo-root.js";
 import { createHcsSinkFromEnv } from "./hcs-hedera.js";
-import { FileNullifierStore } from "./nullifiers-file.js";
 import { initializeWired, wire } from "./wiring.js";
 import { assertProductionTranslateEnv, shouldEnforceStrictProd } from "./prod-guard.js";
 

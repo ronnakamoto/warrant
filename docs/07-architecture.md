@@ -70,16 +70,21 @@ Split by responsibility, not by “utils”:
 | `src/pipeline.ts` | Ordered decisions: missing → hash → root → verify → quota → grant / pay / abort |
 | `src/extension.ts` | `registerExtension({ key: "warrant" })` + `enrichPaymentRequiredResponse` |
 | `src/hooks.ts` | `onProtectedRequest` adapter around `pipeline` (AgentKit slot, not `onBeforeVerify`) |
-| `src/index.ts` | `createWarrantExtension`, `createWarrantHooks` |
+| `src/challenges.ts` | Server-issued nonce store (`MemoryChallengeStore`, `FileChallengeStore`) |
+| `src/nullifiers.ts` | `MemoryNullifierStore` / `FileNullifierStore` — replay seal + free quota |
+| `src/roots.ts` | `FixedRootChecker`, `CurrentRootChecker` (`currentRoot` only) |
+| `src/shop.ts` | `createWarrantShop` — repeated wire: pipeline + extension + ExactHedera + HTTP server |
+| `src/hono.ts` | Body ALS + `warrantHono` payment middleware + optional nullifier audit |
+| `src/index.ts` | `createWarrantShop`, `warrantHono`, stores, extension/hooks |
 
-### 2.4 `services/translate` (composition root)
+### 2.4 `services/translate` (shop process)
 
-This package is allowed to know Hono, Blocky402, Hedera, and HCS. **Nothing else is.**
+**Shop processes** (translate, echo) may know Hono, Blocky402, Hedera, and HCS. The factory in `@warrant/x402` owns the repeated wire. Composition is `createWarrantShop`; this service owns MyMemory + Hedera HCS + prod-guard.
 
 ```
 src/main.ts              # read env, construct adapters, listen
-src/app.ts               # Hono routes. Calls use-cases, not snarkjs
-src/wiring.ts            # SnarkjsVerifier, CurrentRootChecker, MemoryNullifiers, HcsSink
+src/app.ts               # Hono payload: warrantHono + translate handler + /health
+src/wiring.ts            # Thin wrapper: createWarrantShop + translate defaults + allowance wrap
 src/translate.ts         # MyMemory translator — the actual resource (injectable)
 src/hcs.ts               # submit {nullifier, scope, tier, txId} after success
 ```
