@@ -17,6 +17,7 @@ import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { MemoryChallengeStore, type ChallengeStore } from "./challenges.js";
 import { createWarrantExtension } from "./extension.js";
+import { cachedRequestBody } from "./hono.js";
 import { createWarrantHooks } from "./hooks.js";
 import { createWarrantPipeline } from "./pipeline.js";
 import type { WarrantPolicy } from "./policy.js";
@@ -53,6 +54,10 @@ export type WarrantShop = {
 };
 
 async function bodyHashFromContext(ctx: HTTPRequestContext): Promise<string> {
+  const cached = cachedRequestBody();
+  if (cached !== undefined && cached !== null) {
+    return bodyHashFromCanonical(cached);
+  }
   const getBody = ctx.adapter.getBody;
   if (!getBody) return "";
   let body: unknown;
