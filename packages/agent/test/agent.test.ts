@@ -366,6 +366,46 @@ describe("warrant act", function () {
     assert.equal(out.text, "hola");
   });
 
+  it("with a Copy bearer pays the BFF and never local-proves or posts a key", async function () {
+    const { warrantAct } = await import("../src/act.ts");
+    let ensured = 0;
+    let proved = 0;
+    let postedKey = false;
+    const out = await warrantAct(
+      "https://warrant-beta.vercel.app/api/agent/memo",
+      JSON.stringify({ text: "hi" }),
+      {
+        bearer: "sess",
+        ensureArtifacts: () => {
+          ensured += 1;
+        },
+        prover: {
+          async prove() {
+            proved += 1;
+            return { pi_a: [], pi_b: [], pi_c: [] };
+          },
+        },
+        createPaymentFetch: () => async (_url, init) => {
+          const headers = new Headers(init?.headers);
+          const blob = `${typeof init?.body === "string" ? init.body : ""}${JSON.stringify(init?.headers ?? {})}`;
+          if (/hederaPrivateKey|302e|HEDERA_PRIVATE/.test(blob)) postedKey = true;
+          assert.equal(headers.get("authorization"), "Bearer sess");
+          assert.equal(headers.get("warrant"), null);
+          assert.equal(typeof init?.body === "string" && init.body.includes("hi"), true);
+          return new Response(JSON.stringify({ text: "scarred", hashscan: "https://hashscan.io/testnet/transaction/1" }), {
+            status: 200,
+          });
+        },
+      },
+    );
+    assert.equal(ensured, 0);
+    assert.equal(proved, 0);
+    assert.equal(postedKey, false);
+    assert.equal(out.status, 200);
+    assert.equal(out.text, "scarred");
+    assert.equal(out.text.includes("sess"), false);
+  });
+
   it("points the skill at warrant act, not a pasted key", async function () {
     const { readFileSync } = await import("node:fs");
     const { dirname, join } = await import("node:path");
@@ -375,6 +415,9 @@ describe("warrant act", function () {
     const optionalAt = skill.indexOf("Optional");
     assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
+    assert.match(skill, /WARRANT_BEARER/);
+    assert.match(skill, /api\/agent\/memo/);
+    assert.equal(skill.includes("translate-production"), false);
     assert.match(skill, /warrant ready/);
     assert.match(skill, /17879\/fund/);
     assert.match(skill, /funded/);

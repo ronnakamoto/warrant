@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseGuestShopBody, translateForSession } from "../../../../lib/guest-act";
+import { parseGuestShopBody, translateForSession, withPaymentSignature } from "../../../../lib/guest-act";
 import { agentCorsHeaders, publicGuestError, sessionFromBearer } from "../../../../lib/prove-client";
 
 export async function OPTIONS(): Promise<Response> {
@@ -28,8 +28,11 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400, headers: agentCorsHeaders() });
   }
   try {
-    const out = await translateForSession(sessionId, input, req);
-    return NextResponse.json(out.body, { status: out.status, headers: agentCorsHeaders() });
+    const out = await translateForSession(sessionId, withPaymentSignature(input, req), req);
+    return NextResponse.json(out.body, {
+      status: out.status,
+      headers: { ...agentCorsHeaders(), ...out.headers },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "translate failed";
     return NextResponse.json(

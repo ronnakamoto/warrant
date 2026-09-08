@@ -82,6 +82,9 @@ describe("guest first-run copy", function () {
     assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
     assert.match(skill, /warrant ready/);
+    assert.match(skill, /WARRANT_BEARER/);
+    assert.match(skill, /api\/agent\/memo/);
+    assert.equal(skill.includes("translate-production"), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     assert.match(skill, /Do not POST a key/);
     assert.match(skill, /Only this origin/);
@@ -114,6 +117,8 @@ describe("guest first-run copy", function () {
     assert.equal(sessionFromBearer(null), undefined);
     assert.equal(agentCorsHeaders()["Access-Control-Allow-Origin"], "*");
     assert.match(agentCorsHeaders()["Access-Control-Allow-Headers"] ?? "", /Authorization/i);
+    assert.match(agentCorsHeaders()["Access-Control-Allow-Headers"] ?? "", /PAYMENT-SIGNATURE/);
+    assert.match(agentCorsHeaders()["Access-Control-Expose-Headers"] ?? "", /PAYMENT-REQUIRED/);
   });
 
   it("parses the session cookie", function () {

@@ -10,7 +10,11 @@ import {
   publicGuestError,
 } from "./prove-client";
 
-export type ActResult = { status: number; body: Record<string, unknown> };
+export type ActResult = {
+  status: number;
+  body: Record<string, unknown>;
+  headers?: Record<string, string>;
+};
 
 export type LiveWarrant = { id: string; status: string };
 
@@ -119,6 +123,17 @@ export function parseGuestMemoBody(
   };
 }
 
+/** Signed ExactHedera header. Never treat this as a private key. */
+export function withPaymentSignature<T extends { payment?: string }>(input: T, req: Request): T {
+  if (input.payment) return input;
+  const header =
+    req.headers.get("PAYMENT-SIGNATURE")?.trim() ||
+    req.headers.get("payment-signature")?.trim() ||
+    "";
+  if (!header) return input;
+  return { ...input, payment: header };
+}
+
 export async function shopWithWarrant(
   translateUrl: string,
   payload: string,
@@ -158,6 +173,10 @@ export async function shopWithPaymentHeader(
 }
 
 function paywall(pr?: Record<string, unknown>): ActResult {
+  const headers: Record<string, string> = {};
+  if (pr && Object.keys(pr).length > 0) {
+    headers["PAYMENT-REQUIRED"] = Buffer.from(JSON.stringify(pr), "utf8").toString("base64");
+  }
   return {
     status: 402,
     body: {
@@ -165,6 +184,7 @@ function paywall(pr?: Record<string, unknown>): ActResult {
       faucet: HEDERA_FAUCET,
       ...(pr ? { paymentRequired: pr } : {}),
     },
+    ...(Object.keys(headers).length ? { headers } : {}),
   };
 }
 

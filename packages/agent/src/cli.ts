@@ -50,7 +50,7 @@ Usage:
   warrant prove --as <id> --nonce <n> --merkle-root <n> --path <p> [--amount] [--pay-to] [--body-hash]
   warrant fetch --as <id> --url <url> [--body <json>]
   warrant ready
-  warrant act --url <url> [--body <json>] [--as translator]
+  warrant act --url <url> [--body <json>] [--as translator] [--bearer <session>]
   warrant status
   warrant purse init | show | bind --account 0.0.N [--vault 0.0.M]
   warrant graph-status
@@ -429,31 +429,39 @@ function cmdPurse(args: string[]): void {
 
 async function cmdAct(args: string[]): Promise<void> {
   if (args.includes("-h") || args.includes("--help")) {
-    console.log(`warrant act — prove locally, pay ExactHedera, retry
+    console.log(`warrant act — pay ExactHedera, retry
 
 Usage:
-  warrant act --url <url> [--body <json>] [--as translator]
+  warrant act --url <url> [--body <json>] [--as translator] [--bearer <session>]
 
 Store: $WARRANT_STORE (default ~/.warrant/state.json)
 Pay: local purse. Human sends HBAR to the 0x address. Never print keys.
-Zkey: downloaded via scripts/download-zkey.sh / WARRANT_ZKEY_URL if missing.
+Hosted leaf: --bearer or WARRANT_BEARER (Copy). Warrant still proves. No local zkey.
+Local prove: omit bearer (zkey via scripts/download-zkey.sh / WARRANT_ZKEY_URL).
 Prints only the shop text.
 `);
     return;
   }
   const url = requireFlag(args, "--url");
-  const body =
-    flag(args, "--body") ?? JSON.stringify({ text: "Good morning.", source: "en", target: "es" });
+  const memoBody = url.includes("/api/agent/memo")
+    ? JSON.stringify({ text: "Good morning." })
+    : JSON.stringify({ text: "Good morning.", source: "en", target: "es" });
+  const body = flag(args, "--body") ?? memoBody;
   const as = flag(args, "--as") ?? "translator";
+  const bearer = flag(args, "--bearer") ?? process.env.WARRANT_BEARER;
   const storePath = flag(args, "--store") ?? defaultStorePath();
   const { warrantAct } = await import("./act.js");
-  const { ensureArtifacts } = await import("./ensure-artifacts.js");
-  const out = await warrantAct(url, body, {
-    as,
-    storePath,
-    prover: createSnarkjsProver(),
-    ensureArtifacts,
-  });
+  const out = bearer
+    ? await warrantAct(url, body, { bearer, as, storePath })
+    : await (async () => {
+        const { ensureArtifacts } = await import("./ensure-artifacts.js");
+        return warrantAct(url, body, {
+          as,
+          storePath,
+          prover: createSnarkjsProver(),
+          ensureArtifacts,
+        });
+      })();
   if (out.status === 200) {
     console.log(out.text);
     return;
