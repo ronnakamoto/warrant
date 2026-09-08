@@ -1,0 +1,12 @@
+# Railway service: memo. Set root directory to repo root, use this start command.
+# Required env: see docs/10-hosted-product.md §15.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "deploy/Dockerfile.memo"
+
+[deploy]
+startCommand = "pnpm --filter @warrant/memo start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

@@ -394,14 +394,15 @@ Wallet connect and passkeys are stretch. Do not start the prove worker until thi
 | Dashboard (Try / Door 1–2) | https://warrant-beta.vercel.app |
 | Translate | https://translate-production-ed28.up.railway.app |
 | Prove | https://prove-production.up.railway.app |
+| Memo | https://memo-production-*.up.railway.app |
 
-`GET /health` on translate and prove returns `{"ok":true}`. Team `*.vercel.app` aliases are SSO-gated; strangers use the beta host. `PROVE_ALLOWED_ORIGINS` and `DASHBOARD_ORIGIN` are that origin.
+`GET /health` on translate, prove, and memo returns `{"ok":true}`. Team `*.vercel.app` aliases are SSO-gated; strangers use the beta host. `PROVE_ALLOWED_ORIGINS` and `DASHBOARD_ORIGIN` are that origin.
 
-Local three-process host (real rails, not theater):
+Local four-process host (real rails, not theater):
 
 ```bash
 ./scripts/hosted-dev.sh
-# translate :8787  prove :8788  dashboard :3001
+# translate :8787  prove :8788  memo :8789  dashboard :3001
 ```
 
 **Images / start commands** (repo root):
@@ -411,13 +412,16 @@ Local three-process host (real rails, not theater):
 | Dashboard | Vercel / `apps/dashboard` (`vercel.json`) | `pnpm --filter @warrant/dashboard build && start` |
 | Translate | `deploy/Dockerfile.translate` or `deploy/railway.translate.toml` | `pnpm --filter @warrant/translate start` |
 | Prove | `deploy/Dockerfile.prove` or `deploy/railway.prove.toml` | `pnpm --filter @warrant/prove start` |
+| Memo | `deploy/Dockerfile.memo` or `deploy/railway.memo.toml` | `pnpm --filter @warrant/memo start` |
 
-Prove image expects Groth16 **wasm + zkey** on disk (`scripts/download-zkey.sh` fetches zkey/vkey; wasm is gitignored — copy `circuits/build/warrant_js/warrant.wasm` or set `WARRANT_WASM_PATH`). Persist translate nullifiers with a volume + `WARRANT_NULLIFIER_PATH`.
+Prove image expects Groth16 **wasm + zkey** on disk (`scripts/download-zkey.sh` fetches zkey/vkey; wasm is gitignored — copy `circuits/build/warrant_js/warrant.wasm` or set `WARRANT_WASM_PATH`). Persist translate and memo nullifiers with a volume + `WARRANT_NULLIFIER_PATH` (memo also needs `WARRANT_CHALLENGE_PATH`). Memo HCS topic is `HEDERA_MEMO_TOPIC_ID` — a second topic, not the translate audit topic.
 
 **Translate env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, Hedera + HCS (`HEDERA_ACCOUNT_ID` + key + `HEDERA_TOPIC_ID`), `WARRANT_NULLIFIER_PATH`. Guest/CLI payer ≠ `HEDERA_PAY_TO`. HCS operator may be the merchant. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
 
 **Prove env:** `PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GAS_SPONSOR_PRIVATE_KEY` (≠ bind, ≠ Alice), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `GRAPH_WARRANT_QUERY_URL`, `GRAPH_API_KEY`, `WARRANT_WASM_PATH`, `WARRANT_ZKEY_PATH`, `GUEST_TTL_MS=604800000`, `PROVE_ALLOWED_ORIGINS=https://warrant-beta.vercel.app`.
 
-**Dashboard env:** `PROVE_URL`, `PROVE_SECRET`, `TRANSLATE_URL`, `DASHBOARD_ORIGIN`, `GRAPH_*`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_RPC_URL`. Optional `TURNSTILE_SECRET` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Never put keys in `NEXT_PUBLIC_*`.
+**Memo env:** `WARRANT_STRICT_PROD=1`, `NODE_ENV=production`, `WARRANT_VKEY_PATH` (file exists), `REGISTRY_ADDRESS`, `BASE_SEPOLIA_RPC`, `HEDERA_PAY_TO`, `HEDERA_MEMO_TOPIC_ID` (not `HEDERA_TOPIC_ID`), `HEDERA_ACCOUNT_ID` + key, `WARRANT_NULLIFIER_PATH`, `WARRANT_CHALLENGE_PATH`. No `ALLOW_DEMO_*`. Do not set `WARRANT_GUEST_SPONSOR`.
+
+**Dashboard env:** `PROVE_URL`, `PROVE_SECRET`, `TRANSLATE_URL`, `MEMO_URL` (public memo `/v1/memo`), `DASHBOARD_ORIGIN`, `GRAPH_*`, `NEXT_PUBLIC_REGISTRY_ADDRESS`, `NEXT_PUBLIC_RPC_URL`. Optional `TURNSTILE_SECRET` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Never put keys in `NEXT_PUBLIC_*`.
 
 Smoke after DNS: Try it → pay testnet HBAR → 200 translation → Revoke → next call 403. Registry tab still shows Alice. `GET` `/health` on translate and prove.
