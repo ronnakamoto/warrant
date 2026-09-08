@@ -1,4 +1,9 @@
-import { HEDERA_FAUCET, PUBLIC_APP_ORIGIN, helperSkillMarkdown } from "./guest-copy";
+import {
+  HEDERA_FAUCET,
+  PUBLIC_APP_ORIGIN,
+  helperSkillMarkdown,
+  type GuestScopeName,
+} from "./guest-copy";
 import type { HederaPay } from "./hedera-pay";
 import {
   challengeFrom402,
@@ -44,7 +49,13 @@ type SessionProbe = {
   httpStatus: number;
   status?: string;
   parentId?: string;
+  scope?: GuestScopeName;
 };
+
+function guestScopeFromProve(raw: unknown): GuestScopeName {
+  if (raw === "fetch" || raw === "translate" || raw === "both") return raw;
+  return "both";
+}
 
 async function probeSession(
   sessionId: string,
@@ -53,9 +64,14 @@ async function probeSession(
 ): Promise<SessionProbe> {
   const prove = deps.prove ?? proveRequest;
   const res = await prove("/v1/session", { sessionId }, req);
-  const body = (await res.json().catch(() => ({}))) as { status?: unknown; parentId?: unknown };
+  const body = (await res.json().catch(() => ({}))) as {
+    status?: unknown;
+    parentId?: unknown;
+    scope?: unknown;
+  };
   return {
     httpStatus: res.status,
+    scope: guestScopeFromProve(body.scope),
     ...(typeof body.status === "string" ? { status: body.status } : {}),
     ...(typeof body.parentId === "string" && body.parentId ? { parentId: body.parentId } : {}),
   };
@@ -245,6 +261,9 @@ export async function translateForSession(
   if (session.parentId) {
     return { status: 403, body: { error: "scope" } };
   }
+  if (session.scope === "fetch") {
+    return { status: 403, body: { error: "scope" } };
+  }
 
   const { text, source, target } = input;
   const payload = JSON.stringify({ text, source, target });
@@ -341,6 +360,11 @@ export async function memoForSession(
   req?: Request,
   deps: TranslateDeps = {},
 ): Promise<ActResult> {
+  const session = await probeSession(sessionId, req, deps);
+  if (!session.parentId && session.scope === "translate") {
+    return { status: 403, body: { error: "scope" } };
+  }
+
   const { text } = input;
   const payload = JSON.stringify({ text });
   const memoUrl = deps.memoUrl ?? proveConfig().memoUrl;
@@ -365,7 +389,6 @@ export async function memoForSession(
   const challenged = await warrantChallengeFrom402(probe, memoUrl, hashMemoBody(text));
   if ("status" in challenged) return challenged;
 
-  const session = await probeSession(sessionId, req, deps);
   if (session.status === "fired") {
     return { status: 403, body: { error: "root_revoked" } };
   }
@@ -432,6 +455,9 @@ export async function hireForSession(
     return { status: 403, body: { error: "root_revoked" } };
   }
   if (session.parentId) {
+    return { status: 403, body: { error: "scope" } };
+  }
+  if (session.scope === "translate") {
     return { status: 403, body: { error: "scope" } };
   }
 
