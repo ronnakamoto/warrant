@@ -371,7 +371,7 @@ describe("warrant act", function () {
     const { dirname, join } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const skill = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../SKILL.md"), "utf8");
-    const postAt = skill.indexOf("POST https://warrant-beta.vercel.app/api/agent/translate");
+    const postAt = skill.indexOf("POST https://warrant-beta.vercel.app/api/agent/memo");
     const optionalAt = skill.indexOf("Optional");
     assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
