@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { memoForSession, parseGuestMemoBody } from "../../../../lib/guest-act";
+import { memoForSession, parseGuestMemoBody, withPaymentSignature } from "../../../../lib/guest-act";
 import { agentCorsHeaders, publicGuestError, sessionFromBearer } from "../../../../lib/prove-client";
 
 export async function OPTIONS(): Promise<Response> {
@@ -31,8 +31,11 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400, headers: agentCorsHeaders() });
   }
   try {
-    const out = await memoForSession(sessionId, input, req);
-    return NextResponse.json(out.body, { status: out.status, headers: agentCorsHeaders() });
+    const out = await memoForSession(sessionId, withPaymentSignature(input, req), req);
+    return NextResponse.json(out.body, {
+      status: out.status,
+      headers: { ...agentCorsHeaders(), ...out.headers },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "memo failed";
     return NextResponse.json(

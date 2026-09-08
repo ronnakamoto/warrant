@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, stringToBytes } from "viem";
-import { memoForSession, parseGuestMemoBody } from "../src/lib/guest-act.ts";
+import { memoForSession, parseGuestMemoBody, withPaymentSignature } from "../src/lib/guest-act.ts";
 import { hashMemoBody, proveConfig } from "../src/lib/prove-client.ts";
 
 describe("guest memo BFF", function () {
@@ -202,6 +202,18 @@ describe("guest memo BFF", function () {
     );
     assert.equal(out.status, 402);
     assert.equal(receipts, 0);
+    assert.ok(out.headers?.["PAYMENT-REQUIRED"]);
+  });
+
+  it("reads PAYMENT-SIGNATURE when the JSON has no payment", function () {
+    const req = new Request("https://app.example/api/agent/memo", {
+      method: "POST",
+      headers: { "PAYMENT-SIGNATURE": "signed-header" },
+    });
+    const merged = withPaymentSignature({ text: "hi" }, req);
+    assert.equal(merged.payment, "signed-header");
+    const kept = withPaymentSignature({ text: "hi", payment: "body" }, req);
+    assert.equal(kept.payment, "body");
   });
 
   it("does not import warrant-core from the memo route", function () {

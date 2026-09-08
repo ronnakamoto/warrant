@@ -18,9 +18,32 @@ export type ActDeps = {
   storePath?: string;
   fetchImpl?: typeof fetch;
   createPaymentFetch?: () => typeof fetch | Promise<typeof fetch>;
-  prover: IProver;
+  /** Required unless `bearer` is set (hosted BFF proves). */
+  prover?: IProver;
   ensureArtifacts?: () => void | Promise<void>;
+  /** Hosted guest session. Same leaf as Copy / Fire. Never print. */
+  bearer?: string;
 };
+
+async function bearerAct(
+  url: string,
+  body: string,
+  bearer: string,
+  deps: ActDeps,
+): Promise<{ status: number; text: string }> {
+  const paymentFetch = await (deps.createPaymentFetch ??
+    (() => hederaPaymentFetchFromEnv(process.env, deps.fetchImpl)))();
+  const res = await paymentFetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${bearer}`,
+    },
+    body,
+  });
+  const raw = await res.text();
+  return { status: res.status, text: shopText(res.status, raw) };
+}
 
 function ownBalancePaymentFetch(accountId: string, keyRaw: string): typeof fetch {
   const key =
@@ -75,15 +98,24 @@ function shopText(status: number, raw: string): string {
   return raw.slice(0, 500);
 }
 
-/** Prove locally, pay ExactHedera from the funded purse. Never print keys, bearer, warrant, or proof. */
+/** Prove locally, or pay the hosted BFF with a Copy bearer. Never print keys, bearer, warrant, or proof. */
 export async function warrantAct(
   url: string,
   body: string,
   deps: ActDeps,
 ): Promise<{ status: number; text: string }> {
+  const bearer = deps.bearer?.trim() || process.env.WARRANT_BEARER?.trim();
+  if (bearer) {
+    return bearerAct(url, body, bearer, deps);
+  }
+  const prover = deps.prover;
+  if (!prover) {
+    throw new Error("warrant act: prover required unless WARRANT_BEARER / --bearer is set");
+  }
   await deps.ensureArtifacts?.();
   const state = deps.state ?? loadState(deps.storePath);
-  const paymentFetch = await (deps.createPaymentFetch ?? (() => hederaPaymentFetchFromEnv(process.env, deps.fetchImpl)))();
+  const paymentFetch = await (deps.createPaymentFetch ??
+    (() => hederaPaymentFetchFromEnv(process.env, deps.fetchImpl)))();
   const res = await warrantFetch(
     url,
     {
@@ -94,7 +126,7 @@ export async function warrantAct(
     {
       as: deps.as ?? "translator",
       state,
-      prover: deps.prover,
+      prover,
       paymentFetch,
       fetchImpl: deps.fetchImpl,
     },
