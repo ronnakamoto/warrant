@@ -214,6 +214,7 @@ export function mockHederaFacilitator(feePayer = "0.0.7162784"): FacilitatorClie
           },
         ],
         extensions: [],
+        signers: {},
       };
     },
     async verify() {
