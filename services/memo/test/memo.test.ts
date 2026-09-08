@@ -106,4 +106,113 @@ describe("memo shop", function () {
     assert.match(String(body.hashscan), /hashscan\.io\/testnet/);
     assert.deepEqual(submitted, ["scar"]);
   });
+
+  it("FETCH warrant with empty text is 400 and does not submit", async function () {
+    const submitted: string[] = [];
+    const shop = wireMemo({
+      facilitatorClient: mockHederaFacilitator(),
+      fixedMerkleRoot: liveRoot,
+      verifier: verifierOk,
+      freeCallsPerHuman: 3,
+      submit: async (text) => {
+        submitted.push(text);
+        return { txId: "0.0.1@1" };
+      },
+    });
+    await shop.initialize();
+    const app = createMemoApp(shop);
+    const warrant = JSON.stringify({
+      proof: { pi_a: [], pi_b: [], pi_c: [] },
+      publicSignals: [
+        liveRoot, 1n, 9n, FETCH, 1n, 1n, 0n, 1n,
+      ].map(String),
+      nonce: "n",
+    });
+    const res = await app.request("http://memo.test/v1/memo", {
+      method: "POST",
+      headers: { "content-type": "application/json", warrant },
+      body: JSON.stringify({ text: "" }),
+    });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "empty");
+    assert.deepEqual(submitted, []);
+  });
+
+  it("FETCH warrant with 241 chars is 400 and does not submit", async function () {
+    const submitted: string[] = [];
+    const shop = wireMemo({
+      facilitatorClient: mockHederaFacilitator(),
+      fixedMerkleRoot: liveRoot,
+      verifier: verifierOk,
+      freeCallsPerHuman: 3,
+      submit: async (text) => {
+        submitted.push(text);
+        return { txId: "0.0.1@1" };
+      },
+    });
+    await shop.initialize();
+    const app = createMemoApp(shop);
+    const warrant = JSON.stringify({
+      proof: { pi_a: [], pi_b: [], pi_c: [] },
+      publicSignals: [
+        liveRoot, 1n, 9n, FETCH, 1n, 1n, 0n, 1n,
+      ].map(String),
+      nonce: "n",
+    });
+    const res = await app.request("http://memo.test/v1/memo", {
+      method: "POST",
+      headers: { "content-type": "application/json", warrant },
+      body: JSON.stringify({ text: "x".repeat(241) }),
+    });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "too_long");
+    assert.deepEqual(submitted, []);
+  });
+
+  it("live submit failure is 502 submit_failed", async function () {
+    const shop = wireMemo({
+      facilitatorClient: mockHederaFacilitator(),
+      fixedMerkleRoot: liveRoot,
+      verifier: verifierOk,
+      freeCallsPerHuman: 3,
+      submit: async () => {
+        throw new Error("HCS submit status INVALID_SIGNATURE");
+      },
+    });
+    await shop.initialize();
+    const app = createMemoApp(shop);
+    const unpaid = await app.request("http://memo.test/v1/memo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "scar" }),
+    });
+    const required = decodePaymentRequiredHeader(unpaid.headers.get("PAYMENT-REQUIRED") ?? "");
+    const info = (required as { extensions?: { warrant?: { info?: { nonce: string; merkleRoot: string } } } })
+      .extensions?.warrant?.info!;
+    const { bodyHashFromCanonical } = await import("@ronnakamoto/warrant-core");
+    const bodyHash = bodyHashFromCanonical({ text: "scar" });
+    const ch = {
+      method: "POST",
+      path: "/v1/memo",
+      nonce: info.nonce,
+      merkleRoot: info.merkleRoot,
+      amount: shop.amount,
+      payTo: shop.payTo,
+      bodyHash,
+    };
+    const warrant = JSON.stringify({
+      proof: { pi_a: [], pi_b: [], pi_c: [] },
+      publicSignals: [
+        liveRoot, 1n, 9n, FETCH, 1n, 1n, 0n, hashChallenge(ch),
+      ].map(String),
+      nonce: info.nonce,
+    });
+    const res = await app.request("http://memo.test/v1/memo", {
+      method: "POST",
+      headers: { "content-type": "application/json", warrant },
+      body: JSON.stringify({ text: "scar" }),
+    });
+    assert.equal(res.status, 502);
+    assert.deepEqual(await res.json(), { error: "submit_failed" });
+  });
 });

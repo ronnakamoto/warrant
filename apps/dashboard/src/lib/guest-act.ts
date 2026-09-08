@@ -91,14 +91,30 @@ export function parseGuestShopBody(raw: unknown): ShopInput | "private_key" | nu
   return rest;
 }
 
+const GUEST_MEMO_MAX = 240;
+
+/** Same rules as the memo shop: trim, then `[...text].length` vs 240. Do not import services/memo. */
+export function parseGuestMemoText(
+  text: string,
+): { ok: true; text: string } | { ok: false; error: "empty" | "too_long" } {
+  const trimmed = text.trim();
+  if (!trimmed) return { ok: false, error: "empty" };
+  if ([...trimmed].length > GUEST_MEMO_MAX) return { ok: false, error: "too_long" };
+  return { ok: true, text: trimmed };
+}
+
 /** Hosted agent memo: `{ text, payment? }` only. A pasted private key is a 400. */
-export function parseGuestMemoBody(raw: unknown): MemoInput | "private_key" | null {
+export function parseGuestMemoBody(
+  raw: unknown,
+): MemoInput | "private_key" | "empty" | "too_long" | null {
   if (hasHederaPrivateKey(raw)) return "private_key";
   if (!raw || typeof raw !== "object") return null;
   const input = raw as { text?: unknown; payment?: unknown };
+  const parsed = parseGuestMemoText(typeof input.text === "string" ? input.text : "");
+  if (!parsed.ok) return parsed.error;
   const payment = typeof input.payment === "string" ? input.payment.trim() : "";
   return {
-    text: typeof input.text === "string" ? input.text : "",
+    text: parsed.text,
     ...(payment ? { payment } : {}),
   };
 }

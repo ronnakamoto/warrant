@@ -24,6 +24,9 @@ export async function POST(req: Request): Promise<Response> {
       { status: 400, headers: agentCorsHeaders() },
     );
   }
+  if (input === "empty" || input === "too_long") {
+    return NextResponse.json({ error: input }, { status: 400, headers: agentCorsHeaders() });
+  }
   if (!input) {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400, headers: agentCorsHeaders() });
   }

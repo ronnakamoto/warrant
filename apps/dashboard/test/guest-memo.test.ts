@@ -11,6 +11,13 @@ describe("guest memo BFF", function () {
     assert.equal(parseGuestMemoBody({ text: "hi", hederaPrivateKey: "302e" }), "private_key");
   });
 
+  it("rejects empty or too_long memo text before prove", function () {
+    assert.equal(parseGuestMemoBody({ text: "" }), "empty");
+    assert.equal(parseGuestMemoBody({ text: "   " }), "empty");
+    assert.equal(parseGuestMemoBody({ text: "x".repeat(241) }), "too_long");
+    assert.deepEqual(parseGuestMemoBody({ text: "hi" }), { text: "hi" });
+  });
+
   it("returns 403 on an unpaid retry after the warrant is fired", async function () {
     let proved = 0;
     const payload = {
@@ -51,6 +58,38 @@ describe("guest memo BFF", function () {
     );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error, "private key not allowed");
+  });
+
+  it("returns 400 for empty memo text without proving", async function () {
+    const { POST } = await import("../src/app/api/agent/memo/route.ts");
+    const res = await POST(
+      new Request("https://app.example/api/agent/memo", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer tok",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ text: "" }),
+      }),
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "empty");
+  });
+
+  it("returns 400 for too-long memo text without proving", async function () {
+    const { POST } = await import("../src/app/api/agent/memo/route.ts");
+    const res = await POST(
+      new Request("https://app.example/api/agent/memo", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer tok",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ text: "x".repeat(241) }),
+      }),
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, "too_long");
   });
 
   it("returns 401 when the memo call has no bearer", async function () {
