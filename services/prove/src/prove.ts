@@ -30,6 +30,10 @@ export async function refreshMembers(
   }
 }
 
+export function actingName(session: GuestSession): "translator" | "helper" {
+  return session.parentId ? "helper" : "translator";
+}
+
 export async function proveGuest(args: {
   session: GuestSession;
   challenge: ChallengeParts;
@@ -41,7 +45,7 @@ export async function proveGuest(args: {
   }
   const result = await proveForChallenge({
     state: args.session.state,
-    as: "translator",
+    as: actingName(args.session),
     challenge: args.challenge,
     prover: args.prover,
   });
