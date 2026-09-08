@@ -220,7 +220,7 @@ Defects if violated, even if the demo is prettier.
 | S9 | Founder EVM keys exist only in memory for one signature. Humans never paste Hedera keys. The spender key lives only on the agent's machine. Hosted chat and Vercel never receive it. |
 | S10 | Default is **non-custodial**. Guest is a labeled throwaway: we hold those keys for minutes. Long-lived custodial backup is opt-in. |
 | S11 | Prove worker is reachable only from the dashboard origin / shared internal secret — not a public anonymous prove API. |
-| S12 | Guest BFF may see one warrant header in flight. It must not log it, persist it, or forward it anywhere except translate. |
+| S12 | Guest BFF may see one warrant header in flight. It must not log it, persist it, or forward it anywhere except the translate shop or the memo shop we operate. |
 
 Threats we accept (`docs/02-design.md`): leaf sees parents; budget is a ceiling; anonymity set = bound roots; Groth16 ceremony; mid-tree revoke is v2.
 

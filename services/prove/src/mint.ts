@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { createMandate, hashLeaf, TRANSLATE } from "@ronnakamoto/warrant-core";
+import { createMandate, hashLeaf, FETCH, TRANSLATE } from "@ronnakamoto/warrant-core";
 import {
   appendLeaf,
   bindRootOnChain,
@@ -63,6 +63,7 @@ function priorAliceForWallet(store: SessionStore, wallet: Address) {
 const PARENT_BUDGET = 2_000_000n;
 const LEAF_BUDGET = 200_000n;
 const TTL_SECONDS = 30n * 60n;
+const GUEST_SCOPE = TRANSLATE | FETCH;
 
 export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
   const { humanTag } = requireHuman(state);
@@ -72,7 +73,7 @@ export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
   const hop1 = createMandate({
     parent: alice,
     child: orch,
-    scope: TRANSLATE,
+    scope: GUEST_SCOPE,
     budgetCap: PARENT_BUDGET,
     expiry,
     tier: BigInt(state.rootTier ?? 0),
@@ -83,7 +84,7 @@ export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
   const hop2 = createMandate({
     parent: orch,
     child: trans,
-    scope: TRANSLATE,
+    scope: GUEST_SCOPE,
     budgetCap: LEAF_BUDGET,
     expiry,
     tier: hop1.tier,

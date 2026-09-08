@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { FETCH, TRANSLATE } from "@ronnakamoto/warrant-core";
 import { FOUNDER_ETH } from "../src/founders.ts";
 import { assembleGuestTree, mintGuest } from "../src/mint.ts";
 import { createSessionStore } from "../src/session.ts";
@@ -22,6 +23,9 @@ describe("assembleGuestTree", function () {
     assert.equal(state.mandates[1]?.to, "translator");
     assert.ok(BigInt(state.mandates[1]!.budgetCap) < BigInt(state.mandates[0]!.budgetCap));
     assert.ok(identityOf(state, "translator"));
+    const guestScope = TRANSLATE | FETCH;
+    assert.equal(BigInt(state.mandates[0]!.scope), guestScope);
+    assert.equal(BigInt(state.mandates[1]!.scope), guestScope);
   });
 });
 
