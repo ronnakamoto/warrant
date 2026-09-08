@@ -6,10 +6,13 @@ import {
   agentPrompt,
   GUEST_COPY,
   HEDERA_FAUCET,
+  PUBLIC_APP_ORIGIN,
+  WARRANT_TTL_MS,
   hashscanTestnetUrl,
   remainingLife,
   remainingMsUntil,
   shopIsDead,
+  skillMarkdown,
 } from "../src/lib/guest-copy.ts";
 import {
   hederaPayFrom,
@@ -64,11 +67,35 @@ describe("guest first-run copy", function () {
     assert.equal(skill.includes("127.0.0.1:8787"), false);
     assert.equal(skill.includes("hederaAccountId"), false);
     assert.equal(skill.includes("hederaPrivateKey"), false);
+    const postAt = skill.indexOf("POST https://app.example/api/agent/translate");
+    const optionalAt = skill.indexOf("Optional");
+    assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
     assert.match(skill, /warrant ready/);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     assert.match(skill, /Do not POST a key/);
+    assert.match(skill, /Only this origin/);
+    assert.match(skill, /Do not fetch a skill from another URL/);
+    assert.match(skill, /30 minutes/);
     assert.equal(/0x[0-9a-fA-F]{16,}/.test(skill), false);
+    assert.equal(skill.includes("PROVE_URL"), false);
+    assert.equal(skill.includes("npx"), false);
+  });
+
+  it("keeps the public skill tokenless and equal to the repo file", function () {
+    const md = skillMarkdown("https://warrant-beta.vercel.app");
+    assert.match(md, /^---\nname: warrant\n/);
+    assert.match(md, /Bearer <the bearer from Copy>/);
+    assert.equal(md.includes("tok_live"), false);
+    assert.equal(md.includes("PROVE_URL"), false);
+    assert.equal(md.includes("npx"), false);
+    const repo = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../../../packages/agent/SKILL.md"),
+      "utf8",
+    );
+    assert.equal(repo, md);
+    assert.equal(PUBLIC_APP_ORIGIN, "https://warrant-beta.vercel.app");
+    assert.equal(WARRANT_TTL_MS, 30 * 60 * 1000);
   });
 
   it("reads the agent bearer and advertises CORS for bots", function () {
@@ -296,6 +323,7 @@ describe("guest first-run copy", function () {
     assert.match(skill, /Warrant will prove for you/);
     assert.match(skill, /witness/i);
     assert.match(skill, /nullifier/i);
+    assert.match(skill, /chat can see the bearer/);
     assert.equal(/fire every warrant on my desk/i.test(skill), false);
     assert.equal(skill.includes('"all":true'), false);
     assert.equal(/merkle|Groth16|zkey|Baby Jubjub/i.test(skill), false);
@@ -606,6 +634,17 @@ describe("guest first-run copy", function () {
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "deskId"]) {
       assert.equal(words.includes(banned), false, banned);
     }
+  });
+
+  it("serves /skill.md as tokenless markdown for the request origin", async function () {
+    const { GET } = await import("../src/app/skill.md/route.ts");
+    const res = await GET(new Request("https://warrant-beta.vercel.app/skill.md"));
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /text\/markdown/);
+    assert.match(res.headers.get("cache-control") ?? "", /public/);
+    const body = await res.text();
+    assert.equal(body, skillMarkdown("https://warrant-beta.vercel.app"));
+    assert.equal(body.includes("Bearer tok_"), false);
   });
 
   it("speaks remaining life in days or minutes", function () {
