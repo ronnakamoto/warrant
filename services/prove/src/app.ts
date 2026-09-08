@@ -6,7 +6,7 @@ import { proveGuest } from "./prove.js";
 import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
-import type { SessionStore } from "./session.js";
+import { parseWarrantReceipt, type SessionStore } from "./session.js";
 
 export const AUTH_HEADER = "x-warrant-prove-secret";
 const BODY_LIMIT = 64 * 1024;
@@ -131,6 +131,29 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
     return c.json({ status: session.revoked ? "fired" : "live" });
+  });
+
+  app.post("/v1/receipt", async (c) => {
+    if (!opts.store) {
+      return c.json({ error: "receipt not configured" }, 503);
+    }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { sessionId?: string; hashscan?: string; nullifier?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { sessionId?: string; hashscan?: string; nullifier?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+    if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
+    const receipt = parseWarrantReceipt({ hashscan: body.hashscan, nullifier: body.nullifier });
+    if (!receipt) return c.json({ error: "invalid receipt" }, 400);
+    const session = opts.store.get(body.sessionId);
+    if (!session) return c.json({ error: "unknown session" }, 404);
+    if (session.revoked) return c.json({ error: "fired" }, 400);
+    session.receipt = receipt;
+    opts.store.put(session);
+    return c.json({ ok: true });
   });
 
   app.post("/v1/prove", async (c) => {

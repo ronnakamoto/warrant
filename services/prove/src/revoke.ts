@@ -116,6 +116,7 @@ export function markWalletFired(store: SessionStore, wallet: Address): void {
   for (const session of store.dump()) {
     if (session.wallet.toLowerCase() !== want) continue;
     session.revoked = true;
+    delete session.receipt;
     store.put(session);
   }
 }

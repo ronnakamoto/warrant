@@ -4,11 +4,17 @@ import type { Address, Hex } from "viem";
 
 export type WarrantStatus = "live" | "fired";
 
+export type WarrantReceipt = {
+  hashscan: string;
+  nullifier: string;
+};
+
 export type WarrantView = {
   id: string;
   status: WarrantStatus;
   createdAt: number;
   remainingMs: number;
+  receipt?: WarrantReceipt;
 };
 
 export type GuestSession = {
@@ -19,7 +25,23 @@ export type GuestSession = {
   wallet: Address;
   createdAt: number;
   revoked?: boolean;
+  receipt?: WarrantReceipt;
 };
+
+const HASHSCAN_TX =
+  /^https:\/\/hashscan\.io\/testnet\/transaction\/[0-9A-Za-z.@-]+$/;
+const DECIMAL_NULLIFIER = /^\d+$/;
+
+/** Public HashScan + nullifier only. Rejects anything else. */
+export function parseWarrantReceipt(input: unknown): WarrantReceipt | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const raw = input as { hashscan?: unknown; nullifier?: unknown };
+  if (typeof raw.hashscan !== "string" || typeof raw.nullifier !== "string") return undefined;
+  const hashscan = raw.hashscan.trim();
+  const nullifier = raw.nullifier.trim();
+  if (!HASHSCAN_TX.test(hashscan) || !DECIMAL_NULLIFIER.test(nullifier)) return undefined;
+  return { hashscan, nullifier };
+}
 
 export type SessionStore = {
   put(session: GuestSession): void;
@@ -34,6 +56,7 @@ export type SessionStore = {
 
 function wipeKey(session: GuestSession): void {
   session.evmPrivateKey = "0x" as Hex;
+  delete session.receipt;
   session.state = {
     version: 1,
     identities: {},
@@ -50,12 +73,17 @@ export const createDeskId = createSessionId;
 
 export function warrantView(session: GuestSession, now: number, ttlMs: number): WarrantView {
   const remainingMs = Math.max(0, session.createdAt + ttlMs - now);
-  return {
+  const view: WarrantView = {
     id: session.id,
     status: session.revoked ? "fired" : "live",
     createdAt: session.createdAt,
     remainingMs,
   };
+  if (view.status === "live") {
+    const receipt = parseWarrantReceipt(session.receipt);
+    if (receipt) view.receipt = receipt;
+  }
+  return view;
 }
 
 export function createSessionStore(opts: {

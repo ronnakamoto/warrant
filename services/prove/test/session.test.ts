@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { emptyState } from "@warrant/agent";
-import { createSessionStore, createDeskId, type GuestSession } from "../src/session.ts";
+import {
+  createSessionStore,
+  createDeskId,
+  parseWarrantReceipt,
+  type GuestSession,
+} from "../src/session.ts";
+
+const RECEIPT = {
+  hashscan: "https://hashscan.io/testnet/transaction/0.0.10416077-1-000000000",
+  nullifier: "42",
+};
 
 function session(id: string, createdAt: number, deskId = "desk"): GuestSession {
   return {
@@ -73,6 +83,32 @@ describe("guest session store", function () {
       store.listByDesk("desk-2").map((v) => v.id).join(),
       "c",
     );
+  });
+
+  it("parseWarrantReceipt accepts HashScan + decimal nullifier only", function () {
+    assert.deepEqual(parseWarrantReceipt(RECEIPT), RECEIPT);
+    assert.deepEqual(parseWarrantReceipt({ hashscan: RECEIPT.hashscan, nullifier: " 42 " }), RECEIPT);
+    assert.equal(parseWarrantReceipt({ hashscan: "https://evil.example/tx", nullifier: "42" }), undefined);
+    assert.equal(parseWarrantReceipt({ hashscan: RECEIPT.hashscan, nullifier: "" }), undefined);
+    assert.equal(parseWarrantReceipt({ hashscan: RECEIPT.hashscan, nullifier: "0xab" }), undefined);
+    assert.deepEqual(
+      parseWarrantReceipt({ hashscan: RECEIPT.hashscan, text: "hi", nullifier: "42" }),
+      RECEIPT,
+    );
+  });
+
+  it("lists a receipt on a live leaf and hides it after fire", function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 10_000 });
+    const live = session("a", 0, "desk-1");
+    live.receipt = RECEIPT;
+    store.put(live);
+    const fired = session("b", 0, "desk-1");
+    fired.revoked = true;
+    fired.receipt = RECEIPT;
+    store.put(fired);
+    const views = store.listByDesk("desk-1");
+    assert.deepEqual(views.find((v) => v.id === "a")?.receipt, RECEIPT);
+    assert.equal(views.find((v) => v.id === "b")?.receipt, undefined);
   });
 
   it("createDeskId is 32 hex and not equal twice", function () {

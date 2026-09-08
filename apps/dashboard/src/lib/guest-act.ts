@@ -344,6 +344,7 @@ export async function memoForSession(
   const proved = await prove("/v1/prove", { sessionId, challenge }, req);
   const provedBody = (await proved.json().catch(() => ({}))) as {
     warrant?: string;
+    nullifier?: string;
     error?: string;
   };
   if (!proved.ok || !provedBody.warrant) {
@@ -363,6 +364,15 @@ export async function memoForSession(
   if (retry.status === 403) return { status: 403, body: { error: "root_revoked" } };
   if (!retry.ok) return { status: retry.status, body: { error: `memo HTTP ${retry.status}` } };
   const memoed = (await retry.json()) as { text?: string; hashscan?: string };
+  const hashscan = typeof memoed.hashscan === "string" ? memoed.hashscan : "";
+  const nullifier = typeof provedBody.nullifier === "string" ? provedBody.nullifier : "";
+  if (hashscan && nullifier) {
+    try {
+      await prove("/v1/receipt", { sessionId, hashscan, nullifier }, req);
+    } catch {
+      /* shop 200 stands */
+    }
+  }
   return {
     status: 200,
     body: {

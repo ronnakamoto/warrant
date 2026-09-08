@@ -451,6 +451,108 @@ describe("prove desk", function () {
   });
 });
 
+describe("prove receipt", function () {
+  const HASHSCAN = "https://hashscan.io/testnet/transaction/0.0.10416077-1-000000000";
+  const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+
+  function receiptApp() {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put({
+      id: "live-1",
+      deskId: "desk-a",
+      createdAt: Date.now(),
+      wallet: WALLET,
+      evmPrivateKey: "0x2222222222222222222222222222222222222222222222222222222222222222",
+      state: emptyState(),
+    });
+    store.put({
+      id: "other-desk",
+      deskId: "desk-b",
+      createdAt: Date.now(),
+      wallet: WALLET_B,
+      evmPrivateKey: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      state: emptyState(),
+    });
+    const app = createProveApp({ authSecret: secret, store });
+    return { app, store };
+  }
+
+  it("writes, overwrites, and lists the slot only on that desk", async function () {
+    const { app } = receiptApp();
+    const first = await app.request("/v1/receipt", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "live-1", hashscan: HASHSCAN, nullifier: "1" }),
+    });
+    assert.equal(first.status, 200);
+    const second = await app.request("/v1/receipt", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "live-1", hashscan: HASHSCAN, nullifier: "99" }),
+    });
+    assert.equal(second.status, 200);
+    const mine = (await (
+      await app.request("/v1/desk", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ deskId: "desk-a" }),
+      })
+    ).json()) as { warrants: { id: string; receipt?: { nullifier: string } }[] };
+    assert.deepEqual(mine.warrants.find((w) => w.id === "live-1")?.receipt, {
+      hashscan: HASHSCAN,
+      nullifier: "99",
+    });
+    const other = (await (
+      await app.request("/v1/desk", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ deskId: "desk-b" }),
+      })
+    ).json()) as { warrants: { receipt?: unknown }[] };
+    assert.equal(other.warrants.every((w) => w.receipt === undefined), true);
+  });
+
+  it("rejects unknown, fired, and invalid receipts", async function () {
+    const { app, store } = receiptApp();
+    assert.equal(
+      (
+        await app.request("/v1/receipt", {
+          method: "POST",
+          headers: hdrs,
+          body: JSON.stringify({ sessionId: "nope", hashscan: HASHSCAN, nullifier: "1" }),
+        })
+      ).status,
+      404,
+    );
+    const live = store.get("live-1")!;
+    live.revoked = true;
+    store.put(live);
+    const fired = await app.request("/v1/receipt", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "live-1", hashscan: HASHSCAN, nullifier: "1" }),
+    });
+    assert.equal(fired.status, 400);
+    assert.deepEqual(await fired.json(), { error: "fired" });
+    const bad = await app.request("/v1/receipt", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({
+        sessionId: "other-desk",
+        hashscan: "https://evil.example/tx",
+        nullifier: "1",
+      }),
+    });
+    assert.equal(bad.status, 400);
+    const empty = await app.request("/v1/receipt", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "other-desk", hashscan: HASHSCAN, nullifier: "" }),
+    });
+    assert.equal(empty.status, 400);
+  });
+});
+
 describe("rate limiter", function () {
   it("rejects after max hits", function () {
     let t = 0;
