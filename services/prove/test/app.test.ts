@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { createProveApp } from "../src/app.ts";
+import { assembleGuestTree } from "../src/mint.ts";
 import { createRateLimiter } from "../src/rate-limit.ts";
-import { createSessionStore } from "../src/session.ts";
-import { emptyState } from "@warrant/agent";
+import { createSessionStore, type GuestSession } from "../src/session.ts";
+import { emptyState, ensureIdentity, freshFieldTag } from "@warrant/agent";
 import type { ChallengeParts, IProver, WarrantProof } from "@ronnakamoto/warrant-core";
 
 const secret = "test-secret";
@@ -550,6 +551,181 @@ describe("prove receipt", function () {
       body: JSON.stringify({ sessionId: "other-desk", hashscan: HASHSCAN, nullifier: "" }),
     });
     assert.equal(empty.status, 400);
+  });
+});
+
+describe("prove hire", function () {
+  const hdrs = { "x-warrant-prove-secret": secret, "content-type": "application/json" };
+
+  function twoHopParent(id = "parent"): GuestSession {
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-http-hire");
+    ensureIdentity(state, "orchestrator", "orch-http-hire");
+    ensureIdentity(state, "translator", "trans-http-hire");
+    state.humanTag = freshFieldTag();
+    state.contextHash = freshFieldTag();
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+    return {
+      id,
+      deskId: "desk-hire",
+      createdAt: Date.now(),
+      wallet: WALLET,
+      evmPrivateKey: "0x",
+      state,
+    };
+  }
+
+  function hireApp() {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put(twoHopParent());
+    const app = createProveApp({ authSecret: secret, store });
+    return { app, store };
+  }
+
+  it("POST /v1/hire without secret is 401", async function () {
+    const { app } = hireApp();
+    const res = await app.request("/v1/hire", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(res.status, 401);
+  });
+
+  it("hires a live parent and exposes parentId only on the helper session", async function () {
+    const { app } = hireApp();
+    const hired = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(hired.status, 200);
+    const hiredBody = (await hired.json()) as { helperSessionId: string };
+    assert.ok(hiredBody.helperSessionId);
+
+    const helper = await app.request("/v1/session", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: hiredBody.helperSessionId }),
+    });
+    assert.equal(helper.status, 200);
+    assert.deepEqual(await helper.json(), { status: "live", parentId: "parent" });
+
+    const parent = await app.request("/v1/session", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(parent.status, 200);
+    const parentBody = (await parent.json()) as Record<string, unknown>;
+    assert.deepEqual(parentBody, { status: "live" });
+    assert.equal("parentId" in parentBody, false);
+  });
+
+  it("overwrites the previous helper", async function () {
+    const { app } = hireApp();
+    const first = (await (
+      await app.request("/v1/hire", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ sessionId: "parent" }),
+      })
+    ).json()) as { helperSessionId: string };
+    const secondRes = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(secondRes.status, 200);
+    const second = (await secondRes.json()) as { helperSessionId: string };
+    assert.notEqual(second.helperSessionId, first.helperSessionId);
+    const old = await app.request("/v1/session", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: first.helperSessionId }),
+    });
+    assert.equal(old.status, 404);
+  });
+
+  it("rejects hire with the helper id as 403 scope", async function () {
+    const { app } = hireApp();
+    const hired = (await (
+      await app.request("/v1/hire", {
+        method: "POST",
+        headers: hdrs,
+        body: JSON.stringify({ sessionId: "parent" }),
+      })
+    ).json()) as { helperSessionId: string };
+    const res = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: hired.helperSessionId }),
+    });
+    assert.equal(res.status, 403);
+    assert.deepEqual(await res.json(), { error: "scope" });
+  });
+
+  it("rejects a fired parent with 400 fired", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const parent = twoHopParent();
+    parent.revoked = true;
+    store.put(parent);
+    const app = createProveApp({ authSecret: secret, store });
+    const res = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: "fired" });
+  });
+
+  it("rejects an unknown session with 404", async function () {
+    const { app } = hireApp();
+    const res = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "nope" }),
+    });
+    assert.equal(res.status, 404);
+    assert.deepEqual(await res.json(), { error: "unknown session" });
+  });
+
+  it("lists only the parent on /v1/desk after hire", async function () {
+    const { app } = hireApp();
+    const hired = await app.request("/v1/hire", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ sessionId: "parent" }),
+    });
+    assert.equal(hired.status, 200);
+    const list = await app.request("/v1/desk", {
+      method: "POST",
+      headers: hdrs,
+      body: JSON.stringify({ deskId: "desk-hire" }),
+    });
+    assert.equal(list.status, 200);
+    const body = (await list.json()) as { warrants: { id: string }[] };
+    assert.deepEqual(
+      body.warrants.map((w) => w.id),
+      ["parent"],
+    );
+  });
+
+  it("rejects oversized, invalid json, and missing sessionId", async function () {
+    const { app } = hireApp();
+    const huge = "x".repeat(64 * 1024 + 1);
+    const oversized = await app.request("/v1/hire", { method: "POST", headers: hdrs, body: huge });
+    assert.equal(oversized.status, 413);
+    const invalid = await app.request("/v1/hire", { method: "POST", headers: hdrs, body: "{not-json" });
+    assert.equal(invalid.status, 400);
+    assert.deepEqual(await invalid.json(), { error: "invalid json" });
+    const missing = await app.request("/v1/hire", { method: "POST", headers: hdrs, body: "{}" });
+    assert.equal(missing.status, 400);
+    assert.deepEqual(await missing.json(), { error: "sessionId required" });
   });
 });
 
