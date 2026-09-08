@@ -146,6 +146,27 @@ describe("guest first-run copy", function () {
     }
   });
 
+  it("lets Authorize pick memo, translate, or both", function () {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    assert.match(src, /GUEST_COPY\.scopeLead/);
+    assert.match(src, /GUEST_COPY\.scopeMemo/);
+    assert.match(src, /GUEST_COPY\.scopeTranslate/);
+    assert.match(src, /GUEST_COPY\.scopeBoth/);
+    assert.match(src, /JSON\.stringify\(\{\s*wallet,\s*scope/);
+    assert.match(src, /agentPrompt\(origin, token, selected\.scope \?\? "fetch"\)/);
+    assert.match(src, /useState<GuestScopeName>\("fetch"\)/);
+    assert.match(src, /scope\?: GuestScopeName/);
+    assert.equal((src.match(/label=\{GUEST_COPY\.authorize\}/g) ?? []).length, 1);
+    assert.match(src, /<Button label=\{GUEST_COPY\.authorize\}/);
+    assert.equal(src.includes('label={GUEST_COPY.authorize} variant="'), false);
+    const lifeAt = src.indexOf("remainingLife(selected.remainingMs)");
+    assert.ok(lifeAt >= 0);
+    assert.equal(src.slice(lifeAt, lifeAt + 40).includes("scope"), false);
+  });
+
   it("hands a memo-only helper skill that cannot hire or translate", function () {
     const helper = helperSkillMarkdown("https://app.example", "tok_help");
     assert.match(helper, /POST https:\/\/app\.example\/api\/agent\/memo/);

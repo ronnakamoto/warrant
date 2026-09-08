@@ -11,6 +11,7 @@ import {
   WARRANT_TTL_MS,
   remainingLife,
   remainingMsUntil,
+  type GuestScopeName,
 } from "../lib/guest-copy";
 
 type Phase = "land" | "minting" | "ready" | "revoked" | "limited";
@@ -21,7 +22,14 @@ type WarrantView = {
   remainingMs: number;
   expiresAt?: number;
   receipt?: { hashscan: string; nullifier: string };
+  scope?: GuestScopeName;
 };
+
+const SCOPE_PICKS = [
+  ["fetch", GUEST_COPY.scopeMemo],
+  ["translate", GUEST_COPY.scopeTranslate],
+  ["both", GUEST_COPY.scopeBoth],
+] as const;
 
 function stampExpiry(w: WarrantView, now = Date.now()): WarrantView {
   return { ...w, expiresAt: now + Math.max(0, w.remainingMs) };
@@ -45,6 +53,38 @@ function idTail(id: string): string {
   return id.length <= 4 ? id : `…${id.slice(-4)}`;
 }
 
+function ScopePicks(props: {
+  scope: GuestScopeName;
+  busy: boolean;
+  onPick: (scope: GuestScopeName) => void;
+}) {
+  return (
+    <VStack gap={2}>
+      <Text type="supporting" color="secondary">
+        {GUEST_COPY.scopeLead}
+      </Text>
+      <div style={wrapRow}>
+        {SCOPE_PICKS.map(([name, label]) => (
+          <span
+            key={name}
+            style={
+              props.scope === name ? { outline: "1px solid var(--color-border)" } : undefined
+            }
+          >
+            <Button
+              size="sm"
+              variant="secondary"
+              label={label}
+              isDisabled={props.busy}
+              onClick={() => props.onPick(name)}
+            />
+          </span>
+        ))}
+      </div>
+    </VStack>
+  );
+}
+
 export function GuestTry() {
   const [phase, setPhase] = useState<Phase>("land");
   const [warrants, setWarrants] = useState<WarrantView[]>([]);
@@ -54,6 +94,7 @@ export function GuestTry() {
   const [notice, setNotice] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [origin, setOrigin] = useState("http://127.0.0.1:3001");
+  const [scope, setScope] = useState<GuestScopeName>("fetch");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -62,7 +103,7 @@ export function GuestTry() {
   const selected = warrants.find((w) => w.id === selectedId);
   const liveWarrants = warrants.filter(isLive);
   const token = selected && isLive(selected) ? selected.id : null;
-  const prompt = token ? agentPrompt(origin, token) : "";
+  const prompt = token ? agentPrompt(origin, token, selected.scope ?? "fetch") : "";
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
 
   const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
@@ -165,7 +206,7 @@ export function GuestTry() {
     const res = await fetch("/api/guest", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ wallet }),
+      body: JSON.stringify({ wallet, scope }),
     });
     if (res.status === 429) {
       setPhase("limited");
@@ -187,7 +228,13 @@ export function GuestTry() {
       applyList(
         [
           ...list,
-          { id: body.token, status: "live", createdAt: Date.now(), remainingMs: WARRANT_TTL_MS },
+          {
+            id: body.token,
+            status: "live",
+            createdAt: Date.now(),
+            remainingMs: WARRANT_TTL_MS,
+            scope,
+          },
         ],
         body.token,
       );
@@ -328,6 +375,7 @@ export function GuestTry() {
           <Text type="supporting" color="secondary">
             {GUEST_COPY.connectWallet}
           </Text>
+          <ScopePicks scope={scope} busy={busy} onPick={setScope} />
           <Button label={GUEST_COPY.authorize} onClick={() => void authorize()} isDisabled={busy} />
         </VStack>
       ) : null}
@@ -421,6 +469,7 @@ export function GuestTry() {
       {phase === "revoked" ? (
         <VStack gap={3}>
           <Banner status="success" title={GUEST_COPY.afterRevoke} />
+          <ScopePicks scope={scope} busy={busy} onPick={setScope} />
           <Button label={GUEST_COPY.again} onClick={() => void authorize()} isDisabled={busy} />
         </VStack>
       ) : null}
