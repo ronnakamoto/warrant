@@ -9,6 +9,7 @@ import {
   PUBLIC_APP_ORIGIN,
   WARRANT_TTL_MS,
   hashscanTestnetUrl,
+  helperSkillMarkdown,
   remainingLife,
   remainingMsUntil,
   shopIsDead,
@@ -93,6 +94,20 @@ describe("guest first-run copy", function () {
     assert.equal(/0x[0-9a-fA-F]{16,}/.test(skill), false);
     assert.equal(skill.includes("PROVE_URL"), false);
     assert.equal(skill.includes("npx"), false);
+    assert.match(skill, /api\/agent\/hire/);
+    assert.match(skill, /Hand the returned skill/);
+  });
+
+  it("hands a memo-only helper skill that cannot hire or translate", function () {
+    const helper = helperSkillMarkdown("https://app.example", "tok_help");
+    assert.match(helper, /POST https:\/\/app\.example\/api\/agent\/memo/);
+    assert.match(helper, /Authorization: Bearer tok_help/);
+    assert.match(helper, /cannot translate/i);
+    assert.equal(helper.includes("/api/agent/hire"), false);
+    assert.equal(helper.includes("/api/agent/translate"), false);
+    assert.match(helper, /warrant act/);
+    assert.match(helper, /https:\/\/app\.example\/api\/agent\/memo/);
+    assert.match(helper, /Fire/);
   });
 
   it("keeps the public skill tokenless and equal to the repo file", function () {
