@@ -28,13 +28,17 @@ export const GUEST_COPY = {
   fireThis: "Fire this warrant",
   fireEvery: "Fire every warrant",
   fireOne: "Fire",
-  helperFoot: "Warrant will prove for you. Warrant sees the witness. The shop sees a nullifier.",
+  helperFoot:
+    "Warrant will prove for you. Warrant sees the witness. The chat can see the bearer. The shop sees a nullifier.",
   afterFireThis: "That warrant is done. The shop still does not know who you were.",
 } as const;
 
 export const HEDERA_FAUCET = "https://portal.hedera.com/faucet";
-export const WARRANT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** Guest mandate expiry in mint.ts (TTL_SECONDS = 30 * 60). */
+export const WARRANT_TTL_MS = 30 * 60 * 1000;
+export const PUBLIC_APP_ORIGIN = "https://warrant-beta.vercel.app";
 export const PAIR_ORIGIN = "http://127.0.0.1:17879";
+const BEARER_PLACEHOLDER = "<the bearer from Copy>";
 
 /** Revoke took only when the shop returns 403. A 402 is still a live warrant. */
 export function shopIsDead(status: number): boolean {
@@ -56,28 +60,47 @@ export function remainingLife(ms: number): string {
   return `${minutes} minutes left`;
 }
 
-export function agentPrompt(appOrigin: string, token: string): string {
-  const origin = appOrigin.replace(/\/$/, "");
+function skillLines(origin: string, bearer: string): string[] {
   return [
     "You are calling a Warrant shop as my agent.",
     "",
-    "If you are on this machine:",
-    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.",
-    "  Show me the evmAddress and http://127.0.0.1:17879/fund. I will send about 2 HBAR there.",
-    "  Wait until ready prints funded or the fund page says received. Then `pnpm warrant act --url https://translate-production-ed28.up.railway.app/v1/translate --body '{\"text\":\"<what I asked you to send>\",\"source\":\"en\",\"target\":\"es\"}'`.",
-    "  Never print keys.",
+    `POST ${origin}/api/agent/translate`,
+    `Authorization: Bearer ${bearer}`,
+    "Content-Type: application/json",
+    '{"text":"<what I asked you to send>","source":"en","target":"es"}',
     "",
-    "If you are in a hosted chat:",
-    `  POST ${origin}/api/agent/translate`,
-    `  Authorization: Bearer ${token}`,
-    "  Content-Type: application/json",
-    '  {"text":"<what I asked you to send>","source":"en","target":"es"}',
-    "  I cannot sign Hedera from this chat. Do not POST a key.",
+    "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
+    "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
     "",
     GUEST_COPY.helperFoot,
     "",
     "If I say fire everyone, open the tab and Fire. Do not POST a key.",
     "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",
+    "This leaf lasts about 30 minutes unless I Fire sooner.",
+    "",
+    "Optional — prove on this machine so Warrant does not see the witness:",
+    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.",
+    "  Show me the evmAddress and http://127.0.0.1:17879/fund. I will send about 2 HBAR there.",
+    "  Wait until ready prints funded or the fund page says received. Then `pnpm warrant act --url https://translate-production-ed28.up.railway.app/v1/translate --body '{\"text\":\"<what I asked you to send>\",\"source\":\"en\",\"target\":\"es\"}'`.",
+    "  Never print keys.",
+  ];
+}
+
+export function agentPrompt(appOrigin: string, token: string): string {
+  return skillLines(appOrigin.replace(/\/$/, ""), token).join("\n");
+}
+
+/** Tokenless skill file. Never pass a live session id. */
+export function skillMarkdown(appOrigin: string = PUBLIC_APP_ORIGIN): string {
+  const origin = appOrigin.replace(/\/$/, "");
+  return [
+    "---",
+    "name: warrant",
+    "description: Call a Warrant shop as an authorized agent. POST the bearer. Never put a Hedera key in chat.",
+    "---",
+    "",
+    ...skillLines(origin, BEARER_PLACEHOLDER),
+    "",
   ].join("\n");
 }
 

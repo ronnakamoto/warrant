@@ -371,6 +371,9 @@ describe("warrant act", function () {
     const { dirname, join } = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const skill = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../SKILL.md"), "utf8");
+    const postAt = skill.indexOf("POST https://warrant-beta.vercel.app/api/agent/translate");
+    const optionalAt = skill.indexOf("Optional");
+    assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
     assert.match(skill, /warrant ready/);
     assert.match(skill, /17879\/fund/);
@@ -379,9 +382,8 @@ describe("warrant act", function () {
     assert.equal(skill.includes("hederaPrivateKey"), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     assert.equal(/npx @warrant\/agent/.test(skill), false);
-    assert.match(skill, /0\.0\.0/);
-    assert.match(skill, /pnpm warrant/);
-    assert.match(skill, /Do not `POST \/api\/agent\/translate` with a Hedera key/);
+    assert.match(skill, /Do not POST a key/);
+    assert.match(skill, /Bearer <the bearer from Copy>/);
   });
 });
 
