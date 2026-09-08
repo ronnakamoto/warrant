@@ -61,13 +61,13 @@ describe("guest first-run copy", function () {
     assert.equal(/Try it/i.test(land), false);
     assert.match(GUEST_COPY.authorize, /Authorize/i);
     const skill = agentPrompt("https://app.example", "tok_live_abc");
-    assert.match(skill, /https:\/\/app\.example\/api\/agent\/translate/);
+    assert.match(skill, /https:\/\/app\.example\/api\/agent\/memo/);
     assert.match(skill, /Authorization: Bearer tok_live_abc/);
     assert.match(skill, /open the tab and Fire/);
     assert.equal(skill.includes("127.0.0.1:8787"), false);
     assert.equal(skill.includes("hederaAccountId"), false);
     assert.equal(skill.includes("hederaPrivateKey"), false);
-    const postAt = skill.indexOf("POST https://app.example/api/agent/translate");
+    const postAt = skill.indexOf("POST https://app.example/api/agent/memo");
     const optionalAt = skill.indexOf("Optional");
     assert.ok(postAt >= 0 && postAt < optionalAt);
     assert.match(skill, /warrant act/);
@@ -324,6 +324,9 @@ describe("guest first-run copy", function () {
     assert.match(skill, /witness/i);
     assert.match(skill, /nullifier/i);
     assert.match(skill, /chat can see the bearer/);
+    assert.match(skill, /public Hedera testnet topic/i);
+    assert.match(skill, /HashScan link can read it/i);
+    assert.match(skill, /They still do not learn who authorized you/);
     assert.equal(/fire every warrant on my desk/i.test(skill), false);
     assert.equal(skill.includes('"all":true'), false);
     assert.equal(/merkle|Groth16|zkey|Baby Jubjub/i.test(skill), false);
