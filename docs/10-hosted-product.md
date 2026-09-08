@@ -394,7 +394,7 @@ Wallet connect and passkeys are stretch. Do not start the prove worker until thi
 | Dashboard (Try / Door 1–2) | https://warrant-beta.vercel.app |
 | Translate | https://translate-production-ed28.up.railway.app |
 | Prove | https://prove-production.up.railway.app |
-| Memo | https://memo-production-*.up.railway.app |
+| Memo | https://memo-production-3720.up.railway.app |
 
 `GET /health` on translate, prove, and memo returns `{"ok":true}`. Team `*.vercel.app` aliases are SSO-gated; strangers use the beta host. `PROVE_ALLOWED_ORIGINS` and `DASHBOARD_ORIGIN` are that origin.
 

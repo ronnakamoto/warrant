@@ -101,7 +101,7 @@ Four processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.exam
 # open http://127.0.0.1:3001  — Authorize my agent
 ```
 
-Public hosts (live): dashboard [warrant-beta.vercel.app](https://warrant-beta.vercel.app), translate `https://translate-production-ed28.up.railway.app`, prove `https://prove-production.up.railway.app`. Memo shop is Railway + dashboard `MEMO_URL`. Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host. Default `*.vercel.app` aliases are SSO-gated; the public door is the beta host.
+Public hosts (live): dashboard [warrant-beta.vercel.app](https://warrant-beta.vercel.app), translate `https://translate-production-ed28.up.railway.app`, prove `https://prove-production.up.railway.app`, memo `https://memo-production-3720.up.railway.app`. Dashboard `MEMO_URL` is that host’s `/v1/memo`. Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host. Default `*.vercel.app` aliases are SSO-gated; the public door is the beta host.
 
 ## Quick start (local paid-path smoke)
 
