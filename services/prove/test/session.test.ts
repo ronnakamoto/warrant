@@ -85,6 +85,19 @@ describe("guest session store", function () {
     );
   });
 
+  it("omits helper sessions from the desk list", function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 10_000 });
+    store.put(session("parent", 0, "desk-1"));
+    const helper = session("child", 0, "desk-1");
+    helper.parentId = "parent";
+    store.put(helper);
+    assert.deepEqual(
+      store.listByDesk("desk-1").map((v) => v.id),
+      ["parent"],
+    );
+    assert.equal(store.get("child")?.parentId, "parent");
+  });
+
   it("parseWarrantReceipt accepts HashScan + decimal nullifier only", function () {
     assert.deepEqual(parseWarrantReceipt(RECEIPT), RECEIPT);
     assert.deepEqual(parseWarrantReceipt({ hashscan: RECEIPT.hashscan, nullifier: " 42 " }), RECEIPT);

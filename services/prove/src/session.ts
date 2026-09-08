@@ -26,6 +26,8 @@ export type GuestSession = {
   createdAt: number;
   revoked?: boolean;
   receipt?: WarrantReceipt;
+  parentId?: string;
+  helperSessionId?: string;
 };
 
 const HASHSCAN_TX =
@@ -133,6 +135,7 @@ export function createSessionStore(opts: {
       const views: WarrantView[] = [];
       for (const session of map.values()) {
         if (session.deskId !== deskId) continue;
+        if (session.parentId) continue;
         if (expired(session)) continue;
         views.push(warrantView(session, now(), opts.ttlMs));
       }

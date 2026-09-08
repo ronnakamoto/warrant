@@ -33,6 +33,8 @@ export const GUEST_COPY = {
   afterFireThis: "That warrant is done. The shop still does not know who you were.",
   receipt:
     "Your agent acted. The shop has a HashScan link and a nullifier. It still does not know who you are.",
+  helperSkillFoot:
+    "This helper can scar memo. It cannot translate. Fire in the tab kills it too.",
 } as const;
 
 export const HEDERA_FAUCET = "https://portal.hedera.com/faucet";
@@ -62,6 +64,17 @@ export function remainingLife(ms: number): string {
   return `${minutes} minutes left`;
 }
 
+function payLines(origin: string): string[] {
+  return [
+    "Optional — this machine can pay. Warrant still proves:",
+    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.",
+    "  Show me the evmAddress and http://127.0.0.1:17879/fund. I will send about 2 HBAR there.",
+    "  Wait until ready prints funded or the fund page says received.",
+    `  WARRANT_BEARER with the same bearer as Authorization above. Then \`pnpm warrant act --url ${origin}/api/agent/memo --body '{"text":"<what I asked you to send>"}'\`.`,
+    "  Never print keys or the bearer.",
+  ];
+}
+
 function skillLines(origin: string, bearer: string): string[] {
   return [
     "You are calling a Warrant shop as my agent.",
@@ -82,12 +95,37 @@ function skillLines(origin: string, bearer: string): string[] {
     "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",
     "This leaf lasts about 30 minutes unless I Fire sooner.",
     "",
-    "Optional — this machine can pay. Warrant still proves:",
-    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.",
-    "  Show me the evmAddress and http://127.0.0.1:17879/fund. I will send about 2 HBAR there.",
-    "  Wait until ready prints funded or the fund page says received.",
-    `  WARRANT_BEARER with the same bearer as Authorization above. Then \`pnpm warrant act --url ${origin}/api/agent/memo --body '{"text":"<what I asked you to send>"}'\`.`,
-    "  Never print keys or the bearer.",
+    ...payLines(origin),
+    "",
+    "To hire a helper that can only scar memo:",
+    `  POST ${origin}/api/agent/hire`,
+    `  Authorization: Bearer ${bearer}`,
+    "  Hand the returned skill to the other bot. Do not keep using the helper bearer yourself. Do not invent a payment.",
+  ];
+}
+
+function helperSkillLines(origin: string, bearer: string): string[] {
+  return [
+    "You are calling a Warrant shop as a helper.",
+    "",
+    `POST ${origin}/api/agent/memo`,
+    `Authorization: Bearer ${bearer}`,
+    "Content-Type: application/json",
+    '{"text":"<what I asked you to send>"}',
+    "",
+    "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
+    "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
+    "",
+    GUEST_COPY.helperFoot,
+    GUEST_COPY.helperSkillFoot,
+    "",
+    "The shop writes that text to a public Hedera testnet topic. Anyone with the HashScan link can read it. They still do not learn who authorized you.",
+    "",
+    "If I say fire, open the tab and Fire. Do not POST a key.",
+    "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",
+    "This leaf lasts about 30 minutes unless I Fire sooner.",
+    "",
+    ...payLines(origin),
   ];
 }
 
@@ -96,17 +134,22 @@ export function agentPrompt(appOrigin: string, token: string): string {
 }
 
 /** Tokenless skill file. Never pass a live session id. */
+const SKILL_FRONTMATTER = [
+  "---",
+  "name: warrant",
+  "description: Call a Warrant shop as an authorized agent. POST the bearer. Never put a Hedera key in chat.",
+  "---",
+] as const;
+
 export function skillMarkdown(appOrigin: string = PUBLIC_APP_ORIGIN): string {
   const origin = appOrigin.replace(/\/$/, "");
-  return [
-    "---",
-    "name: warrant",
-    "description: Call a Warrant shop as an authorized agent. POST the bearer. Never put a Hedera key in chat.",
-    "---",
-    "",
-    ...skillLines(origin, BEARER_PLACEHOLDER),
-    "",
-  ].join("\n");
+  return [...SKILL_FRONTMATTER, "", ...skillLines(origin, BEARER_PLACEHOLDER), ""].join("\n");
+}
+
+/** Helper paste. Memo only. Never a hire or translate URL. */
+export function helperSkillMarkdown(appOrigin: string, bearer: string): string {
+  const origin = appOrigin.replace(/\/$/, "");
+  return [...SKILL_FRONTMATTER, "", ...helperSkillLines(origin, bearer), ""].join("\n");
 }
 
 export function hashscanTestnetUrl(txId: string): string {

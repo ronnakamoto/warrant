@@ -179,6 +179,47 @@ describe("guest memo BFF", function () {
     assert.equal("warrant" in out.body, false);
   });
 
+  it("records a helper memo receipt on the parent session", async function () {
+    const hashscan = "https://hashscan.io/testnet/transaction/0.0.10416077-1-000000000";
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const receipts: unknown[] = [];
+    const out = await memoForSession(
+      "child",
+      { text: "hi", payment: "sig" },
+      undefined,
+      {
+        memoUrl: "http://shop.test/v1/memo",
+        fetchImpl: async (_url, init) => {
+          const h = new Headers(init?.headers);
+          if (h.get("warrant") && h.get("PAYMENT-SIGNATURE")) {
+            return new Response(JSON.stringify({ text: "hi", hashscan }), { status: 200 });
+          }
+          return new Response(JSON.stringify(payload), { status: 402, headers });
+        },
+        prove: async (path, body) => {
+          if (path === "/v1/session") {
+            return new Response(JSON.stringify({ status: "live", parentId: "parent" }), { status: 200 });
+          }
+          if (path === "/v1/prove") {
+            return new Response(JSON.stringify({ warrant: "w", nullifier: "42" }), { status: 200 });
+          }
+          if (path === "/v1/receipt") {
+            receipts.push(body);
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          }
+          return new Response("{}", { status: 500 });
+        },
+      },
+    );
+    assert.equal(out.status, 200);
+    assert.deepEqual(receipts, [{ sessionId: "parent", hashscan, nullifier: "42" }]);
+  });
+
   it("does not record a receipt on an unpaid 402", async function () {
     let receipts = 0;
     const payload = {

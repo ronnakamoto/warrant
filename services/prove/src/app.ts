@@ -6,6 +6,7 @@ import { proveGuest } from "./prove.js";
 import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
+import { hireHelper } from "./hire.js";
 import { parseWarrantReceipt, type SessionStore } from "./session.js";
 
 export const AUTH_HEADER = "x-warrant-prove-secret";
@@ -130,7 +131,33 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
-    return c.json({ status: session.revoked ? "fired" : "live" });
+    const statusBody: { status: "live" | "fired"; parentId?: string } = {
+      status: session.revoked ? "fired" : "live",
+    };
+    if (session.parentId) statusBody.parentId = session.parentId;
+    return c.json(statusBody);
+  });
+
+  app.post("/v1/hire", async (c) => {
+    if (!opts.store) {
+      return c.json({ error: "hire not configured" }, 503);
+    }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { sessionId?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { sessionId?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+    if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
+    const hired = hireHelper(opts.store, body.sessionId);
+    if (!hired.ok) {
+      if (hired.error === "unknown") return c.json({ error: "unknown session" }, 404);
+      if (hired.error === "fired") return c.json({ error: "fired" }, 400);
+      return c.json({ error: "scope" }, 403);
+    }
+    return c.json({ helperSessionId: hired.helperSessionId });
   });
 
   app.post("/v1/receipt", async (c) => {

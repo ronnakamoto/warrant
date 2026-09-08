@@ -156,4 +156,23 @@ describe("persisted session store", function () {
     const ids = a.listByDesk("desk-1").map((v) => v.id).sort();
     assert.deepEqual(ids, ["mine", "newer", "theirs"]);
   });
+
+  it("reloads parentId and helperSessionId after a new store is opened", async function () {
+    const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
+    const path = join(dir, "sessions.json");
+    const a = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    const parent = sess("parent", "desk-1", 1000);
+    parent.helperSessionId = "child";
+    a.put(parent);
+    const child = sess("child", "desk-1", 1000);
+    child.parentId = "parent";
+    a.put(child);
+    const b = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    assert.equal(b.get("parent")?.helperSessionId, "child");
+    assert.equal(b.get("child")?.parentId, "parent");
+    assert.deepEqual(
+      b.listByDesk("desk-1").map((v) => v.id),
+      ["parent"],
+    );
+  });
 });

@@ -27,3 +27,8 @@ Optional — this machine can pay. Warrant still proves:
   Wait until ready prints funded or the fund page says received.
   WARRANT_BEARER with the same bearer as Authorization above. Then `pnpm warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"<what I asked you to send>"}'`.
   Never print keys or the bearer.
+
+To hire a helper that can only scar memo:
+  POST https://warrant-beta.vercel.app/api/agent/hire
+  Authorization: Bearer <the bearer from Copy>
+  Hand the returned skill to the other bot. Do not keep using the helper bearer yourself. Do not invent a payment.
