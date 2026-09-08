@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
 import { isAddress, type Address, type Hex } from "viem";
-import { mintGuest, type BindRootFn, type ReadBindingFn } from "./mint.js";
+import { mintGuest, parseGuestScope, type BindRootFn, type ReadBindingFn } from "./mint.js";
 import { proveGuest } from "./prove.js";
 import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
 import { hireHelper } from "./hire.js";
-import { parseWarrantReceipt, type SessionStore } from "./session.js";
+import { parseWarrantReceipt, sessionScope, type GuestScopeName, type SessionStore } from "./session.js";
 
 export const AUTH_HEADER = "x-warrant-prove-secret";
 const BODY_LIMIT = 64 * 1024;
@@ -74,10 +74,10 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     }
     const raw = await c.req.text();
     if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
-    let body: { deskId?: string; wallet?: string } = {};
+    let body: { deskId?: string; wallet?: string; scope?: unknown } = {};
     if (raw) {
       try {
-        body = JSON.parse(raw) as { deskId?: string; wallet?: string };
+        body = JSON.parse(raw) as { deskId?: string; wallet?: string; scope?: unknown };
       } catch {
         return c.json({ error: "invalid json" }, 400);
       }
@@ -85,6 +85,8 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (typeof body.wallet !== "string" || !isAddress(body.wallet)) {
       return c.json({ error: "wallet required" }, 400);
     }
+    const scope = parseGuestScope(body.scope);
+    if (scope === "invalid") return c.json({ error: "invalid scope" }, 400);
     const deskId = typeof body.deskId === "string" && DESK_ID_RE.test(body.deskId) ? body.deskId : undefined;
     const minted = await mintGuest({
       store: opts.store,
@@ -96,6 +98,7 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       readBinding: opts.readBinding,
       wallet: body.wallet,
       deskId,
+      scope,
     });
     return c.json({ sessionId: minted.sessionId, wallet: minted.wallet, deskId: minted.deskId });
   });
@@ -131,8 +134,9 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
-    const statusBody: { status: "live" | "fired"; parentId?: string } = {
+    const statusBody: { status: "live" | "fired"; parentId?: string; scope: GuestScopeName } = {
       status: session.revoked ? "fired" : "live",
+      scope: sessionScope(session),
     };
     if (session.parentId) statusBody.parentId = session.parentId;
     return c.json(statusBody);

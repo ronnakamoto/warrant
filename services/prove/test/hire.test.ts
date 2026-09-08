@@ -47,6 +47,7 @@ describe("hireHelper", function () {
     assert.equal(BigInt(helper.state.mandates[2]!.scope), FETCH);
     assert.equal(BigInt(helper.state.mandates[2]!.budgetCap), HELPER_BUDGET);
     assert.equal(helper.state.mandates[2]!.expiry, helper.state.mandates[1]!.expiry);
+    assert.equal(helper.scope, "fetch");
     assert.equal(store.get("parent")?.state.mandates.length, 2);
     assert.equal(store.get("parent")?.helperSessionId, out.helperSessionId);
     const guestScope = TRANSLATE | FETCH;
@@ -82,5 +83,16 @@ describe("hireHelper", function () {
     assert.equal(hired.ok, true);
     if (!hired.ok) return;
     assert.deepEqual(hireHelper(store, hired.helperSessionId), { ok: false, error: "scope" });
+  });
+
+  it("refuses a translate-only parent before clone", function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    const parent = parentSession();
+    assembleGuestTree(parent.state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE);
+    store.put(parent);
+    assert.deepEqual(hireHelper(store, "parent"), { ok: false, error: "scope" });
+    assert.equal(store.get("parent")?.helperSessionId, undefined);
+    assert.equal(store.get("parent")?.state.mandates.length, 2);
+    assert.equal(store.dump().length, 1);
   });
 });

@@ -145,6 +145,83 @@ describe("prove app mint isolation", function () {
     assert.equal("state" in body, false);
     const stored = store.get(body.sessionId);
     assert.equal(stored?.evmPrivateKey, "0x");
+    assert.equal(stored?.scope, "fetch");
+    assert.equal(BigInt(stored!.state.mandates[0]!.scope), FETCH);
+    assert.equal(BigInt(stored!.state.mandates[1]!.scope), FETCH);
+  });
+
+  it("writes TRANSLATE hops when mint scope is translate", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0xabc" }),
+    });
+    const res = await app.request("/v1/mint", {
+      method: "POST",
+      headers: mintHdrs,
+      body: mintBody(WALLET, { scope: "translate" }),
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { sessionId: string };
+    const stored = store.get(body.sessionId);
+    assert.ok(stored);
+    assert.equal(stored.scope, "translate");
+    assert.equal(BigInt(stored.state.mandates[0]!.scope), TRANSLATE);
+    assert.equal(BigInt(stored.state.mandates[1]!.scope), TRANSLATE);
+  });
+
+  it("rejects an invalid mint scope", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0xabc" }),
+    });
+    const res = await app.request("/v1/mint", {
+      method: "POST",
+      headers: mintHdrs,
+      body: mintBody(WALLET, { scope: "nope" }),
+    });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: "invalid scope" });
+  });
+
+  it("includes scope fetch on /v1/session after a default mint", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0xabc" }),
+    });
+    const minted = (await (
+      await app.request("/v1/mint", {
+        method: "POST",
+        headers: mintHdrs,
+        body: mintBody(),
+      })
+    ).json()) as { sessionId: string };
+    const res = await app.request("/v1/session", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ sessionId: minted.sessionId }),
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Record<string, unknown>;
+    assert.equal(body.status, "live");
+    assert.equal(body.scope, "fetch");
   });
 
   it("refuses mint without a client wallet", async function () {
@@ -346,7 +423,7 @@ describe("prove app revoke", function () {
     });
     assert.equal(live.status, 200);
     const liveBody = (await live.json()) as Record<string, unknown>;
-    assert.deepEqual(liveBody, { status: "live" });
+    assert.deepEqual(liveBody, { status: "live", scope: "both" });
     const prepared = await app.request("/v1/revoke", {
       method: "POST",
       headers: hdrs,
@@ -366,7 +443,7 @@ describe("prove app revoke", function () {
     });
     assert.equal(fired.status, 200);
     const firedBody = (await fired.json()) as Record<string, unknown>;
-    assert.deepEqual(firedBody, { status: "fired" });
+    assert.deepEqual(firedBody, { status: "fired", scope: "both" });
     assert.equal("evmPrivateKey" in firedBody, false);
   });
 });
@@ -612,7 +689,7 @@ describe("prove hire", function () {
       body: JSON.stringify({ sessionId: hiredBody.helperSessionId }),
     });
     assert.equal(helper.status, 200);
-    assert.deepEqual(await helper.json(), { status: "live", parentId: "parent" });
+    assert.deepEqual(await helper.json(), { status: "live", parentId: "parent", scope: "fetch" });
 
     const parent = await app.request("/v1/session", {
       method: "POST",
@@ -621,7 +698,7 @@ describe("prove hire", function () {
     });
     assert.equal(parent.status, 200);
     const parentBody = (await parent.json()) as Record<string, unknown>;
-    assert.deepEqual(parentBody, { status: "live" });
+    assert.deepEqual(parentBody, { status: "live", scope: "both" });
     assert.equal("parentId" in parentBody, false);
   });
 
