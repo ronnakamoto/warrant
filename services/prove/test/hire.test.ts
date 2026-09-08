@@ -15,7 +15,7 @@ function parentSession(): GuestSession {
   state.rootName = "alice";
   state.rootTier = 0;
   state.rootEpoch = 0;
-  assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+  assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
   return {
     id: "parent",
     deskId: "desk-1",

@@ -8,6 +8,7 @@ import {
   waitUntilBalance,
 } from "../src/revoke.ts";
 import { createSessionStore } from "../src/session.ts";
+import { FETCH, TRANSLATE } from "@ronnakamoto/warrant-core";
 import { emptyState } from "@warrant/agent";
 
 describe("waitUntilBalance", function () {
@@ -83,7 +84,7 @@ describe("revokeGuest isolation", function () {
     const alice = identityOf(state, "alice");
     const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
     appendLeaf(state, leaf);
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
 
     let revokedBySponsor = false;
     const out = await revokeGuest({
@@ -129,7 +130,7 @@ describe("prepareGuestRevoke", function () {
     const alice = identityOf(state, "alice");
     const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
     appendLeaf(state, leaf);
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
 
     let sponsored = 0;
     const out = await prepareGuestRevoke({

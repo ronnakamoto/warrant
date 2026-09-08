@@ -4,7 +4,7 @@ import { assembleGuestTree } from "../src/mint.ts";
 import { createRateLimiter } from "../src/rate-limit.ts";
 import { createSessionStore, type GuestSession } from "../src/session.ts";
 import { emptyState, ensureIdentity, freshFieldTag } from "@warrant/agent";
-import type { ChallengeParts, IProver, WarrantProof } from "@ronnakamoto/warrant-core";
+import { FETCH, TRANSLATE, type ChallengeParts, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
 
 const secret = "test-secret";
 const WALLET = "0x00000000000000000000000000000000000000ab";
@@ -230,7 +230,7 @@ describe("prove app prove", function () {
     state.rootEpoch = 0;
     const alice = (await import("@warrant/agent")).identityOf(state, "alice");
     appendLeaf(state, hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n));
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600), TRANSLATE | FETCH);
     store.put({
       id: "slow",
       deskId: "desk",
@@ -567,7 +567,7 @@ describe("prove hire", function () {
     state.rootName = "alice";
     state.rootTier = 0;
     state.rootEpoch = 0;
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
     return {
       id,
       deskId: "desk-hire",

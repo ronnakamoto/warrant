@@ -157,6 +157,17 @@ describe("persisted session store", function () {
     assert.deepEqual(ids, ["mine", "newer", "theirs"]);
   });
 
+  it("reloads scope fetch after a new store is opened on the same file", async function () {
+    const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
+    const path = join(dir, "sessions.json");
+    const a = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    const kept = sess("keep", "desk-1", 1000);
+    kept.scope = "fetch";
+    a.put(kept);
+    const b = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    assert.equal(b.get("keep")?.scope, "fetch");
+  });
+
   it("reloads parentId and helperSessionId after a new store is opened", async function () {
     const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
     const path = join(dir, "sessions.json");
