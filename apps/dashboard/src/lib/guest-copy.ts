@@ -31,6 +31,8 @@ export const GUEST_COPY = {
   helperFoot:
     "Warrant will prove for you. Warrant sees the witness. The chat can see the bearer. The shop sees a nullifier.",
   afterFireThis: "That warrant is done. The shop still does not know who you were.",
+  receipt:
+    "Your agent acted. The shop has a HashScan link and a nullifier. It still does not know who you are.",
 } as const;
 
 export const HEDERA_FAUCET = "https://portal.hedera.com/faucet";

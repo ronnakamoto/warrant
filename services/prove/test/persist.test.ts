@@ -19,6 +19,23 @@ function sess(id: string, deskId: string, createdAt: number): GuestSession {
 }
 
 describe("persisted session store", function () {
+  it("reloads a receipt slot after a new store is opened on the same file", async function () {
+    const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
+    const path = join(dir, "sessions.json");
+    const receipt = {
+      hashscan: "https://hashscan.io/testnet/transaction/0.0.10416077-1-000000000",
+      nullifier: "42",
+    };
+    const a = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    const kept = sess("keep", "desk-1", 1000);
+    kept.receipt = receipt;
+    a.put(kept);
+    const b = createPersistedSessionStore({ path, ttlMs: 60_000, now: () => 1000 });
+    assert.deepEqual(b.listByDesk("desk-1")[0]?.receipt, receipt);
+    const expired = createPersistedSessionStore({ path, ttlMs: 10, now: () => 2000 });
+    assert.equal(expired.listByDesk("desk-1").length, 0);
+  });
+
   it("reloads a live session after a new store is opened on the same file", async function () {
     const dir = await mkdtemp(join(tmpdir(), "warrant-sess-"));
     const path = join(dir, "sessions.json");

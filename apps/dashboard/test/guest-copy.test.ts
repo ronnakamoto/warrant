@@ -55,6 +55,16 @@ describe("guest first-run copy", function () {
     assert.equal(/Registry/i.test(land), false);
   });
 
+  it("names a HashScan receipt without a feed or a warrant", function () {
+    assert.match(GUEST_COPY.receipt, /HashScan/);
+    assert.match(GUEST_COPY.receipt, /does not know/i);
+    assert.match(GUEST_COPY.receipt, /nullifier/i);
+    assert.equal(/warrant header|PAYMENT|memo body|recent activity/i.test(GUEST_COPY.receipt), false);
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "deskId"]) {
+      assert.equal(GUEST_COPY.receipt.includes(banned), false, banned);
+    }
+  });
+
   it("is a warrant for an existing agent, not a hiring demo", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
     assert.equal(/Hire an agent/i.test(land), false);

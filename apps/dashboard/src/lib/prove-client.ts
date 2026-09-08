@@ -181,7 +181,7 @@ export function agentCorsHeaders(): Record<string, string> {
 }
 
 export async function proveRequest(
-  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk" | "/v1/session",
+  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk" | "/v1/session" | "/v1/receipt",
   body: unknown,
   req?: Request,
 ): Promise<Response> {

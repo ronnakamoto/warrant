@@ -136,6 +136,74 @@ describe("guest memo BFF", function () {
     }
   });
 
+  it("records a receipt after shop 200 and still returns 200 if receipt fails", async function () {
+    const hashscan = "https://hashscan.io/testnet/transaction/0.0.10416077-1-000000000";
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const receipts: unknown[] = [];
+    const out = await memoForSession(
+      "sess",
+      { text: "hi", payment: "sig" },
+      undefined,
+      {
+        memoUrl: "http://shop.test/v1/memo",
+        fetchImpl: async (_url, init) => {
+          const h = new Headers(init?.headers);
+          if (h.get("warrant") && h.get("PAYMENT-SIGNATURE")) {
+            return new Response(JSON.stringify({ text: "hi", hashscan }), { status: 200 });
+          }
+          return new Response(JSON.stringify(payload), { status: 402, headers });
+        },
+        prove: async (path, body) => {
+          if (path === "/v1/session") {
+            return new Response(JSON.stringify({ status: "live" }), { status: 200 });
+          }
+          if (path === "/v1/prove") {
+            return new Response(JSON.stringify({ warrant: "w", nullifier: "42" }), { status: 200 });
+          }
+          if (path === "/v1/receipt") {
+            receipts.push(body);
+            return new Response("nope", { status: 500 });
+          }
+          return new Response("{}", { status: 500 });
+        },
+      },
+    );
+    assert.equal(out.status, 200);
+    assert.equal(out.body.hashscan, hashscan);
+    assert.deepEqual(receipts, [{ sessionId: "sess", hashscan, nullifier: "42" }]);
+    assert.equal("warrant" in out.body, false);
+  });
+
+  it("does not record a receipt on an unpaid 402", async function () {
+    let receipts = 0;
+    const payload = {
+      extensions: { warrant: { info: { nonce: "n", merkleRoot: "1" } } },
+    };
+    const headers = new Headers({
+      "payment-required": Buffer.from(JSON.stringify(payload), "utf8").toString("base64"),
+    });
+    const out = await memoForSession(
+      "sess",
+      { text: "hi" },
+      undefined,
+      {
+        memoUrl: "http://shop.test/v1/memo",
+        fetchImpl: async () => new Response(JSON.stringify(payload), { status: 402, headers }),
+        prove: async (path) => {
+          if (path === "/v1/receipt") receipts += 1;
+          return new Response(JSON.stringify({ status: "live" }), { status: 200 });
+        },
+      },
+    );
+    assert.equal(out.status, 402);
+    assert.equal(receipts, 0);
+  });
+
   it("does not import warrant-core from the memo route", function () {
     const src = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "../src/app/api/agent/memo/route.ts"),

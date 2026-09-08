@@ -180,8 +180,14 @@ describe("prepareGuestRevoke", function () {
       createdAt: Date.now(),
       state: emptyState(),
     });
+    store.get("a")!.receipt = {
+      hashscan: "https://hashscan.io/testnet/transaction/0.0.1-1-0",
+      nullifier: "9",
+    };
+    store.put(store.get("a")!);
     markWalletFired(store, "0x00000000000000000000000000000000000000aa");
     assert.equal(store.get("a")?.revoked, true);
+    assert.equal(store.get("a")?.receipt, undefined);
     assert.equal(store.get("b")?.revoked, true);
     assert.equal(store.get("c")?.revoked, undefined);
   });

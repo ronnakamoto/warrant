@@ -20,6 +20,7 @@ type WarrantView = {
   createdAt: number;
   remainingMs: number;
   expiresAt?: number;
+  receipt?: { hashscan: string; nullifier: string };
 };
 
 function stampExpiry(w: WarrantView, now = Date.now()): WarrantView {
@@ -105,6 +106,14 @@ export function GuestTry() {
       setPhase(list.some((w) => w.status === "fired") ? "revoked" : "land");
     })();
   }, [refreshWarrants]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") void refreshWarrants(selectedId);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [refreshWarrants, selectedId]);
 
   useEffect(() => {
     const tick = window.setInterval(() => {
@@ -334,6 +343,24 @@ export function GuestTry() {
               <Text type="supporting" color="secondary">
                 {remainingLife(selected.remainingMs)}
               </Text>
+            ) : null}
+            {selected?.receipt ? (
+              <VStack gap={1}>
+                <Text type="supporting" color="secondary">
+                  {GUEST_COPY.receipt}
+                </Text>
+                <Text type="supporting" color="secondary">
+                  <a
+                    href={selected.receipt.hashscan}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "inherit" }}
+                  >
+                    HashScan
+                  </a>
+                  {` · ${selected.receipt.nullifier}`}
+                </Text>
+              </VStack>
             ) : null}
           </VStack>
           {liveWarrants.length > 1 ? (
