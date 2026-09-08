@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { ChallengeParts, IProver } from "@warrant/core";
+import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
 import { isAddress, type Address, type Hex } from "viem";
 import { mintGuest, type BindRootFn, type ReadBindingFn } from "./mint.js";
 import { proveGuest } from "./prove.js";

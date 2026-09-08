@@ -1,5 +1,5 @@
 import { existsSync, statSync } from "node:fs";
-import { assertNoDemoRails } from "@warrant/x402";
+import { assertNoDemoRails } from "@ronnakamoto/warrant-x402";
 
 const REQUIRED = [
   "WARRANT_VKEY_PATH",

@@ -1,5 +1,5 @@
 import { createPublicClient, http, type Address, type Chain } from "viem";
-import type { IPersonhood } from "@warrant/core";
+import type { IPersonhood } from "@ronnakamoto/warrant-core";
 
 /** Always unbound — documented tier=0 demo path (no World Sandbox). */
 export class TierZeroPersonhood implements IPersonhood {

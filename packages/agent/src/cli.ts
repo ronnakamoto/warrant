@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import {
   createMandate,
   hashLeaf,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import { bindRootOnChain, readCurrentRoot } from "./bind.js";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { createSnarkjsProver } from "./prover.js";

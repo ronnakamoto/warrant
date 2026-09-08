@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import type { INullifierStore } from "@warrant/core";
+import type { INullifierStore } from "@ronnakamoto/warrant-core";
 
 type FileShape = {
   seen: string[];

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { appendLeaf, emptyState, ensureIdentity, freshFieldTag, identityOf } from "@warrant/agent";
-import { hashLeaf, type IProver, type WarrantProof } from "@warrant/core";
+import { hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
 import { assembleGuestTree } from "../src/mint.ts";
 import { proveGuest } from "../src/prove.ts";
 import type { GuestSession } from "../src/session.ts";

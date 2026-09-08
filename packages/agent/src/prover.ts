@@ -1,4 +1,4 @@
-import { SnarkjsProver } from "@warrant/core";
+import { SnarkjsProver } from "@ronnakamoto/warrant-core";
 import { assertArtifacts, artifactPaths } from "./paths.js";
 
 /**

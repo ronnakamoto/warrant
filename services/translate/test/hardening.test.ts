@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bodyHashFromCanonical, bodyHashFromRaw } from "@warrant/core";
+import { bodyHashFromCanonical, bodyHashFromRaw } from "@ronnakamoto/warrant-core";
 import {
   FileChallengeStore,
   FileNullifierStore,
@@ -10,7 +10,7 @@ import {
   cachedRequestBody,
   parseRequestBody,
   withRequestBody,
-} from "@warrant/x402";
+} from "@ronnakamoto/warrant-x402";
 
 describe("FileNullifierStore", function () {
   it("persists takeRequest and consumeFree across instances", async function () {

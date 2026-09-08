@@ -19,7 +19,7 @@ import {
   TRADE,
   type Identity,
   type SignedMandate,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 
 export type StoredIdentity = {
   privateKey: string;

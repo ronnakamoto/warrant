@@ -3,7 +3,7 @@ import { createProveApp } from "../src/app.ts";
 import { createRateLimiter } from "../src/rate-limit.ts";
 import { createSessionStore } from "../src/session.ts";
 import { emptyState } from "@warrant/agent";
-import type { ChallengeParts, IProver, WarrantProof } from "@warrant/core";
+import type { ChallengeParts, IProver, WarrantProof } from "@ronnakamoto/warrant-core";
 
 const secret = "test-secret";
 const WALLET = "0x00000000000000000000000000000000000000ab";
@@ -217,7 +217,7 @@ describe("prove app prove", function () {
     const { ensureIdentity, emptyState, freshFieldTag, appendLeaf } = await import(
       "@warrant/agent"
     );
-    const { hashLeaf } = await import("@warrant/core");
+    const { hashLeaf } = await import("@ronnakamoto/warrant-core");
     const state = emptyState();
     ensureIdentity(state, "alice", "alice-test");
     ensureIdentity(state, "orchestrator", "orch-test");

@@ -1,11 +1,11 @@
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { FETCH } from "@warrant/core";
+import { FETCH } from "@ronnakamoto/warrant-core";
 import {
   FileChallengeStore,
   FileNullifierStore,
   shouldEnforceStrictProd,
-} from "@warrant/x402";
+} from "@ronnakamoto/warrant-x402";
 import { createEchoApp } from "./app.js";
 import { assertProductionEchoEnv } from "./prod-guard.js";
 import { wireEcho } from "./wiring.js";

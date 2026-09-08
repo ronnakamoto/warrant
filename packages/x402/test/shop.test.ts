@@ -6,7 +6,7 @@ import {
   type ChallengeParts,
   type IVerifier,
   type PublicInputs,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import {
   createWarrantShop,

@@ -1,6 +1,6 @@
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
-import { bodyHashFromCanonical, type ChallengeParts, type IProver } from "@warrant/core";
+import { bodyHashFromCanonical, type ChallengeParts, type IProver } from "@ronnakamoto/warrant-core";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { loadState, type WarrantState } from "./store.js";
 

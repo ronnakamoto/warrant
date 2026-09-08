@@ -1,5 +1,5 @@
 import type { HTTPRequestContext, RouteConfig } from "@x402/core/server";
-import type { ChallengeParts } from "@warrant/core";
+import type { ChallengeParts } from "@ronnakamoto/warrant-core";
 import type { WarrantPipeline } from "./pipeline.js";
 
 export type CreateHooksArgs = {

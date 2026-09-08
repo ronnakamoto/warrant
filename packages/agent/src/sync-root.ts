@@ -1,5 +1,5 @@
 import { createPublicClient, http, type Address, type Chain } from "viem";
-import { hashLeaf } from "@warrant/core";
+import { hashLeaf } from "@ronnakamoto/warrant-core";
 import { baseSepolia } from "viem/chains";
 
 const abi = [

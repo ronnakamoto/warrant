@@ -8,7 +8,7 @@ import {
   type IVerifier,
   type PublicInputs,
   type WarrantProof,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import type { WarrantPolicy } from "./policy.js";
 
 export type WarrantHeaderPayload = {

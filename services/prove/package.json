@@ -11,7 +11,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.0",
     "@warrant/agent": "workspace:*",
-    "@warrant/core": "workspace:*",
+    "@ronnakamoto/warrant-core": "workspace:*",
     "@zk-kit/lean-imt": "2.2.5",
     "hono": "^4.13.7",
     "poseidon-lite": "^0.3.0",

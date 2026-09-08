@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { warrantHono, type WarrantShop } from "@warrant/x402";
+import { warrantHono, type WarrantShop } from "@ronnakamoto/warrant-x402";
 
 export async function echo(body: unknown): Promise<{ text: string }> {
   const text =

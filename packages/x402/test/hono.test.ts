@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Hono } from "hono";
-import { FETCH, hashChallenge, type IVerifier } from "@warrant/core";
+import { FETCH, hashChallenge, type IVerifier } from "@ronnakamoto/warrant-core";
 import { decodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import {
   createWarrantShop,
@@ -44,7 +44,7 @@ describe("warrantHono", function () {
       .extensions?.warrant?.info;
     assert.ok(info?.nonce);
 
-    const { bodyHashFromCanonical } = await import("@warrant/core");
+    const { bodyHashFromCanonical } = await import("@ronnakamoto/warrant-core");
     const bodyHash = bodyHashFromCanonical({ text: "hi" });
     const ch = {
       method: "POST",

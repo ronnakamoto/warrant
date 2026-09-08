@@ -3,11 +3,11 @@ import {
   warrantHeaderJson,
   type WarrantState,
 } from "@warrant/agent";
-import type { ChallengeParts, IProver } from "@warrant/core";
+import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
 import type { GuestSession } from "./session.js";
 import type { LeafLoader } from "./members.js";
 import { mergeGuestLeaf } from "./members.js";
-import { hashLeaf } from "@warrant/core";
+import { hashLeaf } from "@ronnakamoto/warrant-core";
 import { identityOf } from "@warrant/agent";
 
 export async function refreshMembers(

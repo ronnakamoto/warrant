@@ -8,7 +8,7 @@ import {
   type IVerifier,
   type PublicInputs,
   type WarrantProof,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import { createWarrantPipeline } from "../src/pipeline.ts";
 
 const liveRoot = 111n;
@@ -73,7 +73,7 @@ function memoryNullifiers(): INullifierStore {
   };
 }
 
-describe("@warrant/x402 pipeline", function () {
+describe("@ronnakamoto/warrant-x402 pipeline", function () {
   const roots: IRootChecker = {
     async isAcceptable(r) {
       return r !== 0n && r === liveRoot;

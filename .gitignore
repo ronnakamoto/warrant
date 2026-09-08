@@ -22,6 +22,10 @@ spikes/zk/foundry/lib/forge-std/
 *.ptau
 spikes/**/*.log
 
+# Packed shop-kit tarballs (pack:check writes these locally)
+packages/core/*.tgz
+packages/x402/*.tgz
+
 # Isolated git worktrees
 .worktrees/
 .superpowers/

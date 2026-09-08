@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { TRANSLATE } from "@warrant/core";
-import { FileChallengeStore, FileNullifierStore } from "@warrant/x402";
+import { TRANSLATE } from "@ronnakamoto/warrant-core";
+import { FileChallengeStore, FileNullifierStore } from "@ronnakamoto/warrant-x402";
 import { createApp } from "./app.js";
 import { fixedMerkleRootFromEnv } from "./demo-root.js";
 import { createHcsSinkFromEnv } from "./hcs-hedera.js";

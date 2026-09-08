@@ -7,8 +7,8 @@ import {
   type IVerifier,
   type PublicInputs,
   type WarrantProof,
-} from "@warrant/core";
-import { createWarrantPipeline } from "@warrant/x402";
+} from "@ronnakamoto/warrant-core";
+import { createWarrantPipeline } from "@ronnakamoto/warrant-x402";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -32,7 +32,7 @@ function bytesToBigInt(bytes: Uint8Array): bigint {
   return BigInt(hex);
 }
 
-describe("@warrant/core unit", function () {
+describe("@ronnakamoto/warrant-core unit", function () {
   describe("scope", function () {
     it("TRANSLATE is a subset of TRANSLATE|FETCH", function () {
       assert.equal(isSubset(TRANSLATE | FETCH, TRANSLATE), true);

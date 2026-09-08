@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { decodePaymentResponseHeader } from "@x402/core/http";
-import { warrantHono } from "@warrant/x402";
+import { warrantHono } from "@ronnakamoto/warrant-x402";
 import type { Wired } from "./wiring.js";
 import { translate as defaultTranslate, type Translator } from "./translate.js";
 import type { HcsSink } from "./hcs.js";

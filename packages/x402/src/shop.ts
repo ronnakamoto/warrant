@@ -5,7 +5,7 @@ import {
   type INullifierStore,
   type IRootChecker,
   type IVerifier,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import {
   HTTPFacilitatorClient,
   x402ResourceServer,
@@ -214,6 +214,7 @@ export function mockHederaFacilitator(feePayer = "0.0.7162784"): FacilitatorClie
           },
         ],
         extensions: [],
+        signers: {},
       };
     },
     async verify() {
