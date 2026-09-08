@@ -1,4 +1,4 @@
-import { HEDERA_FAUCET } from "./guest-copy";
+import { HEDERA_FAUCET, PUBLIC_APP_ORIGIN, helperSkillMarkdown } from "./guest-copy";
 import type { HederaPay } from "./hedera-pay";
 import {
   challengeFrom402,
@@ -40,15 +40,25 @@ export type TranslateDeps = {
   prove?: typeof proveRequest;
 };
 
-async function sessionIsFired(
+type SessionProbe = {
+  httpStatus: number;
+  status?: string;
+  parentId?: string;
+};
+
+async function probeSession(
   sessionId: string,
   req: Request | undefined,
   deps: TranslateDeps,
-): Promise<boolean> {
+): Promise<SessionProbe> {
   const prove = deps.prove ?? proveRequest;
   const res = await prove("/v1/session", { sessionId }, req);
-  const body = (await res.json().catch(() => ({}))) as { status?: unknown };
-  return body.status === "fired";
+  const body = (await res.json().catch(() => ({}))) as { status?: unknown; parentId?: unknown };
+  return {
+    httpStatus: res.status,
+    ...(typeof body.status === "string" ? { status: body.status } : {}),
+    ...(typeof body.parentId === "string" && body.parentId ? { parentId: body.parentId } : {}),
+  };
 }
 
 export function hederaPayFrom(input: ShopInput): HederaPay | undefined {
@@ -231,6 +241,11 @@ export async function translateForSession(
   req?: Request,
   deps: TranslateDeps = {},
 ): Promise<ActResult> {
+  const session = await probeSession(sessionId, req, deps);
+  if (session.parentId) {
+    return { status: 403, body: { error: "scope" } };
+  }
+
   const { text, source, target } = input;
   const payload = JSON.stringify({ text, source, target });
   const translateUrl = deps.translateUrl ?? proveConfig().translateUrl;
@@ -259,7 +274,7 @@ export async function translateForSession(
   );
   if ("status" in challenged) return challenged;
 
-  if (await sessionIsFired(sessionId, req, deps)) {
+  if (session.status === "fired") {
     return { status: 403, body: { error: "root_revoked" } };
   }
 
@@ -350,7 +365,8 @@ export async function memoForSession(
   const challenged = await warrantChallengeFrom402(probe, memoUrl, hashMemoBody(text));
   if ("status" in challenged) return challenged;
 
-  if (await sessionIsFired(sessionId, req, deps)) {
+  const session = await probeSession(sessionId, req, deps);
+  if (session.status === "fired") {
     return { status: 403, body: { error: "root_revoked" } };
   }
 
@@ -388,7 +404,7 @@ export async function memoForSession(
   const nullifier = typeof provedBody.nullifier === "string" ? provedBody.nullifier : "";
   if (hashscan && nullifier) {
     try {
-      await prove("/v1/receipt", { sessionId, hashscan, nullifier }, req);
+      await prove("/v1/receipt", { sessionId: session.parentId ?? sessionId, hashscan, nullifier }, req);
     } catch {
       /* shop 200 stands */
     }
@@ -399,6 +415,48 @@ export async function memoForSession(
       text: memoed.text,
       hashscan: memoed.hashscan,
     },
+  };
+}
+
+export async function hireForSession(
+  sessionId: string,
+  req?: Request,
+  deps: TranslateDeps = {},
+  origin?: string,
+): Promise<ActResult> {
+  const session = await probeSession(sessionId, req, deps);
+  if (session.httpStatus === 404 || session.status == null) {
+    return { status: 404, body: { error: "unknown session" } };
+  }
+  if (session.status === "fired") {
+    return { status: 403, body: { error: "root_revoked" } };
+  }
+  if (session.parentId) {
+    return { status: 403, body: { error: "scope" } };
+  }
+
+  const prove = deps.prove ?? proveRequest;
+  const hired = await prove("/v1/hire", { sessionId }, req);
+  const hiredBody = (await hired.json().catch(() => ({}))) as {
+    helperSessionId?: unknown;
+    error?: unknown;
+  };
+  if (hired.status === 400 && hiredBody.error === "fired") {
+    return { status: 403, body: { error: "root_revoked" } };
+  }
+  if (hired.status === 403) {
+    return { status: 403, body: { error: "scope" } };
+  }
+  if (hired.status === 404) {
+    return { status: 404, body: { error: "unknown session" } };
+  }
+  if (!hired.ok || typeof hiredBody.helperSessionId !== "string") {
+    const raw = typeof hiredBody.error === "string" ? hiredBody.error : "hire failed";
+    return { status: 503, body: { error: publicGuestError(raw) } };
+  }
+  return {
+    status: 200,
+    body: { skill: helperSkillMarkdown(origin ?? PUBLIC_APP_ORIGIN, hiredBody.helperSessionId) },
   };
 }
 
