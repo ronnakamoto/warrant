@@ -19,14 +19,15 @@ export function isStrictHost(env: Env = process.env): boolean {
   return env.NODE_ENV === "production" || v === "1" || v === "true";
 }
 
-export function proveConfig(): { url: string; secret: string; translateUrl: string } {
+export function proveConfig(): { url: string; secret: string; translateUrl: string; memoUrl: string } {
   const url = process.env.PROVE_URL;
   const secret = process.env.PROVE_SECRET;
   const translateUrl = process.env.TRANSLATE_URL ?? "http://127.0.0.1:8787/v1/translate";
+  const memoUrl = process.env.MEMO_URL ?? "http://127.0.0.1:8789/v1/memo";
   if (!url || !secret) {
     throw new Error("PROVE_URL and PROVE_SECRET are required");
   }
-  return { url: url.replace(/\/$/, ""), secret, translateUrl };
+  return { url: url.replace(/\/$/, ""), secret, translateUrl, memoUrl };
 }
 
 export function guestCookie(sessionId: string, env: Env = process.env): string {
@@ -246,4 +247,8 @@ export function challengeFrom402(
 
 export function hashTranslateBody(text: string, source?: string, target?: string): string {
   return keccak256(stringToBytes(JSON.stringify({ text, source, target })));
+}
+
+export function hashMemoBody(text: string): string {
+  return keccak256(stringToBytes(JSON.stringify({ text })));
 }

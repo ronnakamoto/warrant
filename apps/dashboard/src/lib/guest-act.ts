@@ -2,6 +2,7 @@ import { HEDERA_FAUCET } from "./guest-copy";
 import type { HederaPay } from "./hedera-pay";
 import {
   challengeFrom402,
+  hashMemoBody,
   hashTranslateBody,
   paymentRequiredFromResponse,
   proveConfig,
@@ -22,10 +23,16 @@ export type ShopInput = {
   payment?: string;
 };
 
+export type MemoInput = {
+  text: string;
+  payment?: string;
+};
+
 export type TranslateDeps = {
   fetchImpl?: typeof fetch;
   createPaymentFetch?: (pay: HederaPay) => typeof fetch | Promise<typeof fetch>;
   translateUrl?: string;
+  memoUrl?: string;
   prove?: typeof proveRequest;
 };
 
@@ -84,6 +91,18 @@ export function parseGuestShopBody(raw: unknown): ShopInput | "private_key" | nu
   return rest;
 }
 
+/** Hosted agent memo: `{ text, payment? }` only. A pasted private key is a 400. */
+export function parseGuestMemoBody(raw: unknown): MemoInput | "private_key" | null {
+  if (hasHederaPrivateKey(raw)) return "private_key";
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as { text?: unknown; payment?: unknown };
+  const payment = typeof input.payment === "string" ? input.payment.trim() : "";
+  return {
+    text: typeof input.text === "string" ? input.text : "",
+    ...(payment ? { payment } : {}),
+  };
+}
+
 export async function shopWithWarrant(
   translateUrl: string,
   payload: string,
@@ -135,10 +154,8 @@ function paywall(pr?: Record<string, unknown>): ActResult {
 
 async function warrantChallengeFrom402(
   probe: Response,
-  text: string,
-  source: string,
-  target: string,
-  translateUrl: string,
+  shopUrl: string,
+  bodyHash: string,
 ): Promise<
   | { challenge: ReturnType<typeof challengeFrom402>; paymentRequired: Record<string, unknown> }
   | ActResult
@@ -147,9 +164,9 @@ async function warrantChallengeFrom402(
   const pr = paymentRequiredFromResponse(probe.headers, rawBody) ?? {};
   const extensions = pr.extensions as { warrant?: unknown } | undefined;
   if (!extensions?.warrant) return paywall(pr);
-  const url = new URL(translateUrl);
+  const url = new URL(shopUrl);
   return {
-    challenge: challengeFrom402(pr, "POST", url.pathname, hashTranslateBody(text, source, target)),
+    challenge: challengeFrom402(pr, "POST", url.pathname, bodyHash),
     paymentRequired: pr,
   };
 }
@@ -199,7 +216,11 @@ export async function translateForSession(
     return { status: probe.status, body: { error: `translate HTTP ${probe.status}` } };
   }
 
-  const challenged = await warrantChallengeFrom402(probe, text, source, target, translateUrl);
+  const challenged = await warrantChallengeFrom402(
+    probe,
+    translateUrl,
+    hashTranslateBody(text, source, target),
+  );
   if ("status" in challenged) return challenged;
 
   if (await sessionIsFired(sessionId, req, deps)) {
@@ -263,6 +284,78 @@ export async function translateForSession(
   };
 }
 
+export async function memoForSession(
+  sessionId: string,
+  input: MemoInput,
+  req?: Request,
+  deps: TranslateDeps = {},
+): Promise<ActResult> {
+  const { text } = input;
+  const payload = JSON.stringify({ text });
+  const memoUrl = deps.memoUrl ?? proveConfig().memoUrl;
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const probe = await fetchImpl(memoUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: payload,
+  });
+
+  if (probe.status === 200) {
+    return { status: 200, body: (await probe.json()) as Record<string, unknown> };
+  }
+  if (probe.status === 403) {
+    const err = (await probe.json().catch(() => ({}))) as { error?: string };
+    return { status: 403, body: { error: typeof err.error === "string" ? err.error : "root_revoked" } };
+  }
+  if (probe.status !== 402) {
+    return { status: probe.status, body: { error: `memo HTTP ${probe.status}` } };
+  }
+
+  const challenged = await warrantChallengeFrom402(probe, memoUrl, hashMemoBody(text));
+  if ("status" in challenged) return challenged;
+
+  if (await sessionIsFired(sessionId, req, deps)) {
+    return { status: 403, body: { error: "root_revoked" } };
+  }
+
+  const payment = input.payment?.trim();
+  if (!payment) {
+    return paywall(challenged.paymentRequired);
+  }
+
+  const { challenge } = challenged;
+  const prove = deps.prove ?? proveRequest;
+  const proved = await prove("/v1/prove", { sessionId, challenge }, req);
+  const provedBody = (await proved.json().catch(() => ({}))) as {
+    warrant?: string;
+    error?: string;
+  };
+  if (!proved.ok || !provedBody.warrant) {
+    return {
+      status: proved.status === 408 ? 408 : 502,
+      body: { error: provedBody.error ?? "prove failed" },
+    };
+  }
+
+  let retry: Response;
+  try {
+    retry = await shopWithPaymentHeader(memoUrl, payload, provedBody.warrant, payment, fetchImpl);
+  } catch {
+    return paywall(challenged.paymentRequired);
+  }
+  if (retry.status === 402) return paywall();
+  if (retry.status === 403) return { status: 403, body: { error: "root_revoked" } };
+  if (!retry.ok) return { status: retry.status, body: { error: `memo HTTP ${retry.status}` } };
+  const memoed = (await retry.json()) as { text?: string; hashscan?: string };
+  return {
+    status: 200,
+    body: {
+      text: memoed.text,
+      hashscan: memoed.hashscan,
+    },
+  };
+}
+
 /** Prove and show the shop the warrant with no pay. 403 means fire took. 402 means it can still act. */
 export async function confirmSessionCannotAct(
   sessionId: string,
@@ -284,7 +377,11 @@ export async function confirmSessionCannotAct(
     return { status: probe.status, body: { error: `translate HTTP ${probe.status}` } };
   }
 
-  const challenged = await warrantChallengeFrom402(probe, text, source, target, translateUrl);
+  const challenged = await warrantChallengeFrom402(
+    probe,
+    translateUrl,
+    hashTranslateBody(text, source, target),
+  );
   if ("status" in challenged) return challenged;
 
   const prove = deps.prove ?? proveRequest;
