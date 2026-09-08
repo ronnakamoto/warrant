@@ -94,14 +94,14 @@ PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursi
 
 ## Local hosted product (Door 1 on live testnets)
 
-Three processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.example` (`PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GRAPH_WARRANT_QUERY_URL`, `WARRANT_VKEY_PATH`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`). Then:
+Four processes, real Groth16 / Base Sepolia / Graph. Fill `.env` from `.env.example` (`PROVE_SECRET`, `BIND_PRIVATE_KEY`, `GRAPH_WARRANT_QUERY_URL`, `WARRANT_VKEY_PATH`, `WARRANT_MIN_TIER=0`, `WARRANT_FREE_CALLS=0`, `HEDERA_MEMO_TOPIC_ID`). Then:
 
 ```bash
 ./scripts/hosted-dev.sh
 # open http://127.0.0.1:3001  — Authorize my agent
 ```
 
-Public hosts (live): dashboard [warrant-beta.vercel.app](https://warrant-beta.vercel.app), translate `https://translate-production-ed28.up.railway.app`, prove `https://prove-production.up.railway.app`. Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host. Default `*.vercel.app` aliases are SSO-gated; the public door is the beta host.
+Public hosts (live): dashboard [warrant-beta.vercel.app](https://warrant-beta.vercel.app), translate `https://translate-production-ed28.up.railway.app`, prove `https://prove-production.up.railway.app`, memo `https://memo-production-3720.up.railway.app`. Dashboard `MEMO_URL` is that host’s `/v1/memo`. Images and env are in `deploy/` and `docs/10-hosted-product.md` §15. Do not set `ALLOW_DEMO_*` on a public host. Default `*.vercel.app` aliases are SSO-gated; the public door is the beta host.
 
 ## Quick start (local paid-path smoke)
 

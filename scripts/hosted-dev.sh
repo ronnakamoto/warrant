@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local Door 1: translate :8787, prove :8788, dashboard :3001.
+# Local Door 1 + living path: translate :8787, prove :8788, memo :8789, dashboard :3001.
 # Sources repo-root .env. Does not print secrets.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,18 +17,22 @@ export WARRANT_FREE_CALLS="${WARRANT_FREE_CALLS:-0}"
 export WARRANT_MIN_TIER="${WARRANT_MIN_TIER:-0}"
 export PORT=8787
 export PROVE_PORT="${PROVE_PORT:-8788}"
+export MEMO_PORT="${MEMO_PORT:-8789}"
 export PROVE_URL="${PROVE_URL:-http://127.0.0.1:8788}"
 export TRANSLATE_URL="${TRANSLATE_URL:-http://127.0.0.1:8787/v1/translate}"
+export MEMO_URL="${MEMO_URL:-http://127.0.0.1:8789/v1/memo}"
 export WARRANT_SESSION_PATH="${WARRANT_SESSION_PATH:-/tmp/warrant-guest-sessions.json}"
 
-echo "hosted-dev: translate :8787  prove :${PROVE_PORT}  dashboard :3001"
+echo "hosted-dev: translate :8787  prove :${PROVE_PORT}  memo :${MEMO_PORT}  dashboard :3001"
 
 pnpm --filter @warrant/translate start &
 TR_PID=$!
 pnpm --filter @warrant/prove start &
 PR_PID=$!
+PORT="${MEMO_PORT}" pnpm --filter @warrant/memo start &
+ME_PID=$!
 cleanup() {
-  kill "$TR_PID" "$PR_PID" 2>/dev/null || true
+  kill "$TR_PID" "$PR_PID" "$ME_PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
