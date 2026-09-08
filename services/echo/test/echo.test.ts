@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { FETCH, TRANSLATE, hashChallenge, type IVerifier } from "@warrant/core";
+import { FETCH, TRANSLATE, hashChallenge, type IVerifier } from "@ronnakamoto/warrant-core";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { createEchoApp } from "../src/app.ts";
 import { wireEcho } from "../src/wiring.ts";
-import { mockHederaFacilitator } from "@warrant/x402";
+import { mockHederaFacilitator } from "@ronnakamoto/warrant-x402";
 
 const liveRoot = 111n;
 const verifierOk: IVerifier = { async verify() { return true; } };
@@ -45,7 +45,7 @@ describe("echo shop", function () {
     const required = decodePaymentRequiredHeader(unpaid.headers.get("PAYMENT-REQUIRED") ?? "");
     const info = (required as { extensions?: { warrant?: { info?: { nonce: string; merkleRoot: string } } } })
       .extensions?.warrant?.info!;
-    const { bodyHashFromCanonical } = await import("@warrant/core");
+    const { bodyHashFromCanonical } = await import("@ronnakamoto/warrant-core");
     const bodyHash = bodyHashFromCanonical({ text: "ping" });
     const ch = {
       method: "POST",

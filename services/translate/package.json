@@ -11,8 +11,8 @@
   "dependencies": {
     "@hiero-ledger/sdk": "2.85.0",
     "@hono/node-server": "^1.19.0",
-    "@warrant/core": "workspace:*",
-    "@warrant/x402": "workspace:*",
+    "@ronnakamoto/warrant-core": "workspace:*",
+    "@ronnakamoto/warrant-x402": "workspace:*",
     "@x402/core": "2.24.0",
     "@x402/hedera": "2.24.0",
     "@x402/hono": "2.24.0",

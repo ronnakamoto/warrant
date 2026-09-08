@@ -70,7 +70,7 @@ describe("revokeGuest isolation", function () {
     const { assembleGuestTree } = await import("../src/mint.ts");
     const { ensureIdentity, emptyState, freshFieldTag, appendLeaf, identityOf } =
       await import("@warrant/agent");
-    const { hashLeaf } = await import("@warrant/core");
+    const { hashLeaf } = await import("@ronnakamoto/warrant-core");
     const state = emptyState();
     ensureIdentity(state, "alice", "alice-rev");
     ensureIdentity(state, "orchestrator", "orch-rev");
@@ -116,7 +116,7 @@ describe("prepareGuestRevoke", function () {
     const { assembleGuestTree } = await import("../src/mint.ts");
     const { ensureIdentity, emptyState, freshFieldTag, appendLeaf, identityOf } =
       await import("@warrant/agent");
-    const { hashLeaf } = await import("@warrant/core");
+    const { hashLeaf } = await import("@ronnakamoto/warrant-core");
     const state = emptyState();
     ensureIdentity(state, "alice", "alice-prep");
     ensureIdentity(state, "orchestrator", "orch-prep");

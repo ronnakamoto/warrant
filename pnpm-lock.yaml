@@ -84,18 +84,18 @@ importers:
         specifier: ^2.56.3
         version: 2.56.3(typescript@5.9.3)(zod@3.25.76)
     devDependencies:
+      '@ronnakamoto/warrant-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@ronnakamoto/warrant-x402':
+        specifier: workspace:*
+        version: link:../../packages/x402
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.18
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.7(@types/react@19.2.18)
-      '@warrant/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@warrant/x402':
-        specifier: workspace:*
-        version: link:../../packages/x402
       mocha:
         specifier: ^10.8.2
         version: 10.8.2
@@ -108,7 +108,7 @@ importers:
 
   packages/agent:
     dependencies:
-      '@warrant/core':
+      '@ronnakamoto/warrant-core':
         specifier: workspace:*
         version: link:../core
       '@x402/core':
@@ -164,7 +164,7 @@ importers:
 
   packages/x402:
     dependencies:
-      '@warrant/core':
+      '@ronnakamoto/warrant-core':
         specifier: workspace:*
         version: link:../core
       '@x402/core':
@@ -198,10 +198,10 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.17(hono@4.13.7)
-      '@warrant/core':
+      '@ronnakamoto/warrant-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@warrant/x402':
+      '@ronnakamoto/warrant-x402':
         specifier: workspace:*
         version: link:../../packages/x402
       '@x402/core':
@@ -232,12 +232,12 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.17(hono@4.13.7)
+      '@ronnakamoto/warrant-core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@warrant/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@warrant/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@zk-kit/lean-imt':
         specifier: 2.2.5
         version: 2.2.5
@@ -266,10 +266,10 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.0
         version: 1.19.17(hono@4.13.7)
-      '@warrant/core':
+      '@ronnakamoto/warrant-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@warrant/x402':
+      '@ronnakamoto/warrant-x402':
         specifier: workspace:*
         version: link:../../packages/x402
       '@x402/core':

@@ -1,4 +1,4 @@
-import type { INullifierStore } from "@warrant/core";
+import type { INullifierStore } from "@ronnakamoto/warrant-core";
 
 /** In-memory nullifier + free-quota store for demos and tests. */
 export class MemoryNullifierStore implements INullifierStore {

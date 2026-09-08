@@ -6,7 +6,7 @@ import {
   type IProver,
   type PublicInputs,
   type WarrantProof,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import {
   identityOf,
   rebuildGroup,
@@ -33,7 +33,7 @@ export type ProveResult = {
 
 /**
  * Prove a warrant for the live x402 challenge using the stored mandate chain.
- * Facade over `@warrant/core` prove — never opens zkeys itself.
+ * Facade over `@ronnakamoto/warrant-core` prove — never opens zkeys itself.
  */
 export async function proveForChallenge(args: ProveForChallengeArgs): Promise<ProveResult> {
   const { state, as, challenge, prover } = args;

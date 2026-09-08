@@ -12,7 +12,7 @@ We do **not** host a reverse proxy and do **not** “protect any URL” you past
 
 ```ts
 import { Hono } from "hono";
-import { FETCH, SnarkjsVerifier } from "@warrant/core";
+import { FETCH, SnarkjsVerifier } from "@ronnakamoto/warrant-core";
 import {
   createWarrantShop,
   initializeWarrantShop,
@@ -20,7 +20,7 @@ import {
   FileNullifierStore,
   FileChallengeStore,
   warrantHono,
-} from "@warrant/x402";
+} from "@ronnakamoto/warrant-x402";
 
 const roots = new CurrentRootChecker({
   rpcUrl: process.env.BASE_SEPOLIA_RPC!,
@@ -49,12 +49,10 @@ app.post("/v1/orders", async (c) => {
 });
 ```
 
-The shop kit is publish-ready (`@warrant/core` + `@warrant/x402` `0.1.0`).
-Until it is on the npm registry, pack from this repo:
+The shop kit is `@ronnakamoto/warrant-core` + `@ronnakamoto/warrant-x402` `0.1.0`:
 
 ```bash
-pnpm build:shop-kit && pnpm pack:check
-# then npm i ./packages/core/warrant-core-0.1.0.tgz ./packages/x402/warrant-x402-0.1.0.tgz hono viem
+npm i @ronnakamoto/warrant-core @ronnakamoto/warrant-x402 hono viem
 ```
 
 Do not `npx @warrant/agent`. The CLI stays in this clone.
@@ -84,8 +82,8 @@ PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursi
 | WP | Deliverable | State |
 |---|---|---|
 | 0–2 | Monorepo, lean + full circuits, Groth16 verifier | Done |
-| 3–4 | `MandateRegistry`, `WarrantGate`, `@warrant/core` | Done |
-| 5 | `@warrant/x402` + translate service | Done |
+| 3–4 | `MandateRegistry`, `WarrantGate`, `@ronnakamoto/warrant-core` | Done |
+| 5 | `@ronnakamoto/warrant-x402` + translate service | Done |
 | 6 | Agent CLI + two-agent demo + HCS | Done |
 | 7 | Dashboard (Astryx + Carbon g10/g100) + revoke | Done |
 | 8 | ENSv2 namespaces | **Skipped** (solo path) |
@@ -115,7 +113,7 @@ cp .env.example .env   # fill HEDERA_* for live Blocky402 / HCS
 
 # Sanity: boundaries + package tests (no zkey required)
 pnpm check-boundaries
-pnpm --filter @warrant/x402 test
+pnpm --filter @ronnakamoto/warrant-x402 test
 pnpm --filter @warrant/translate test
 pnpm --filter @warrant/agent test
 pnpm --filter @warrant/dashboard test
@@ -243,7 +241,7 @@ pnpm --filter @warrant/agent exec tsx demo/live-call.ts
 ### Payment flow (Hedera)
 
 ```text
-translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
+translator  --POST /v1/translate-->  translate (Hono + @ronnakamoto/warrant-x402)
                 | 402 + warrant.warrant.info (nonce, merkleRoot)
                 | prove → warrant header
                 | WARRANT_FREE_CALLS=0 → 402 exact / hedera:testnet → caller signs Blocky402
@@ -258,7 +256,7 @@ translator  --POST /v1/translate-->  translate (Hono + @warrant/x402)
 flowchart LR
   Human[Human root] --> Orch[Orchestrator]
   Orch --> Trans[Translator]
-  Trans -->|warrant.fetch + Groth16| X402["@warrant/x402"]
+  Trans -->|warrant.fetch + Groth16| X402["@ronnakamoto/warrant-x402"]
   X402 -->|warrant ok| Pay[Blocky402 exact HBAR]
   X402 -->|paid| OK[200 + HCS nullifier]
   Human -->|revoke epoch| Reg[MandateRegistry]

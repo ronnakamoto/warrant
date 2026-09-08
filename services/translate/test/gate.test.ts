@@ -6,7 +6,7 @@ import {
   type IVerifier,
   type PublicInputs,
   type WarrantProof,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import {
   initializeWired,

@@ -13,7 +13,7 @@ import {
   ExactHederaScheme,
   PrivateKey,
 } from "@x402/hedera";
-import type { IProver, WarrantProof } from "@warrant/core";
+import type { IProver, WarrantProof } from "@ronnakamoto/warrant-core";
 import { warrantFetch } from "../src/fetch.ts";
 import { createSnarkjsProver } from "../src/prover.ts";
 import { loadState } from "../src/store.ts";

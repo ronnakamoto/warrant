@@ -1,5 +1,5 @@
 {
-  "name": "@warrant/core",
+  "name": "@ronnakamoto/warrant-core",
   "version": "0.1.0",
   "description": "Warrant domain, Groth16 prove/verify, eight public signals. No HTTP.",
   "license": "Apache-2.0",

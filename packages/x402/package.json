@@ -1,5 +1,5 @@
 {
-  "name": "@warrant/x402",
+  "name": "@ronnakamoto/warrant-x402",
   "version": "0.1.0",
   "description": "Wrap a Hono POST with Warrant + Hedera Exact x402.",
   "license": "Apache-2.0",
@@ -36,7 +36,7 @@
     "viem": "^2.56.3"
   },
   "dependencies": {
-    "@warrant/core": "workspace:*",
+    "@ronnakamoto/warrant-core": "workspace:*",
     "@x402/core": "2.24.0",
     "@x402/hedera": "2.24.0",
     "@x402/hono": "2.24.0"

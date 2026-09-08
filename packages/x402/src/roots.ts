@@ -1,6 +1,6 @@
 import { createPublicClient, http, type Address } from "viem";
 import { baseSepolia } from "viem/chains";
-import type { IRootChecker } from "@warrant/core";
+import type { IRootChecker } from "@ronnakamoto/warrant-core";
 
 const abi = [
   {

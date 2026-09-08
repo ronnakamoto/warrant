@@ -19,7 +19,7 @@ import {
   keygen,
   type IProver,
   type WarrantProof,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import { warrantFetch } from "../src/fetch.js";
 import {
   appendLeaf,

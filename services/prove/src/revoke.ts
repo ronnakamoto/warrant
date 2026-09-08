@@ -1,4 +1,4 @@
-import { hashLeaf } from "@warrant/core";
+import { hashLeaf } from "@ronnakamoto/warrant-core";
 import { identityOf } from "@warrant/agent";
 import { LeanIMT } from "@zk-kit/lean-imt";
 import { poseidon2 } from "poseidon-lite";

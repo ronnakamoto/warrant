@@ -1,4 +1,4 @@
-# @warrant/x402
+# @ronnakamoto/warrant-x402
 
 Wrap a Hono `POST` with Warrant + Hedera Exact x402.
 
@@ -6,7 +6,7 @@ We do **not** host a reverse proxy and do **not** “protect any URL” you past
 
 ```ts
 import { Hono } from "hono";
-import { FETCH, SnarkjsVerifier } from "@warrant/core";
+import { FETCH, SnarkjsVerifier } from "@ronnakamoto/warrant-core";
 import {
   createWarrantShop,
   initializeWarrantShop,
@@ -14,7 +14,7 @@ import {
   FileNullifierStore,
   FileChallengeStore,
   warrantHono,
-} from "@warrant/x402";
+} from "@ronnakamoto/warrant-x402";
 
 const roots = new CurrentRootChecker({
   rpcUrl: process.env.BASE_SEPOLIA_RPC!,
@@ -46,7 +46,7 @@ app.post("/v1/orders", async (c) => {
 ## Any machine
 
 1. Node 20.18+ (macOS, Linux, or Windows).
-2. `npm i @warrant/core @warrant/x402 hono viem`
+2. `npm i @ronnakamoto/warrant-core @ronnakamoto/warrant-x402 hono viem`
 3. Put the Groth16 vkey on disk. Set `WARRANT_VKEY_PATH` to an **absolute** path.
 4. Set `BASE_SEPOLIA_RPC`, `REGISTRY_ADDRESS`, `HEDERA_PAY_TO`, nullifier and challenge file paths.
 5. `initializeWarrantShop(shop)` after construct. Registering ExactHedera happens inside the factory **before** initialize.

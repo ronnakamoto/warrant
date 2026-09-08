@@ -29,8 +29,8 @@
   "devDependencies": {
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
-    "@warrant/core": "workspace:*",
-    "@warrant/x402": "workspace:*",
+    "@ronnakamoto/warrant-core": "workspace:*",
+    "@ronnakamoto/warrant-x402": "workspace:*",
     "mocha": "^10.8.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"

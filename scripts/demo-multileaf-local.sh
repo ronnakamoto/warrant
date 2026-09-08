@@ -8,7 +8,7 @@ STORE="${WARRANT_STORE:?set WARRANT_STORE}"
 export WARRANT_STORE="$STORE"
 
 pnpm --filter @warrant/agent exec tsx <<'TS'
-import { hashLeaf } from "@warrant/core";
+import { hashLeaf } from "@ronnakamoto/warrant-core";
 import { appendLeaf, ensureIdentity, loadState, saveState } from "./src/store.ts";
 
 const path = process.env.WARRANT_STORE!;

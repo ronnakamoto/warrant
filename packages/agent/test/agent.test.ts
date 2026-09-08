@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createMandate, hashLeaf, keygen, TRANSLATE } from "@warrant/core";
+import { createMandate, hashLeaf, keygen, TRANSLATE } from "@ronnakamoto/warrant-core";
 import {
   appendLeaf,
   emptyState,
@@ -18,7 +18,7 @@ import {
   type WarrantState,
 } from "../src/store.ts";
 import { warrantHeaderJson, proveForChallenge } from "../src/prove-flow.ts";
-import type { IProver, WarrantProof } from "@warrant/core";
+import type { IProver, WarrantProof } from "@ronnakamoto/warrant-core";
 
 describe("@warrant/agent store + delegate", function () {
   it("parseScope and parseTtl", function () {
@@ -261,7 +261,7 @@ describe("@warrant/agent store + delegate", function () {
 describe("warrant act", function () {
   it("proves then pays with a fake fetch and never posts a key", async function () {
     const { warrantAct } = await import("../src/act.ts");
-    const { createMandate, TRANSLATE } = await import("@warrant/core");
+    const { createMandate, TRANSLATE } = await import("@ronnakamoto/warrant-core");
     const state = emptyState();
     const alice = ensureIdentity(state, "alice", "seed-alice-act");
     const orch = ensureIdentity(state, "orchestrator", "seed-orch-act");

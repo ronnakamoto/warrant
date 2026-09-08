@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { createMandate, hashLeaf, TRANSLATE } from "@warrant/core";
+import { createMandate, hashLeaf, TRANSLATE } from "@ronnakamoto/warrant-core";
 import {
   appendLeaf,
   bindRootOnChain,

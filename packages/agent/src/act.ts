@@ -1,6 +1,6 @@
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { createClientHederaSigner, ExactHederaScheme, PrivateKey } from "@x402/hedera";
-import type { IProver } from "@warrant/core";
+import type { IProver } from "@ronnakamoto/warrant-core";
 import { warrantFetch } from "./fetch.js";
 import {
   bindPurseFromMirror,

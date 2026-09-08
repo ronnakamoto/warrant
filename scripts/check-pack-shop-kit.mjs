@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Prove a stranger can install the shop kit without this monorepo.
- * Packs @warrant/core and @warrant/x402, installs the tarballs in os.tmpdir(),
+ * Packs @ronnakamoto/warrant-core and @ronnakamoto/warrant-x402, installs the tarballs in os.tmpdir(),
  * imports createWarrantShop + SnarkjsVerifier.
  */
 import { execSync } from "node:child_process";
@@ -45,11 +45,11 @@ function packedTgz(packOutput, dir) {
 const corePkg = JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8"));
 const x402Pkg = JSON.parse(readFileSync(join(root, "packages/x402/package.json"), "utf8"));
 if (corePkg.private === true) {
-  console.error("check-pack-shop-kit: @warrant/core is still private");
+  console.error("check-pack-shop-kit: @ronnakamoto/warrant-core is still private");
   process.exit(1);
 }
 if (x402Pkg.private === true) {
-  console.error("check-pack-shop-kit: @warrant/x402 is still private");
+  console.error("check-pack-shop-kit: @ronnakamoto/warrant-x402 is still private");
   process.exit(1);
 }
 if (corePkg.version !== x402Pkg.version) {
@@ -60,8 +60,8 @@ if (corePkg.version !== x402Pkg.version) {
 deleteLeftoverTgz(coreDir);
 deleteLeftoverTgz(x402Dir);
 
-run("pnpm --filter @warrant/core build", root);
-run("pnpm --filter @warrant/x402 build", root);
+run("pnpm --filter @ronnakamoto/warrant-core build", root);
+run("pnpm --filter @ronnakamoto/warrant-x402 build", root);
 
 const corePack = execSync("pnpm pack --pack-destination .", {
   cwd: coreDir,
@@ -84,8 +84,8 @@ run(`npm install "${coreTgz}" "${x402Tgz}" hono@^4.13.7`, dir);
 
 writeFileSync(
   join(dir, "smoke.mjs"),
-  `import { SnarkjsVerifier, FETCH } from "@warrant/core";
-import { createWarrantShop, warrantHono, FixedRootChecker, MemoryNullifierStore } from "@warrant/x402";
+  `import { SnarkjsVerifier, FETCH } from "@ronnakamoto/warrant-core";
+import { createWarrantShop, warrantHono, FixedRootChecker, MemoryNullifierStore } from "@ronnakamoto/warrant-x402";
 if (typeof createWarrantShop !== "function") throw new Error("createWarrantShop");
 if (typeof warrantHono !== "function") throw new Error("warrantHono");
 if (typeof SnarkjsVerifier.fromPath !== "function") throw new Error("fromPath");

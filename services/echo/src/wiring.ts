@@ -4,7 +4,7 @@ import {
   type INullifierStore,
   type IRootChecker,
   type IVerifier,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import {
   createWarrantShop,
   initializeWarrantShop,
@@ -15,7 +15,7 @@ import {
   type ChallengeStore,
   type WarrantPolicy,
   type WarrantShop,
-} from "@warrant/x402";
+} from "@ronnakamoto/warrant-x402";
 import type { FacilitatorClient } from "@x402/core/server";
 
 export type EchoWireConfig = {

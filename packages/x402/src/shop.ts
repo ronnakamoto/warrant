@@ -5,7 +5,7 @@ import {
   type INullifierStore,
   type IRootChecker,
   type IVerifier,
-} from "@warrant/core";
+} from "@ronnakamoto/warrant-core";
 import {
   HTTPFacilitatorClient,
   x402ResourceServer,
