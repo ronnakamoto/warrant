@@ -5,15 +5,39 @@
  * imports createWarrantShop + SnarkjsVerifier.
  */
 import { execSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const coreDir = join(root, "packages/core");
+const x402Dir = join(root, "packages/x402");
 
 function run(cmd, cwd) {
   execSync(cmd, { cwd, stdio: "inherit" });
+}
+
+function lastTgz(dir) {
+  const names = readdirSync(dir).filter((n) => n.endsWith(".tgz"));
+  if (names.length === 0) throw new Error(`no tgz in ${dir}`);
+  names.sort();
+  return join(dir, names.at(-1));
+}
+
+function deleteLeftoverTgz(dir) {
+  for (const n of readdirSync(dir).filter((name) => name.endsWith(".tgz"))) {
+    unlinkSync(join(dir, n));
+  }
+}
+
+/** Prefer an absolute pack path as-is; otherwise lastTgz after a clean start. */
+function packedTgz(packOutput, dir) {
+  const last = packOutput.trim().split("\n").at(-1)?.trim() ?? "";
+  if (last && existsSync(last)) return last;
+  const joined = join(dir, last.replace(/.*\//, ""));
+  if (last && existsSync(joined)) return joined;
+  return lastTgz(dir);
 }
 
 const corePkg = JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8"));
@@ -31,20 +55,23 @@ if (corePkg.version !== x402Pkg.version) {
   process.exit(1);
 }
 
+deleteLeftoverTgz(coreDir);
+deleteLeftoverTgz(x402Dir);
+
 run("pnpm --filter @warrant/core build", root);
 run("pnpm --filter @warrant/x402 build", root);
 
 const corePack = execSync("pnpm pack --pack-destination .", {
-  cwd: join(root, "packages/core"),
+  cwd: coreDir,
   encoding: "utf8",
-}).trim().split("\n").at(-1);
+});
 const x402Pack = execSync("pnpm pack --pack-destination .", {
-  cwd: join(root, "packages/x402"),
+  cwd: x402Dir,
   encoding: "utf8",
-}).trim().split("\n").at(-1);
+});
 
-const coreTgz = join(root, "packages/core", corePack.replace(/.*\//, ""));
-const x402Tgz = join(root, "packages/x402", x402Pack.replace(/.*\//, ""));
+const coreTgz = packedTgz(corePack, coreDir);
+const x402Tgz = packedTgz(x402Pack, x402Dir);
 
 const dir = mkdtempSync(join(tmpdir(), "warrant-shop-kit-"));
 writeFileSync(
