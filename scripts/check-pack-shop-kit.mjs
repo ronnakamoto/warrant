@@ -7,7 +7,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -31,12 +31,14 @@ function deleteLeftoverTgz(dir) {
   }
 }
 
-/** Prefer an absolute pack path as-is; otherwise lastTgz after a clean start. */
+/** Prefer an absolute pack path as-is; otherwise resolve under dir or lastTgz after a clean start. */
 function packedTgz(packOutput, dir) {
   const last = packOutput.trim().split("\n").at(-1)?.trim() ?? "";
-  if (last && existsSync(last)) return last;
-  const joined = join(dir, last.replace(/.*\//, ""));
-  if (last && existsSync(joined)) return joined;
+  if (last && isAbsolute(last) && existsSync(last)) return last;
+  if (last) {
+    const joined = join(dir, basename(last));
+    if (existsSync(joined)) return joined;
+  }
   return lastTgz(dir);
 }
 
