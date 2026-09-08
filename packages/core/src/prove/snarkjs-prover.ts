@@ -1,3 +1,4 @@
+/// <reference path="../snarkjs.d.ts" />
 import { groth16 } from "snarkjs";
 import { stringifyWitness, type WarrantWitness } from "./witness.js";
 

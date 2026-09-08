@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+/// <reference path="../snarkjs.d.ts" />
 import { groth16 } from "snarkjs";
 import { toArray, type PublicInputs } from "../domain/public-inputs.js";
 import type { WarrantProof } from "./snarkjs-prover.js";
