@@ -1,13 +1,21 @@
 {
   "name": "@warrant/core",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Warrant domain, Groth16 prove/verify, eight public signals. No HTTP.",
+  "license": "Apache-2.0",
   "type": "module",
-  "main": "./src/index.ts",
+  "engines": { "node": ">=20.18.0" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
+  "files": ["dist"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "NODE_OPTIONS='--import tsx' pnpm -w exec mocha --no-config --timeout 180000 --exit packages/core/test/**/*.test.ts"
   },
   "dependencies": {
@@ -19,6 +27,7 @@
   },
   "devDependencies": {
     "mocha": "^10.8.2",
-    "tsx": "^4.20.5"
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
