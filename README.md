@@ -8,6 +8,8 @@ Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call 
 
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 
+The hosted Copy shop is a public HCS memo, not a reverse proxy.
+
 We do **not** host a reverse proxy and do **not** “protect any URL” you paste. Wrap your own Hono `POST` with `createWarrantShop` + `warrantHono`. The request body stays in your process.
 
 ```ts
