@@ -49,6 +49,16 @@ app.post("/v1/orders", async (c) => {
 });
 ```
 
+The shop kit is publish-ready (`@warrant/core` + `@warrant/x402` `0.1.0`).
+Until it is on the npm registry, pack from this repo:
+
+```bash
+pnpm build:shop-kit && pnpm pack:check
+# then npm i ./packages/core/warrant-core-0.1.0.tgz ./packages/x402/warrant-x402-0.1.0.tgz hono viem
+```
+
+Do not `npx @warrant/agent`. The CLI stays in this clone.
+
 `pnpm warrant act --url` already takes any shop. A mandate that includes `fetch` can hit the in-repo echo shop (`services/echo`, port 8788):
 
 ```bash
