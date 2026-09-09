@@ -4,6 +4,7 @@ import {
   createSessionStore,
   createDeskId,
   parseWarrantReceipt,
+  warrantView,
   type GuestSession,
 } from "../src/session.ts";
 
@@ -122,6 +123,18 @@ describe("guest session store", function () {
     const views = store.listByDesk("desk-1");
     assert.deepEqual(views.find((v) => v.id === "a")?.receipt, RECEIPT);
     assert.equal(views.find((v) => v.id === "b")?.receipt, undefined);
+  });
+
+  it("warrantView without scope is both", function () {
+    const view = warrantView(session("a", 0), 0, 60_000);
+    assert.equal(view.scope, "both");
+  });
+
+  it("warrantView with scope fetch is fetch", function () {
+    const s = session("a", 0);
+    s.scope = "fetch";
+    const view = warrantView(s, 0, 60_000);
+    assert.equal(view.scope, "fetch");
   });
 
   it("createDeskId is 32 hex and not equal twice", function () {

@@ -73,6 +73,9 @@ export function hireHelper(store: SessionStore, parentId: string): HireResult {
   if (!parent) return { ok: false, error: "unknown" };
   if (parent.revoked) return { ok: false, error: "fired" };
   if (parent.parentId) return { ok: false, error: "scope" };
+  if ((BigInt(parent.state.mandates[1]?.scope ?? 0) & FETCH) !== FETCH) {
+    return { ok: false, error: "scope" };
+  }
 
   if (parent.helperSessionId) store.delete(parent.helperSessionId);
 
@@ -87,6 +90,7 @@ export function hireHelper(store: SessionStore, parentId: string): HireResult {
     evmPrivateKey: EMPTY_EVM_KEY,
     parentId: parent.id,
     state,
+    scope: "fetch",
   };
   parent.helperSessionId = helperSession.id;
   store.put(helperSession);

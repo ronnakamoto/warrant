@@ -12,7 +12,27 @@ import {
 import { isAddress, type Address, type Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
 import { mergeGuestLeaf, type LeafLoader } from "./members.js";
-import { createSessionId, createDeskId, type GuestSession, type SessionStore } from "./session.js";
+import {
+  createSessionId,
+  createDeskId,
+  type GuestScopeName,
+  type GuestSession,
+  type SessionStore,
+} from "./session.js";
+
+export type { GuestScopeName };
+
+export function parseGuestScope(raw: unknown): GuestScopeName | "invalid" {
+  if (raw === undefined || raw === null || raw === "") return "fetch";
+  if (raw === "fetch" || raw === "translate" || raw === "both") return raw;
+  return "invalid";
+}
+
+export function bitsForScope(name: GuestScopeName): bigint {
+  if (name === "fetch") return FETCH;
+  if (name === "translate") return TRANSLATE;
+  return TRANSLATE | FETCH;
+}
 
 export type BindRootFn = (args: {
   rpcUrl: string;
@@ -41,6 +61,7 @@ export type MintGuestDeps = {
   readBinding?: ReadBindingFn;
   now?: () => number;
   deskId?: string;
+  scope?: GuestScopeName;
 };
 
 const EMPTY_EVM_KEY = "0x" as Hex;
@@ -63,9 +84,8 @@ function priorAliceForWallet(store: SessionStore, wallet: Address) {
 const PARENT_BUDGET = 2_000_000n;
 const LEAF_BUDGET = 200_000n;
 const TTL_SECONDS = 30n * 60n;
-const GUEST_SCOPE = TRANSLATE | FETCH;
 
-export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
+export function assembleGuestTree(state: WarrantState, expiry: bigint, bits: bigint): void {
   const { humanTag } = requireHuman(state);
   const alice = identityOf(state, "alice");
   const orch = identityOf(state, "orchestrator");
@@ -73,7 +93,7 @@ export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
   const hop1 = createMandate({
     parent: alice,
     child: orch,
-    scope: GUEST_SCOPE,
+    scope: bits,
     budgetCap: PARENT_BUDGET,
     expiry,
     tier: BigInt(state.rootTier ?? 0),
@@ -84,7 +104,7 @@ export function assembleGuestTree(state: WarrantState, expiry: bigint): void {
   const hop2 = createMandate({
     parent: orch,
     child: trans,
-    scope: GUEST_SCOPE,
+    scope: bits,
     budgetCap: LEAF_BUDGET,
     expiry,
     tier: hop1.tier,
@@ -199,8 +219,9 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   state.rootTier = 0;
   state.rootEpoch = epoch;
 
+  const scope = deps.scope ?? "fetch";
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
-  assembleGuestTree(state, expiry);
+  assembleGuestTree(state, expiry, bitsForScope(scope));
 
   const deskId = deps.deskId ?? createDeskId();
   const session: GuestSession = {
@@ -210,6 +231,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
     evmPrivateKey: EMPTY_EVM_KEY,
     wallet: deps.wallet,
     createdAt: (deps.now ?? Date.now)(),
+    scope,
   };
   deps.store.put(session);
 

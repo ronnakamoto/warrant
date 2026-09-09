@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { appendLeaf, emptyState, ensureIdentity, freshFieldTag, identityOf } from "@warrant/agent";
-import { hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
+import { FETCH, TRANSLATE, hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
 import { appendHelperHop } from "../src/hire.ts";
 import { assembleGuestTree } from "../src/mint.ts";
 import { actingName, proveGuest } from "../src/prove.ts";
@@ -34,7 +34,7 @@ describe("proveGuest", function () {
     state.rootEpoch = 0;
     const alice = identityOf(state, "alice");
     appendLeaf(state, hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n));
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600), TRANSLATE | FETCH);
 
     const session: GuestSession = {
       id: "p",
@@ -80,7 +80,7 @@ describe("proveGuest", function () {
     state.rootEpoch = 0;
     const alice = identityOf(state, "alice");
     appendLeaf(state, hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n));
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600), TRANSLATE | FETCH);
     appendHelperHop(state);
 
     const session: GuestSession = {

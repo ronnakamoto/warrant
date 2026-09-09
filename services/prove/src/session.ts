@@ -4,6 +4,8 @@ import type { Address, Hex } from "viem";
 
 export type WarrantStatus = "live" | "fired";
 
+export type GuestScopeName = "fetch" | "translate" | "both";
+
 export type WarrantReceipt = {
   hashscan: string;
   nullifier: string;
@@ -15,6 +17,7 @@ export type WarrantView = {
   createdAt: number;
   remainingMs: number;
   receipt?: WarrantReceipt;
+  scope: GuestScopeName;
 };
 
 export type GuestSession = {
@@ -28,7 +31,12 @@ export type GuestSession = {
   receipt?: WarrantReceipt;
   parentId?: string;
   helperSessionId?: string;
+  scope?: GuestScopeName;
 };
+
+export function sessionScope(session: GuestSession): GuestScopeName {
+  return session.scope ?? "both";
+}
 
 const HASHSCAN_TX =
   /^https:\/\/hashscan\.io\/testnet\/transaction\/[0-9A-Za-z.@-]+$/;
@@ -80,6 +88,7 @@ export function warrantView(session: GuestSession, now: number, ttlMs: number): 
     status: session.revoked ? "fired" : "live",
     createdAt: session.createdAt,
     remainingMs,
+    scope: sessionScope(session),
   };
   if (view.status === "live") {
     const receipt = parseWarrantReceipt(session.receipt);

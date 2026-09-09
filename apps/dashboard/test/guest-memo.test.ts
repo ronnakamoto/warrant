@@ -220,6 +220,31 @@ describe("guest memo BFF", function () {
     assert.deepEqual(receipts, [{ sessionId: "parent", hashscan, nullifier: "42" }]);
   });
 
+  it("returns 403 scope on memo for a translate parent without proving", async function () {
+    let proved = 0;
+    let fetched = 0;
+    const out = await memoForSession(
+      "parent",
+      { text: "hi" },
+      undefined,
+      {
+        memoUrl: "http://shop.test/v1/memo",
+        fetchImpl: async () => {
+          fetched += 1;
+          return new Response("{}", { status: 500 });
+        },
+        prove: async (path) => {
+          if (path === "/v1/prove") proved += 1;
+          return new Response(JSON.stringify({ status: "live", scope: "translate" }), { status: 200 });
+        },
+      },
+    );
+    assert.equal(out.status, 403);
+    assert.equal(out.body.error, "scope");
+    assert.equal(proved, 0);
+    assert.equal(fetched, 0);
+  });
+
   it("does not record a receipt on an unpaid 402", async function () {
     let receipts = 0;
     const payload = {

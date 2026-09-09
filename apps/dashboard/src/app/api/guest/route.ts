@@ -16,10 +16,22 @@ export async function POST(req: Request): Promise<Response> {
   if (!guestOriginAllowed(req)) return forbiddenGuestResponse();
   let turnstile = "";
   let wallet = "";
+  let scope: "fetch" | "translate" | "both" | undefined;
   try {
-    const body = (await req.clone().json()) as { turnstile?: unknown; wallet?: unknown };
+    const body = (await req.clone().json()) as {
+      turnstile?: unknown;
+      wallet?: unknown;
+      scope?: unknown;
+    };
     if (typeof body.turnstile === "string") turnstile = body.turnstile;
     if (typeof body.wallet === "string") wallet = body.wallet.trim();
+    if (typeof body.scope === "string") {
+      if (body.scope === "fetch" || body.scope === "translate" || body.scope === "both") {
+        scope = body.scope;
+      } else {
+        return NextResponse.json({ error: "invalid scope" }, { status: 400 });
+      }
+    }
   } catch {
     /* empty body is fine */
   }
@@ -31,7 +43,12 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ error: "captcha" }, { status: 403 });
     }
     const deskId = deskFromCookie(req.headers.get("cookie"));
-    const res = await proveRequest("/v1/mint", deskId ? { deskId, wallet } : { wallet }, req);
+    const mintBody = {
+      wallet,
+      ...(deskId ? { deskId } : {}),
+      ...(scope ? { scope } : {}),
+    };
+    const res = await proveRequest("/v1/mint", mintBody, req);
     const body = await res.json().catch(() => ({}));
     if (res.status === 429) {
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });

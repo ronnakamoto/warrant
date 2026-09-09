@@ -45,14 +45,14 @@ import {
 
 describe("guest first-run copy", function () {
   it("keeps protocol words out of the land", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead}`;
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free"]) {
       assert.equal(land.includes(banned), false, banned);
     }
   });
 
   it("does not put Registry in the land sentence", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/Registry/i.test(land), false);
   });
 
@@ -67,7 +67,7 @@ describe("guest first-run copy", function () {
   });
 
   it("is a warrant for an existing agent, not a hiring demo", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/Hire an agent/i.test(land), false);
     assert.equal(/Try it/i.test(land), false);
     assert.match(GUEST_COPY.authorize, /Authorize/i);
@@ -96,6 +96,75 @@ describe("guest first-run copy", function () {
     assert.equal(skill.includes("npx"), false);
     assert.match(skill, /api\/agent\/hire/);
     assert.match(skill, /Hand the returned skill/);
+    assert.equal(skill.includes("/api/agent/translate"), false);
+    assert.equal(agentPrompt("https://app.example", "tok_live_abc", "fetch"), skill);
+  });
+
+  it("matches Copy to fetch, translate, or both", function () {
+    const origin = "https://app.example";
+    const token = "tok_live_abc";
+
+    const fetchSkill = agentPrompt(origin, token, "fetch");
+    assert.match(fetchSkill, /POST https:\/\/app\.example\/api\/agent\/memo/);
+    assert.match(fetchSkill, /api\/agent\/hire/);
+    assert.equal(fetchSkill.includes("/api/agent/translate"), false);
+
+    const translateSkill = agentPrompt(origin, token, "translate");
+    assert.match(translateSkill, /POST https:\/\/app\.example\/api\/agent\/translate/);
+    assert.match(translateSkill, /"text"/);
+    assert.match(translateSkill, /"source"/);
+    assert.match(translateSkill, /"target"/);
+    assert.match(translateSkill, /--url https:\/\/app\.example\/api\/agent\/translate/);
+    assert.equal(translateSkill.includes("/api/agent/memo"), false);
+    assert.equal(translateSkill.includes("/api/agent/hire"), false);
+    assert.equal(translateSkill.includes("npx"), false);
+    assert.equal(translateSkill.includes("translate-production"), false);
+    assert.match(translateSkill, /Warrant will prove for you/);
+    assert.match(translateSkill, /Do not invent a payment/);
+    assert.match(translateSkill, /open the tab and Fire/);
+
+    const bothSkill = agentPrompt(origin, token, "both");
+    const memoAt = bothSkill.indexOf("POST https://app.example/api/agent/memo");
+    const translateAt = bothSkill.indexOf("POST https://app.example/api/agent/translate");
+    const payAt = bothSkill.indexOf("Optional");
+    const hireAt = bothSkill.indexOf("/api/agent/hire");
+    assert.ok(memoAt >= 0 && translateAt > memoAt && payAt > translateAt && hireAt > payAt);
+    assert.match(bothSkill, /--url https:\/\/app\.example\/api\/agent\/memo/);
+    assert.match(bothSkill, /Hand the returned skill/);
+    assert.equal(bothSkill.split("Authorization: Bearer tok_live_abc").length - 1, 3);
+  });
+
+  it("keeps picker copy quiet and out of land bans", function () {
+    assert.match(GUEST_COPY.scopeLead, /memo|translate|both/i);
+    assert.match(GUEST_COPY.scopeMemo, /memo/i);
+    assert.match(GUEST_COPY.scopeTranslate, /translate/i);
+    assert.match(GUEST_COPY.scopeBoth, /both/i);
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    assert.equal(/Hire an agent/i.test(land), false);
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "desk"]) {
+      assert.equal(land.includes(banned), false, banned);
+    }
+  });
+
+  it("lets Authorize pick memo, translate, or both", function () {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    assert.match(src, /GUEST_COPY\.scopeLead/);
+    assert.match(src, /GUEST_COPY\.scopeMemo/);
+    assert.match(src, /GUEST_COPY\.scopeTranslate/);
+    assert.match(src, /GUEST_COPY\.scopeBoth/);
+    assert.match(src, /JSON\.stringify\(\{\s*wallet,\s*scope/);
+    assert.match(src, /agentPrompt\(origin, token, selected\.scope \?\? "fetch"\)/);
+    assert.match(src, /useState<GuestScopeName>\("fetch"\)/);
+    assert.match(src, /scope\?: GuestScopeName/);
+    assert.equal((src.match(/label=\{GUEST_COPY\.authorize\}/g) ?? []).length, 1);
+    assert.match(src, /<Button label=\{GUEST_COPY\.authorize\}/);
+    assert.equal(src.includes('label={GUEST_COPY.authorize} variant="'), false);
+    const lifeAt = src.indexOf("remainingLife(selected.remainingMs)");
+    assert.ok(lifeAt >= 0);
+    assert.equal(src.slice(lifeAt, lifeAt + 40).includes("scope"), false);
   });
 
   it("hands a memo-only helper skill that cannot hire or translate", function () {
@@ -122,6 +191,8 @@ describe("guest first-run copy", function () {
       "utf8",
     );
     assert.equal(repo, md);
+    assert.equal(md.includes("/api/agent/translate"), false);
+    assert.match(md, /api\/agent\/memo/);
     assert.equal(PUBLIC_APP_ORIGIN, "https://warrant-beta.vercel.app");
     assert.equal(WARRANT_TTL_MS, 30 * 60 * 1000);
   });

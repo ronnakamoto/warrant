@@ -16,7 +16,7 @@ describe("assembleGuestTree", function () {
     state.rootName = "alice";
     state.rootTier = 0;
     state.rootEpoch = 0;
-    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
     assert.equal(state.mandates.length, 2);
     assert.equal(state.mandates[0]?.from, "alice");
     assert.equal(state.mandates[0]?.to, "orchestrator");
@@ -26,6 +26,23 @@ describe("assembleGuestTree", function () {
     const guestScope = TRANSLATE | FETCH;
     assert.equal(BigInt(state.mandates[0]!.scope), guestScope);
     assert.equal(BigInt(state.mandates[1]!.scope), guestScope);
+  });
+
+  it("writes FETCH-only hops when bits are FETCH", function () {
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-unit");
+    ensureIdentity(state, "orchestrator", "orch-unit");
+    ensureIdentity(state, "translator", "trans-unit");
+    state.humanTag = freshFieldTag();
+    state.contextHash = freshFieldTag();
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const expiry = BigInt(Math.floor(Date.now() / 1000) + 1800);
+    assembleGuestTree(state, expiry, FETCH);
+    assert.equal(state.mandates.length, 2);
+    assert.equal(BigInt(state.mandates[0]!.scope), FETCH);
+    assert.equal(BigInt(state.mandates[1]!.scope), FETCH);
   });
 });
 
@@ -109,5 +126,64 @@ describe("mintGuest", function () {
         }),
       /founder/,
     );
+  });
+
+  it("defaults omitted scope to fetch hops", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const out = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    const session = store.get(out.sessionId);
+    assert.ok(session);
+    assert.equal(session.scope, "fetch");
+    assert.equal(BigInt(session.state.mandates[0]!.scope), FETCH);
+    assert.equal(BigInt(session.state.mandates[1]!.scope), FETCH);
+  });
+
+  it("writes TRANSLATE hops when scope is translate", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const out = await mintGuest({
+      store,
+      wallet,
+      scope: "translate",
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    const session = store.get(out.sessionId);
+    assert.ok(session);
+    assert.equal(session.scope, "translate");
+    assert.equal(BigInt(session.state.mandates[0]!.scope), TRANSLATE);
+    assert.equal(BigInt(session.state.mandates[1]!.scope), TRANSLATE);
+  });
+
+  it("writes both hops when scope is both", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const out = await mintGuest({
+      store,
+      wallet,
+      scope: "both",
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    const session = store.get(out.sessionId);
+    assert.ok(session);
+    assert.equal(session.scope, "both");
+    assert.equal(BigInt(session.state.mandates[0]!.scope), TRANSLATE | FETCH);
+    assert.equal(BigInt(session.state.mandates[1]!.scope), TRANSLATE | FETCH);
   });
 });
