@@ -335,6 +335,9 @@ describe("guest first-run copy", function () {
     assert.match(src, /Copy for my agent|copyPrompt/);
     assert.match(src, /fundHint/);
     assert.equal(/letSpendFromReady|Let it spend|cutSpend|copiedOnce/.test(src), false);
+    assert.match(src, /\/api\/guest\/challenge/);
+    assert.match(src, /signDeskMessage|personal_sign/);
+    assert.match(src, /connectWallet/);
   });
 
   it("rejects cross-origin guest POSTs on the public host", function () {
