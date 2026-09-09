@@ -1,6 +1,6 @@
 "use client";
 
-import { type Address, isAddress } from "viem";
+import { type Address, type Hex, getAddress, isAddress, stringToHex } from "viem";
 
 export class WalletRejectedError extends Error {
   constructor() {
@@ -21,7 +21,26 @@ export async function connectRootWallet(): Promise<Address> {
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as unknown;
     const address = Array.isArray(accounts) ? accounts[0] : undefined;
     if (typeof address !== "string" || !isAddress(address)) throw new Error("NO_WALLET");
-    return address;
+    return getAddress(address);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === "NO_WALLET") throw err;
+    if (/reject|denied|user abort|cancel/i.test(msg)) throw new WalletRejectedError();
+    throw err;
+  }
+}
+
+export async function signDeskMessage(wallet: Address, nonce: string): Promise<Hex> {
+  const eth = injected();
+  if (!eth) throw new Error("NO_WALLET");
+  const message = `Warrant desk\n${wallet}\n${nonce}`;
+  try {
+    const signature = await eth.request({
+      method: "personal_sign",
+      params: [stringToHex(message), wallet],
+    });
+    if (typeof signature !== "string") throw new Error("NO_WALLET");
+    return signature as Hex;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "NO_WALLET") throw err;

@@ -242,6 +242,57 @@ export function GuestTry() {
     setPhase("ready");
   }
 
+  async function recoverDesk() {
+    setError(null);
+    let wallet: string;
+    try {
+      const { connectRootWallet } = await import("../lib/browser-wallet");
+      wallet = await connectRootWallet();
+    } catch (e) {
+      const { WalletRejectedError } = await import("../lib/browser-wallet");
+      setError(
+        e instanceof WalletRejectedError || (e instanceof Error && e.message === "NO_WALLET")
+          ? GUEST_COPY.connectWallet
+          : GUEST_COPY.hostError,
+      );
+      return;
+    }
+    try {
+      const ch = await fetch("/api/guest/challenge", { method: "POST" });
+      const { nonce } = (await ch.json()) as { nonce?: string };
+      if (!ch.ok || typeof nonce !== "string") {
+        setError(GUEST_COPY.hostError);
+        return;
+      }
+      const { signDeskMessage } = await import("../lib/browser-wallet");
+      const signature = await signDeskMessage(wallet as `0x${string}`, nonce);
+      const res = await fetch("/api/guest/warrants", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ wallet, nonce, signature }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        warrants?: WarrantView[];
+        currentId?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(body.error ?? GUEST_COPY.hostError);
+        return;
+      }
+      const list = Array.isArray(body.warrants) ? body.warrants : [];
+      applyList(list, body.currentId);
+      if (latestLive(list)) {
+        setPhase("ready");
+        return;
+      }
+      setPhase(list.some((w) => w.status === "fired") ? "revoked" : "land");
+    } catch (e) {
+      const { WalletRejectedError } = await import("../lib/browser-wallet");
+      setError(e instanceof WalletRejectedError ? GUEST_COPY.signRejected : GUEST_COPY.hostError);
+    }
+  }
+
   async function fireOnChain(sessionId: string, all = false): Promise<boolean> {
     const prep = await fetch("/api/guest/revoke", {
       method: "POST",
@@ -377,6 +428,12 @@ export function GuestTry() {
           </Text>
           <ScopePicks scope={scope} busy={busy} onPick={setScope} />
           <Button label={GUEST_COPY.authorize} onClick={() => void authorize()} isDisabled={busy} />
+          <Button
+            variant="secondary"
+            label={GUEST_COPY.connectWallet}
+            onClick={() => void recoverDesk()}
+            isDisabled={busy}
+          />
         </VStack>
       ) : null}
 
@@ -471,6 +528,12 @@ export function GuestTry() {
           <Banner status="success" title={GUEST_COPY.afterRevoke} />
           <ScopePicks scope={scope} busy={busy} onPick={setScope} />
           <Button label={GUEST_COPY.again} onClick={() => void authorize()} isDisabled={busy} />
+          <Button
+            variant="secondary"
+            label={GUEST_COPY.connectWallet}
+            onClick={() => void recoverDesk()}
+            isDisabled={busy}
+          />
         </VStack>
       ) : null}
     </VStack>

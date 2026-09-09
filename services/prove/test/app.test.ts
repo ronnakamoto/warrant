@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { privateKeyToAccount } from "viem/accounts";
 import { createProveApp } from "../src/app.ts";
-import { assembleGuestTree } from "../src/mint.ts";
+import { deskMessage } from "../src/desk.ts";
+import { FOUNDER_ETH } from "../src/founders.ts";
+import { assembleGuestTree, mintGuest } from "../src/mint.ts";
+import { createNonceStore } from "../src/nonce.ts";
 import { createRateLimiter } from "../src/rate-limit.ts";
 import { createSessionStore, type GuestSession } from "../src/session.ts";
 import { emptyState, ensureIdentity, freshFieldTag } from "@warrant/agent";
@@ -459,6 +463,18 @@ describe("prove desk", function () {
       rpc: "https://sepolia.base.org",
       loadMembers: async () => ["1"],
       bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+      readBinding: async ({ wallet }) => {
+        const prior = store.dump().find((s) => s.wallet.toLowerCase() === wallet.toLowerCase());
+        const alice = prior?.state.identities.alice;
+        if (!alice) throw new Error("no alice");
+        return {
+          epoch: 0,
+          tier: 0,
+          leaf: 1n,
+          pkX: BigInt(alice.pkX),
+          pkY: BigInt(alice.pkY),
+        };
+      },
     });
     return { app, store };
   }
@@ -473,7 +489,7 @@ describe("prove desk", function () {
       await app.request("/v1/mint", {
         method: "POST",
         headers: hdrs,
-        body: mintBody(WALLET_B, { deskId: first.deskId }),
+        body: mintBody(WALLET, { deskId: first.deskId }),
       })
     ).json()) as { sessionId: string; deskId: string };
     assert.equal(second.deskId, first.deskId);
@@ -803,6 +819,103 @@ describe("prove hire", function () {
     const missing = await app.request("/v1/hire", { method: "POST", headers: hdrs, body: "{}" });
     assert.equal(missing.status, 400);
     assert.deepEqual(await missing.json(), { error: "sessionId required" });
+  });
+});
+
+describe("prove desk recover", function () {
+  const account = privateKeyToAccount("0x1111111111111111111111111111111111111111111111111111111111111111");
+
+  async function recoverApp() {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const nonces = createNonceStore();
+    const app = createProveApp({ authSecret: secret, store, nonces });
+    await mintGuest({
+      store,
+      wallet: account.address,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => ["1"],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    return { app, store, nonces };
+  }
+
+  it("desk-recover returns views only for a valid signature", async function () {
+    const { app } = await recoverApp();
+    const ch = await app.request("/v1/desk-challenge", { method: "POST", headers: mintHdrs });
+    assert.equal(ch.status, 200);
+    const { nonce } = (await ch.json()) as { nonce: string };
+    const signature = await account.signMessage({ message: deskMessage(account.address, nonce) });
+    const rec = await app.request("/v1/desk-recover", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: account.address, nonce, signature }),
+    });
+    assert.equal(rec.status, 200);
+    const body = (await rec.json()) as { warrants: unknown; deskId?: string };
+    assert.ok(Array.isArray(body.warrants));
+    assert.ok(body.warrants.length > 0);
+  });
+
+  it("rejects a missing nonce", async function () {
+    const { app } = await recoverApp();
+    const signature = await account.signMessage({ message: deskMessage(account.address, "aa") });
+    const rec = await app.request("/v1/desk-recover", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: account.address, signature }),
+    });
+    assert.equal(rec.status, 400);
+  });
+
+  it("rejects a reused nonce", async function () {
+    const { app } = await recoverApp();
+    const ch = await app.request("/v1/desk-challenge", { method: "POST", headers: mintHdrs });
+    const { nonce } = (await ch.json()) as { nonce: string };
+    const signature = await account.signMessage({ message: deskMessage(account.address, nonce) });
+    const body = JSON.stringify({ wallet: account.address, nonce, signature });
+    const first = await app.request("/v1/desk-recover", { method: "POST", headers: mintHdrs, body });
+    assert.equal(first.status, 200);
+    const second = await app.request("/v1/desk-recover", { method: "POST", headers: mintHdrs, body });
+    assert.equal(second.status, 401);
+    assert.deepEqual(await second.json(), { error: "bad_nonce" });
+  });
+
+  it("rejects a signature for a different wallet", async function () {
+    const { app } = await recoverApp();
+    const ch = await app.request("/v1/desk-challenge", { method: "POST", headers: mintHdrs });
+    const { nonce } = (await ch.json()) as { nonce: string };
+    const signature = await account.signMessage({ message: deskMessage(account.address, nonce) });
+    const rec = await app.request("/v1/desk-recover", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: WALLET_B, nonce, signature }),
+    });
+    assert.equal(rec.status, 403);
+    assert.deepEqual(await rec.json(), { error: "bad_sig" });
+  });
+
+  it("rejects a founder wallet", async function () {
+    const { app } = await recoverApp();
+    const rec = await app.request("/v1/desk-recover", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: FOUNDER_ETH, nonce: "aa", signature: "0xbb" }),
+    });
+    assert.equal(rec.status, 403);
+    assert.deepEqual(await rec.json(), { error: "founder" });
+  });
+
+  it("POST /v1/desk with wallet and no deskId is still 400", async function () {
+    const { app } = await recoverApp();
+    const rec = await app.request("/v1/desk", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: account.address }),
+    });
+    assert.equal(rec.status, 400);
+    assert.deepEqual(await rec.json(), { error: "deskId required" });
   });
 });
 

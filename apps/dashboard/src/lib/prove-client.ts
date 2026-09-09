@@ -182,7 +182,16 @@ export function agentCorsHeaders(): Record<string, string> {
 }
 
 export async function proveRequest(
-  path: "/v1/mint" | "/v1/prove" | "/v1/revoke" | "/v1/desk" | "/v1/session" | "/v1/receipt" | "/v1/hire",
+  path:
+    | "/v1/mint"
+    | "/v1/prove"
+    | "/v1/revoke"
+    | "/v1/desk"
+    | "/v1/desk-challenge"
+    | "/v1/desk-recover"
+    | "/v1/session"
+    | "/v1/receipt"
+    | "/v1/hire",
   body: unknown,
   req?: Request,
 ): Promise<Response> {
