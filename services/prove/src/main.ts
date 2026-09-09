@@ -1,6 +1,7 @@
 import { createSnarkjsProver } from "@warrant/agent";
 import { createProveApp } from "./app.js";
 import { createGraphLeafLoader } from "./members.js";
+import { createNonceStore } from "./nonce.js";
 import { assertProductionProveEnv, shouldEnforceStrictProd } from "./prod-guard.js";
 import { createPersistedSessionStore } from "./persist.js";
 import { createSessionStore } from "./session.js";
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
   const app = createProveApp({
     authSecret: secret,
     store,
+    nonces: createNonceStore(),
     bindPrivateKey,
     gasSponsorKey,
     registry,

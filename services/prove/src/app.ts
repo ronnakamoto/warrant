@@ -1,13 +1,16 @@
 import { Hono } from "hono";
 import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
-import { isAddress, type Address, type Hex } from "viem";
+import { isAddress, recoverMessageAddress, type Address, type Hex } from "viem";
+import { attachWalletDesk, deskForWallet, deskMessage } from "./desk.js";
+import { assertNotFounder } from "./founders.js";
 import { mintGuest, parseGuestScope, type BindRootFn, type ReadBindingFn } from "./mint.js";
+import type { NonceStore } from "./nonce.js";
 import { proveGuest } from "./prove.js";
 import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
 import { hireHelper } from "./hire.js";
-import { parseWarrantReceipt, sessionScope, type GuestScopeName, type SessionStore } from "./session.js";
+import { createDeskId, parseWarrantReceipt, sessionScope, type GuestScopeName, type SessionStore } from "./session.js";
 
 export const AUTH_HEADER = "x-warrant-prove-secret";
 const BODY_LIMIT = 64 * 1024;
@@ -17,6 +20,7 @@ const DESK_ID_RE = /^[0-9a-f]{32}$/;
 export type ProveAppOpts = {
   authSecret: string;
   store?: SessionStore;
+  nonces?: NonceStore;
   bindPrivateKey?: Hex;
   gasSponsorKey?: Hex;
   registry?: Address;
@@ -117,6 +121,60 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     }
     if (!body.deskId) return c.json({ error: "deskId required" }, 400);
     return c.json({ warrants: opts.store.listByDesk(body.deskId) });
+  });
+
+  app.post("/v1/desk-challenge", (c) => {
+    if (!opts.nonces) {
+      return c.json({ error: "challenge not configured" }, 503);
+    }
+    return c.json(opts.nonces.issue());
+  });
+
+  app.post("/v1/desk-recover", async (c) => {
+    if (!opts.store || !opts.nonces) {
+      return c.json({ error: "recover not configured" }, 503);
+    }
+    const raw = await c.req.text();
+    if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
+    let body: { wallet?: string; nonce?: string; signature?: string } = {};
+    try {
+      body = raw ? (JSON.parse(raw) as { wallet?: string; nonce?: string; signature?: string }) : {};
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+    if (
+      typeof body.wallet !== "string" ||
+      typeof body.nonce !== "string" ||
+      typeof body.signature !== "string"
+    ) {
+      return c.json({ error: "wallet, nonce, and signature required" }, 400);
+    }
+    if (!isAddress(body.wallet)) {
+      return c.json({ error: "wallet required" }, 400);
+    }
+    try {
+      assertNotFounder(body.wallet);
+    } catch {
+      return c.json({ error: "founder" }, 403);
+    }
+    if (!opts.nonces.take(body.nonce)) {
+      return c.json({ error: "bad_nonce" }, 401);
+    }
+    let recovered: Address;
+    try {
+      recovered = await recoverMessageAddress({
+        message: deskMessage(body.wallet, body.nonce),
+        signature: body.signature as `0x${string}`,
+      });
+    } catch {
+      return c.json({ error: "bad_sig" }, 403);
+    }
+    if (recovered.toLowerCase() !== body.wallet.toLowerCase()) {
+      return c.json({ error: "bad_sig" }, 403);
+    }
+    const deskId = deskForWallet(opts.store, body.wallet) ?? createDeskId();
+    attachWalletDesk(opts.store, body.wallet, deskId);
+    return c.json({ deskId, warrants: opts.store.listByDesk(deskId) });
   });
 
   app.post("/v1/session", async (c) => {

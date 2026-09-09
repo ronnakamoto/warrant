@@ -1,5 +1,9 @@
-import type { Address } from "viem";
+import { getAddress, type Address } from "viem";
 import { createDeskId, type SessionStore } from "./session.js";
+
+export function deskMessage(wallet: Address, nonce: string): string {
+  return `Warrant desk\n${getAddress(wallet)}\n${nonce}`;
+}
 
 const DESK_ID_RE = /^[0-9a-f]{32}$/;
 
