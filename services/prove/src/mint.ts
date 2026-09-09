@@ -12,9 +12,9 @@ import {
 import { isAddress, type Address, type Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
 import { mergeGuestLeaf, type LeafLoader } from "./members.js";
+import { attachWalletDesk, resolveMintDesk } from "./desk.js";
 import {
   createSessionId,
-  createDeskId,
   type GuestScopeName,
   type GuestSession,
   type SessionStore,
@@ -223,7 +223,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
   assembleGuestTree(state, expiry, bitsForScope(scope));
 
-  const deskId = deps.deskId ?? createDeskId();
+  const deskId = resolveMintDesk(deps.store, deps.wallet, deps.deskId);
   const session: GuestSession = {
     id: createSessionId(),
     deskId,
@@ -234,6 +234,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
     scope,
   };
   deps.store.put(session);
+  attachWalletDesk(deps.store, deps.wallet, deskId);
 
   return {
     sessionId: session.id,

@@ -111,6 +111,67 @@ describe("mintGuest", function () {
     assert.deepEqual(store.get(second.sessionId)?.state.identities.alice, alice);
   });
 
+  it("second mint without deskId shares the first desk", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const first = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    const alice = store.get(first.sessionId)!.state.identities.alice!;
+    const second = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => {
+        throw new Error("must not bind again");
+      },
+      readBinding: async () => ({
+        epoch: 0,
+        tier: 0,
+        leaf: 1n,
+        pkX: BigInt(alice.pkX),
+        pkY: BigInt(alice.pkY),
+      }),
+    });
+    assert.equal(first.deskId, second.deskId);
+    assert.equal(store.get(first.sessionId)?.deskId, first.deskId);
+    assert.equal(store.get(second.sessionId)?.deskId, first.deskId);
+  });
+
+  it("ignores a cookie desk that belongs to another wallet", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const other = await mintGuest({
+      store,
+      wallet: "0x00000000000000000000000000000000000000cd",
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x2" }),
+    });
+    const mine = await mintGuest({
+      store,
+      wallet,
+      deskId: other.deskId,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    assert.notEqual(mine.deskId, other.deskId);
+  });
+
   it("requires the client wallet and refuses the founder", async function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     await assert.rejects(

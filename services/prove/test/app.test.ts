@@ -459,6 +459,18 @@ describe("prove desk", function () {
       rpc: "https://sepolia.base.org",
       loadMembers: async () => ["1"],
       bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+      readBinding: async ({ wallet }) => {
+        const prior = store.dump().find((s) => s.wallet.toLowerCase() === wallet.toLowerCase());
+        const alice = prior?.state.identities.alice;
+        if (!alice) throw new Error("no alice");
+        return {
+          epoch: 0,
+          tier: 0,
+          leaf: 1n,
+          pkX: BigInt(alice.pkX),
+          pkY: BigInt(alice.pkY),
+        };
+      },
     });
     return { app, store };
   }
@@ -473,7 +485,7 @@ describe("prove desk", function () {
       await app.request("/v1/mint", {
         method: "POST",
         headers: hdrs,
-        body: mintBody(WALLET_B, { deskId: first.deskId }),
+        body: mintBody(WALLET, { deskId: first.deskId }),
       })
     ).json()) as { sessionId: string; deskId: string };
     assert.equal(second.deskId, first.deskId);
