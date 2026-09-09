@@ -103,7 +103,7 @@ export function GuestTry() {
   const selected = warrants.find((w) => w.id === selectedId);
   const liveWarrants = warrants.filter(isLive);
   const token = selected && isLive(selected) ? selected.id : null;
-  const prompt = token ? agentPrompt(origin, token, selected.scope ?? "fetch") : "";
+  const prompt = selected && token ? agentPrompt(origin, token, selected.scope ?? "fetch") : "";
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
 
   const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
