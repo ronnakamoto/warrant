@@ -23,6 +23,7 @@ export const GUEST_COPY = {
   rateLimited: "Try again in a few minutes.",
   registry: "Registry",
   warrantTab: "Warrant",
+  docs: "Docs",
   localhostHint:
     "Cloud agents (Grok) cannot reach this machine. OpenClaw or Hermes on this machine can.",
   fireThis: "Fire this warrant",
