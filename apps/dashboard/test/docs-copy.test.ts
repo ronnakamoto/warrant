@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DOCS_COPY, DOCS_DIAGRAMS } from "../src/lib/docs-copy.ts";
+import { DOCS_COPY, DOCS_DIAGRAMS, DOCS_EXCALIDRAW, docsBookText } from "../src/lib/docs-copy.ts";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -14,11 +14,11 @@ describe("protocol docs", function () {
   });
 
   it("opens the machine after the feeling", function () {
-    const book = Object.values(DOCS_COPY).join("\n");
+    const book = docsBookText();
     for (const word of ["Groth16", "LeanIMT", "nullifier", "epoch"]) {
       assert.equal(book.includes(word), true, word);
     }
-    assert.match(book, /eight public signals|8 public/i);
+    assert.match(book, /eight public signals|8 public|publicSignals/i);
     assert.match(book, /Warrant sees the witness/);
     assert.match(book, /shop sees a nullifier/i);
     assert.match(book, /HashScan/);
@@ -29,6 +29,41 @@ describe("protocol docs", function () {
     assert.match(book, /createWarrantShop|@ronnakamoto\/warrant-x402/);
   });
 
+  it("details the cryptography and circuit that shops verify", function () {
+    const book = docsBookText();
+    for (const word of [
+      "Baby Jubjub",
+      "EdDSA-Poseidon",
+      "Poseidon",
+      "BN254",
+      "WarrantFull",
+      "BinaryMerkleRoot",
+      "humanTag",
+      "contextHash",
+      "requestHash",
+      "keccak256",
+      "currentRoot",
+      "ExactHedera",
+    ]) {
+      assert.equal(book.includes(word), true, word);
+    }
+    assert.match(book, /warrant\/leaf/);
+    assert.match(book, /warrant\/mandate/);
+    assert.match(book, /warrant\/nullifier/);
+    assert.match(book, /warrant\/tag/);
+    assert.match(book, /D=4/);
+    assert.match(book, /MAX_MERKLE_DEPTH = 20|MAX_DEPTH=20/);
+    assert.match(book, /TRANSLATE/);
+    assert.match(book, /FETCH/);
+    assert.match(book, /not post-quantum/i);
+    assert.match(book, /solo/);
+    assert.match(book, /0x103749E5529C3Ce31A1EB8e0657280AaE7e9dA89/);
+    assert.match(book, /dummy hops/i);
+    assert.match(book, /30 minutes/);
+    assert.match(book, /header is `warrant`/);
+    assert.match(book, /subgraph/);
+  });
+
   it("names the four diagrams", function () {
     assert.deepEqual(
       DOCS_DIAGRAMS.map((d) => d.title),
@@ -36,8 +71,20 @@ describe("protocol docs", function () {
     );
   });
 
+  it("embeds an Excalidraw of the protocol", function () {
+    const dashboard = join(root, "..");
+    assert.equal(DOCS_EXCALIDRAW.src, "/protocol/how-warrant-works.png");
+    assert.equal(existsSync(join(dashboard, "public", DOCS_EXCALIDRAW.src.slice(1))), true);
+    const page = readFileSync(join(root, "../src/components/ProtocolDocs.tsx"), "utf8");
+    assert.equal(page.includes("DOCS_EXCALIDRAW"), true);
+    assert.equal(/download|excalidraw-dl|\.excalidraw/i.test(page), false);
+    const book = docsBookText();
+    assert.match(book, /Hops stay on the left/);
+    assert.match(book, /Eight public signals cross Groth16/);
+  });
+
   it("does not sell a proxy or say npx", function () {
-    const book = Object.values(DOCS_COPY).join("\n");
+    const book = docsBookText();
     assert.equal(book.includes("npx"), false);
     assert.equal(/ETHOnline|hi\.new/i.test(book), false);
   });

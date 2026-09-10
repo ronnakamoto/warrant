@@ -4,7 +4,8 @@ import { ProtocolDocs } from "../../components/ProtocolDocs";
 
 export const metadata: Metadata = {
   title: "How Warrant works",
-  description: "You already have a bot. This is the key it carries when it acts.",
+  description:
+    "Protocol book: hops, Groth16, LeanIMT, eight public signals, and what each party sees.",
 };
 
 export default function DocsPage() {
