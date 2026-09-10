@@ -56,6 +56,19 @@ describe("guest first-run copy", function () {
     assert.equal(/Registry/i.test(land), false);
   });
 
+  it("keeps land chrome to Warrant and Docs", function () {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/app/page.tsx"),
+      "utf8",
+    );
+    assert.match(src, /SiteChrome/);
+    assert.match(src, /GuestTry/);
+    assert.equal(src.includes("Base Sepolia"), false);
+    assert.equal(src.includes("useThemeMode"), false);
+    assert.equal(src.includes("Dashboard"), false);
+    assert.equal(src.includes(GUEST_COPY.registry), false);
+  });
+
   it("names a HashScan receipt without a feed or a warrant", function () {
     assert.match(GUEST_COPY.receipt, /HashScan/);
     assert.match(GUEST_COPY.receipt, /does not know/i);

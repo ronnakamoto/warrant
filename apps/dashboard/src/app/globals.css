@@ -6,3 +6,127 @@ body {
   margin: 0;
   min-height: 100%;
 }
+
+.site-page {
+  min-height: 100vh;
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  padding: 0 var(--spacing-6) var(--spacing-8);
+}
+
+.site-chrome,
+.site-col {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.site-chrome--wide,
+.site-col--wide {
+  max-width: 800px;
+}
+
+.site-chrome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--spacing-6) 0 var(--spacing-7);
+}
+
+.site-wordmark {
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.site-nav a {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-wordmark:hover {
+  color: var(--color-text-primary);
+}
+
+.docs-lead {
+  margin-bottom: var(--spacing-6);
+}
+
+.docs-lead h1 {
+  margin: 0 0 var(--spacing-3);
+  letter-spacing: -0.03em;
+}
+
+.docs-standfirst {
+  margin: 0;
+  max-width: 42rem;
+  font-size: var(--font-size-lg);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.docs-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3) var(--spacing-4);
+  margin: 0 0 var(--spacing-7);
+  padding-bottom: var(--spacing-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.docs-toc a {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.docs-toc a:hover {
+  color: var(--color-text-primary);
+}
+
+.docs-section {
+  margin: 0 0 var(--spacing-7);
+}
+
+.docs-section h2 {
+  margin: 0 0 var(--spacing-3);
+  letter-spacing: -0.02em;
+}
+
+.docs-section p {
+  margin: 0 0 var(--spacing-4);
+  max-width: 42rem;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.docs-section p:last-child {
+  margin-bottom: 0;
+}
+
+.docs-figure {
+  margin: 0 0 var(--spacing-6);
+  padding-bottom: var(--spacing-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.docs-figure:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.docs-figure figcaption {
+  margin: 0 0 var(--spacing-3);
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.docs-figure svg {
+  display: block;
+}

@@ -32,12 +32,11 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(THEME_KEY);
-      if (stored === "light" || stored === "dark") setModeState(stored);
-    } catch {
-      /* ignore */
-    }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => setModeState(mq.matches ? "dark" : "light");
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
   const setMode = useCallback((next: ThemeMode) => {
