@@ -654,7 +654,7 @@ function blockText(block: DocsBlock): string {
 }
 
 export function docsBookText(): string {
-  const parts = [DOCS_COPY.title, DOCS_COPY.lead, DOCS_COPY.youHaveABot];
+  const parts: string[] = [DOCS_COPY.title, DOCS_COPY.lead, DOCS_COPY.youHaveABot];
   for (const section of DOCS_SECTIONS) {
     parts.push(section.title);
     for (const block of section.blocks) parts.push(blockText(block));
