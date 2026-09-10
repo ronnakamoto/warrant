@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import { attachWalletDesk, deskForWallet, deskOwnedByWallet, resolveMintDesk } from "../src/desk.ts";
+import {
+  attachWalletDesk,
+  deskForWallet,
+  deskMessage,
+  deskOwnedByWallet,
+  resolveMintDesk,
+} from "../src/desk.ts";
 import { createSessionStore, type GuestSession } from "../src/session.ts";
-import type { Address } from "viem";
+import { getAddress, type Address } from "viem";
 
 const A = "0x00000000000000000000000000000000000000aB" as Address;
 const B = "0x00000000000000000000000000000000000000cD" as Address;
@@ -16,6 +22,13 @@ function sess(over: Partial<GuestSession> & Pick<GuestSession, "id" | "deskId" |
 }
 
 describe("desk", function () {
+  it("deskMessage is the signed recover text", function () {
+    assert.equal(
+      deskMessage(A, "ab".repeat(16)),
+      `Warrant desk\n${getAddress(A)}\n${"ab".repeat(16)}`,
+    );
+  });
+
   it("resolveMintDesk reuses the wallet desk and ignores a foreign cookie", function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     store.put(sess({ id: "1", deskId: "aa".repeat(16), wallet: A }));

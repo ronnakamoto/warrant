@@ -93,6 +93,7 @@ export function GuestTry() {
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const [origin, setOrigin] = useState("http://127.0.0.1:3001");
   const [scope, setScope] = useState<GuestScopeName>("fetch");
 
@@ -243,22 +244,28 @@ export function GuestTry() {
   }
 
   async function recoverDesk() {
+    if (busy) return;
     setError(null);
-    let wallet: string;
+    setRecovering(true);
     try {
-      const { connectRootWallet } = await import("../lib/browser-wallet");
-      wallet = await connectRootWallet();
-    } catch (e) {
-      const { WalletRejectedError } = await import("../lib/browser-wallet");
-      setError(
-        e instanceof WalletRejectedError || (e instanceof Error && e.message === "NO_WALLET")
-          ? GUEST_COPY.connectWallet
-          : GUEST_COPY.hostError,
-      );
-      return;
-    }
-    try {
+      let wallet: string;
+      try {
+        const { connectRootWallet } = await import("../lib/browser-wallet");
+        wallet = await connectRootWallet();
+      } catch (e) {
+        const { WalletRejectedError } = await import("../lib/browser-wallet");
+        setError(
+          e instanceof WalletRejectedError || (e instanceof Error && e.message === "NO_WALLET")
+            ? GUEST_COPY.connectWallet
+            : GUEST_COPY.hostError,
+        );
+        return;
+      }
       const ch = await fetch("/api/guest/challenge", { method: "POST" });
+      if (ch.status === 429) {
+        setPhase("limited");
+        return;
+      }
       const { nonce } = (await ch.json()) as { nonce?: string };
       if (!ch.ok || typeof nonce !== "string") {
         setError(GUEST_COPY.hostError);
@@ -271,6 +278,10 @@ export function GuestTry() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ wallet, nonce, signature }),
       });
+      if (res.status === 429) {
+        setPhase("limited");
+        return;
+      }
       const body = (await res.json().catch(() => ({}))) as {
         warrants?: WarrantView[];
         currentId?: string;
@@ -289,7 +300,13 @@ export function GuestTry() {
       setPhase(list.some((w) => w.status === "fired") ? "revoked" : "land");
     } catch (e) {
       const { WalletRejectedError } = await import("../lib/browser-wallet");
-      setError(e instanceof WalletRejectedError ? GUEST_COPY.signRejected : GUEST_COPY.hostError);
+      if (e instanceof WalletRejectedError) {
+        setError(GUEST_COPY.signRejected);
+        return;
+      }
+      setError(e instanceof Error && e.message === "NO_WALLET" ? GUEST_COPY.connectWallet : GUEST_COPY.hostError);
+    } finally {
+      setRecovering(false);
     }
   }
 
@@ -400,7 +417,7 @@ export function GuestTry() {
     }
   }
 
-  const busy = phase === "minting" || revoking;
+  const busy = phase === "minting" || revoking || recovering;
   const live = token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
 
   return (

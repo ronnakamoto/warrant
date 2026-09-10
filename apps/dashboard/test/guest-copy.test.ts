@@ -338,6 +338,8 @@ describe("guest first-run copy", function () {
     assert.match(src, /\/api\/guest\/challenge/);
     assert.match(src, /signDeskMessage|personal_sign/);
     assert.match(src, /connectWallet/);
+    assert.match(src, /recovering/);
+    assert.match(src, /status === 429/);
   });
 
   it("rejects cross-origin guest POSTs on the public host", function () {

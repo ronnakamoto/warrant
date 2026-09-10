@@ -18,4 +18,16 @@ describe("nonce store", function () {
     t = 1_000 + 101;
     assert.equal(store.take(nonce), false);
   });
+
+  it("sweep drops expired nonces and keeps live ones", function () {
+    let t = 1_000;
+    const store = createNonceStore({ ttlMs: 100, now: () => t });
+    const stale = store.issue().nonce;
+    t = 1_050;
+    const live = store.issue().nonce;
+    t = 1_101;
+    assert.equal(store.sweep(), 1);
+    assert.equal(store.take(stale), false);
+    assert.equal(store.take(live), true);
+  });
 });

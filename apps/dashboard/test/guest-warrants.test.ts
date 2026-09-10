@@ -55,6 +55,24 @@ describe("guest warrants BFF", function () {
     }
   });
 
+  it("POST /api/guest/challenge forwards prove 429", async function () {
+    const stub = withProveStub(async (input) => {
+      if (String(input).includes("/v1/desk-challenge")) {
+        return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429 });
+      }
+      return new Response("{}", { status: 500 });
+    });
+    try {
+      const { POST } = await import("../src/app/api/guest/challenge/route.ts");
+      const res = await POST(
+        new Request("http://127.0.0.1/api/guest/challenge", { method: "POST" }),
+      );
+      assert.equal(res.status, 429);
+    } finally {
+      stub.restore();
+    }
+  });
+
   it("POST /api/guest/challenge returns a nonce", async function () {
     const stub = withProveStub(async (input) => {
       if (String(input).includes("/v1/desk-challenge")) {

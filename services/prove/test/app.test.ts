@@ -917,6 +917,28 @@ describe("prove desk recover", function () {
     assert.equal(rec.status, 400);
     assert.deepEqual(await rec.json(), { error: "deskId required" });
   });
+
+  it("rate-limits challenge and recover together, not mint", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const app = createProveApp({
+      authSecret: secret,
+      store,
+      nonces: createNonceStore(),
+      mintLimiter: createRateLimiter({ max: 1, windowMs: 60_000 }),
+      deskLimiter: createRateLimiter({ max: 1, windowMs: 60_000 }),
+    });
+    const first = await app.request("/v1/desk-challenge", { method: "POST", headers: mintHdrs });
+    assert.equal(first.status, 200);
+    const second = await app.request("/v1/desk-challenge", { method: "POST", headers: mintHdrs });
+    assert.equal(second.status, 429);
+    assert.deepEqual(await second.json(), { error: "rate_limited" });
+    const rec = await app.request("/v1/desk-recover", {
+      method: "POST",
+      headers: mintHdrs,
+      body: JSON.stringify({ wallet: account.address, nonce: "aa", signature: "0xbb" }),
+    });
+    assert.equal(rec.status, 429);
+  });
 });
 
 describe("rate limiter", function () {

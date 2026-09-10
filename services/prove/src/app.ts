@@ -31,6 +31,7 @@ export type ProveAppOpts = {
   readBinding?: ReadBindingFn;
   prepareRevoke?: typeof prepareGuestRevoke;
   mintLimiter?: RateLimiter;
+  deskLimiter?: RateLimiter;
   proveTimeoutMs?: number;
   allowedOrigins?: string[];
 };
@@ -56,6 +57,8 @@ export function createProveApp(opts: ProveAppOpts): Hono {
   const app = new Hono();
   const limiter =
     opts.mintLimiter ?? createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
+  const deskLimiter =
+    opts.deskLimiter ?? createRateLimiter({ max: 20, windowMs: 60 * 60 * 1000 });
 
   app.get("/health", (c) => c.json({ ok: true }));
 
@@ -127,12 +130,18 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!opts.nonces) {
       return c.json({ error: "challenge not configured" }, 503);
     }
+    if (!deskLimiter.take(clientKey(c))) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
     return c.json(opts.nonces.issue());
   });
 
   app.post("/v1/desk-recover", async (c) => {
     if (!opts.store || !opts.nonces) {
       return c.json({ error: "recover not configured" }, 503);
+    }
+    if (!deskLimiter.take(clientKey(c))) {
+      return c.json({ error: "rate_limited" }, 429);
     }
     const raw = await c.req.text();
     if (raw.length > BODY_LIMIT) return c.json({ error: "payload too large" }, 413);
