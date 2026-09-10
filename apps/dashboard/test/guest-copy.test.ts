@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import {
   agentPrompt,
   GUEST_COPY,
+  landHeadlineLines,
+  landDayFor,
+  LAND_DAY,
   HEDERA_FAUCET,
   PUBLIC_APP_ORIGIN,
   WARRANT_TTL_MS,
@@ -45,15 +48,29 @@ import {
 
 describe("guest first-run copy", function () {
   it("keeps protocol words out of the land", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead}`;
-    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free"]) {
-      assert.equal(land.includes(banned), false, banned);
+    const days = (["fetch", "translate", "both"] as const)
+      .map((s) => {
+        const d = landDayFor(s);
+        return `${d.title} ${d.story} ${d.act} ${d.actFoot}`;
+      })
+      .join(" ");
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead} ${days} ${LAND_DAY.youFoot} ${LAND_DAY.botFoot} ${LAND_DAY.fireFoot}`;
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free", "shop", "API"]) {
+      assert.equal(new RegExp(banned, banned === "API" ? "" : "i").test(land), false, banned);
     }
   });
 
   it("does not put Registry in the land sentence", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/Registry/i.test(land), false);
+  });
+
+  it("splits the land headline onto poster display lines", function () {
+    assert.deepEqual(landHeadlineLines(), [
+      "Your agent can act.",
+      "Nobody it called learns",
+      "who you are.",
+    ]);
   });
 
   it("keeps land chrome to Warrant and Docs", function () {
@@ -80,7 +97,7 @@ describe("guest first-run copy", function () {
   });
 
   it("is a warrant for an existing agent, not a hiring demo", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story}`;
     assert.equal(/Hire an agent/i.test(land), false);
     assert.equal(/Try it/i.test(land), false);
     assert.match(GUEST_COPY.authorize, /Authorize/i);
@@ -152,11 +169,36 @@ describe("guest first-run copy", function () {
     assert.match(GUEST_COPY.scopeMemo, /memo/i);
     assert.match(GUEST_COPY.scopeTranslate, /translate/i);
     assert.match(GUEST_COPY.scopeBoth, /both/i);
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story} ${landDayFor("translate").story} ${landDayFor("both").story}`;
     assert.equal(/Hire an agent/i.test(land), false);
-    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "desk"]) {
-      assert.equal(land.includes(banned), false, banned);
+    for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "desk", "shop"]) {
+      assert.equal(land.toLowerCase().includes(banned.toLowerCase()), false, banned);
     }
+  });
+
+  it("switches the land day when the scope changes", function () {
+    const fetchDay = landDayFor("fetch");
+    const translateDay = landDayFor("translate");
+    const bothDay = landDayFor("both");
+    assert.match(fetchDay.story, /memo/i);
+    assert.match(translateDay.story, /translat/i);
+    assert.match(bothDay.story, /memo or translate/i);
+    assert.notEqual(fetchDay.story, translateDay.story);
+    assert.notEqual(translateDay.story, bothDay.story);
+    assert.notEqual(fetchDay.title, translateDay.title);
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    const daySrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/LandDay.tsx"),
+      "utf8",
+    );
+    assert.match(src, /<LandDay scope=\{scope\}/);
+    assert.match(src, /role="tablist"/);
+    assert.match(daySrc, /role="tabpanel"/);
+    assert.match(daySrc, /landDayFor\(scope\)/);
+    assert.equal(/Hire an agent/i.test(`${fetchDay.story} ${translateDay.story} ${bothDay.story}`), false);
   });
 
   it("lets Authorize pick memo, translate, or both", function () {
@@ -173,7 +215,7 @@ describe("guest first-run copy", function () {
     assert.match(src, /useState<GuestScopeName>\("fetch"\)/);
     assert.match(src, /scope\?: GuestScopeName/);
     assert.equal((src.match(/label=\{GUEST_COPY\.authorize\}/g) ?? []).length, 1);
-    assert.match(src, /<Button label=\{GUEST_COPY\.authorize\}/);
+    assert.match(src, /<Button[\s\S]*?label=\{GUEST_COPY\.authorize\}/);
     assert.equal(src.includes('label={GUEST_COPY.authorize} variant="'), false);
     const lifeAt = src.indexOf("remainingLife(selected.remainingMs)");
     assert.ok(lifeAt >= 0);
@@ -351,6 +393,11 @@ describe("guest first-run copy", function () {
     assert.match(src, /\/api\/guest\/challenge/);
     assert.match(src, /signDeskMessage|personal_sign/);
     assert.match(src, /connectWallet/);
+    assert.match(src, /land-hero/);
+    assert.match(src, /land-scope/);
+    assert.match(src, /LandDay/);
+    assert.match(src, /connectAction/);
+    assert.equal(src.includes("label={GUEST_COPY.connectWallet}"), false);
     assert.match(src, /recovering/);
     assert.match(src, /status === 429/);
   });
