@@ -4,7 +4,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Warrant",
-  description: "Your agent can act. The API never learns who you are.",
+  description: "Your agent can act. Nobody it called learns who you are.",
 };
 
 export default function RootLayout({

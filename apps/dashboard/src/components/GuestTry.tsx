@@ -4,15 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { VStack } from "@astryxdesign/core/Layout";
-import { Heading, Text } from "@astryxdesign/core/Text";
+import { Text } from "@astryxdesign/core/Text";
 import {
   agentPrompt,
   GUEST_COPY,
   WARRANT_TTL_MS,
+  landHeadlineLines,
   remainingLife,
   remainingMsUntil,
   type GuestScopeName,
 } from "../lib/guest-copy";
+import { LandDay } from "./LandDay";
 
 type Phase = "land" | "minting" | "ready" | "revoked" | "limited";
 type WarrantView = {
@@ -57,7 +59,52 @@ function ScopePicks(props: {
   scope: GuestScopeName;
   busy: boolean;
   onPick: (scope: GuestScopeName) => void;
+  tone?: "land" | "console";
 }) {
+  if (props.tone === "land") {
+    const order = SCOPE_PICKS.map(([name]) => name);
+    return (
+      <div className="land-scope">
+        <p className="land-scope-lead" id="land-scope-label">
+          {GUEST_COPY.scopeLead}
+        </p>
+        <div
+          className="land-scope-picks"
+          role="tablist"
+          aria-labelledby="land-scope-label"
+          onKeyDown={(e) => {
+            const i = order.indexOf(props.scope);
+            let next = i;
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (i + 1) % order.length;
+            else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+              next = (i - 1 + order.length) % order.length;
+            } else return;
+            e.preventDefault();
+            const name = order[next]!;
+            props.onPick(name);
+            document.getElementById(`land-tab-${name}`)?.focus();
+          }}
+        >
+          {SCOPE_PICKS.map(([name, label]) => (
+            <button
+              key={name}
+              id={`land-tab-${name}`}
+              type="button"
+              role="tab"
+              className="land-scope-pick"
+              aria-selected={props.scope === name}
+              aria-controls="land-day-panel"
+              tabIndex={props.scope === name ? 0 : -1}
+              disabled={props.busy}
+              onClick={() => props.onPick(name)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <VStack gap={2}>
       <Text type="supporting" color="secondary">
@@ -419,45 +466,59 @@ export function GuestTry() {
 
   const busy = phase === "minting" || revoking || recovering;
   const live = token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
+  const landing = phase === "land" || phase === "limited" || phase === "minting";
+  const titleLines = landHeadlineLines();
 
   return (
-    <VStack gap={5}>
-      <VStack gap={2}>
-        <Heading level={1}>{GUEST_COPY.headline}</Heading>
-        <Text type="supporting" color="secondary">
-          {GUEST_COPY.standfirst}
-        </Text>
-        <Text type="supporting" color="secondary">
-          {GUEST_COPY.world}
-        </Text>
-        <Text type="supporting" color="secondary">
-          {GUEST_COPY.twoWallets}
-        </Text>
-      </VStack>
-
+    <>
       {error ? <Banner status="error" title="Can’t do that" description={error} /> : null}
 
-      {phase === "land" || phase === "limited" ? (
-        <VStack gap={3}>
+      {landing ? (
+        <div className="land">
+          <div className="land-hero">
+            <h1 className="land-title">
+              {titleLines.map((line, i) => (
+                <span key={line}>
+                  {i > 0 ? <br /> : null}
+                  {line}
+                </span>
+              ))}
+            </h1>
+            <p className="land-standfirst">{GUEST_COPY.standfirst}</p>
+          </div>
           {phase === "limited" ? <Banner status="warning" title={GUEST_COPY.rateLimited} /> : null}
-          <Text type="supporting" color="secondary">
-            {GUEST_COPY.connectWallet}
-          </Text>
-          <ScopePicks scope={scope} busy={busy} onPick={setScope} />
-          <Button label={GUEST_COPY.authorize} onClick={() => void authorize()} isDisabled={busy} />
-          <Button
-            variant="secondary"
-            label={GUEST_COPY.connectWallet}
-            onClick={() => void recoverDesk()}
-            isDisabled={busy}
-          />
-        </VStack>
+          {phase === "minting" ? <p className="land-note">{GUEST_COPY.minting}</p> : null}
+          {phase === "land" || phase === "limited" ? (
+            <div className="land-act">
+              <ScopePicks tone="land" scope={scope} busy={busy} onPick={setScope} />
+              <LandDay scope={scope} />
+              <div className="land-cta">
+                <Button
+                  label={GUEST_COPY.authorize}
+                  variant="primary"
+                  size="lg"
+                  onClick={() => void authorize()}
+                  isDisabled={busy}
+                />
+                <button
+                  type="button"
+                  className="land-connect"
+                  onClick={() => void recoverDesk()}
+                  disabled={busy}
+                >
+                  {GUEST_COPY.connectAction}
+                </button>
+              </div>
+              <p className="land-note">
+                {GUEST_COPY.world} {GUEST_COPY.twoWallets}
+              </p>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
-      {phase === "minting" ? <Text>{GUEST_COPY.minting}</Text> : null}
-
       {live ? (
-        <VStack gap={5}>
+        <VStack gap={5} className="console">
           {notice ? <Banner status="success" title={notice} /> : null}
           <VStack gap={1}>
             <Text>{GUEST_COPY.authorized}</Text>
@@ -541,18 +602,22 @@ export function GuestTry() {
       ) : null}
 
       {phase === "revoked" ? (
-        <VStack gap={3}>
+        <VStack gap={3} className="console">
           <Banner status="success" title={GUEST_COPY.afterRevoke} />
           <ScopePicks scope={scope} busy={busy} onPick={setScope} />
-          <Button label={GUEST_COPY.again} onClick={() => void authorize()} isDisabled={busy} />
-          <Button
-            variant="secondary"
-            label={GUEST_COPY.connectWallet}
-            onClick={() => void recoverDesk()}
-            isDisabled={busy}
-          />
+          <div className="land-cta">
+            <Button label={GUEST_COPY.again} onClick={() => void authorize()} isDisabled={busy} />
+            <button
+              type="button"
+              className="land-connect"
+              onClick={() => void recoverDesk()}
+              disabled={busy}
+            >
+              {GUEST_COPY.connectAction}
+            </button>
+          </div>
         </VStack>
       ) : null}
-    </VStack>
+    </>
   );
 }

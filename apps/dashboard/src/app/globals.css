@@ -25,6 +25,247 @@ body {
   max-width: 800px;
 }
 
+.site-page:has(.land) .site-chrome,
+.site-page:has(.land) .site-col {
+  max-width: 48rem;
+}
+
+.land {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: calc(100svh - 7.5rem);
+  padding-top: clamp(0.5rem, 6vh, 3.5rem);
+  padding-bottom: 4rem;
+}
+
+.land-hero {
+  max-width: 38rem;
+}
+
+.land-title {
+  margin: 0;
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-semibold);
+  font-size: clamp(2.25rem, 5.2vw, 3rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+}
+
+.land-standfirst {
+  margin: 1.5rem 0 0;
+  max-width: 32rem;
+  font-size: var(--font-size-lg);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.land-act {
+  margin-top: 2.25rem;
+}
+
+.land-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-top: 2rem;
+}
+
+.land-connect {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.5rem 0.25rem;
+  min-height: 2.75rem;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.land-connect:hover,
+.land-connect:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.land-connect:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.land-scope {
+  margin-top: 0;
+}
+
+.land-day {
+  margin-top: 1.75rem;
+}
+
+.land-day-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0 0;
+  position: relative;
+}
+
+.land-day-rail::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.land-day-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.land-day-node {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--color-text-primary);
+  background: var(--color-background-body);
+  border-radius: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.land-day-step[data-live="true"] .land-day-node {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.land-day-name {
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  letter-spacing: -0.02em;
+}
+
+.land-day-foot {
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.land-story-title {
+  margin: 1.75rem 0 0;
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-semibold);
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.land-story {
+  margin: 0.65rem 0 0;
+  max-width: 32rem;
+  font-size: var(--font-size-lg);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.land-day-live {
+  animation: land-day-in 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes land-day-in {
+  from {
+    opacity: 0.55;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-day-live {
+    animation: none;
+  }
+}
+
+@media (max-width: 36rem) {
+  .land-day-rail {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.35rem 1.25rem;
+  }
+
+  .land-day-rail::before {
+    display: none;
+  }
+
+  .land-day-step {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+.land-scope-lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.land-scope-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1.25rem;
+  margin-top: 0.15rem;
+}
+
+.land-scope-pick {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.55rem 0;
+  min-height: 2.75rem;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.land-scope-pick[aria-selected="true"] {
+  color: var(--color-text-primary);
+  box-shadow: inset 0 -1px 0 var(--color-text-primary);
+}
+
+.land-scope-pick:hover,
+.land-scope-pick:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.land-scope-pick:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.land-note {
+  margin: 2rem 0 0;
+  max-width: 28rem;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.console {
+  padding-top: var(--spacing-2);
+}
+
 .site-chrome {
   display: flex;
   align-items: baseline;
