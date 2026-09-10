@@ -30,10 +30,14 @@ export async function connectRootWallet(): Promise<Address> {
   }
 }
 
+export function deskMessage(wallet: Address, nonce: string): string {
+  return `Warrant desk\n${getAddress(wallet)}\n${nonce}`;
+}
+
 export async function signDeskMessage(wallet: Address, nonce: string): Promise<Hex> {
   const eth = injected();
   if (!eth) throw new Error("NO_WALLET");
-  const message = `Warrant desk\n${wallet}\n${nonce}`;
+  const message = deskMessage(wallet, nonce);
   try {
     const signature = await eth.request({
       method: "personal_sign",

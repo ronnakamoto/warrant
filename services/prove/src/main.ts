@@ -41,7 +41,11 @@ async function main(): Promise<void> {
   const store = sessionPath
     ? createPersistedSessionStore({ path: sessionPath, ttlMs })
     : createSessionStore({ ttlMs });
-  setInterval(() => store.sweep(), 60_000).unref();
+  const nonces = createNonceStore();
+  setInterval(() => {
+    store.sweep();
+    nonces.sweep();
+  }, 60_000).unref();
 
   const allowedOrigins = (process.env.PROVE_ALLOWED_ORIGINS ?? "")
     .split(",")
@@ -51,7 +55,7 @@ async function main(): Promise<void> {
   const app = createProveApp({
     authSecret: secret,
     store,
-    nonces: createNonceStore(),
+    nonces,
     bindPrivateKey,
     gasSponsorKey,
     registry,

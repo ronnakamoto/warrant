@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 export type NonceStore = {
   issue(): { nonce: string; expiresAt: number };
   take(nonce: string): boolean;
+  sweep(): number;
 };
 
 export function createNonceStore(opts?: { ttlMs?: number; now?: () => number }): NonceStore {
@@ -23,6 +24,16 @@ export function createNonceStore(opts?: { ttlMs?: number; now?: () => number }):
       pending.delete(nonce);
       if (now() >= expiresAt) return false;
       return true;
+    },
+    sweep() {
+      const t = now();
+      let wiped = 0;
+      for (const [nonce, expiresAt] of pending) {
+        if (t < expiresAt) continue;
+        pending.delete(nonce);
+        wiped += 1;
+      }
+      return wiped;
     },
   };
 }
