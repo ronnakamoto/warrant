@@ -7,6 +7,7 @@ import {
   ensureIdentity,
   freshFieldTag,
   identityOf,
+  isUnboundError,
   type WarrantState,
 } from "@warrant/agent";
 import { isAddress, type Address, type Hex } from "viem";
@@ -180,21 +181,39 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   const prior = priorAliceForWallet(deps.store, deps.wallet);
   if (prior?.state.identities.alice) {
     state.identities.alice = structuredClone(prior.state.identities.alice);
-    const reused = identityOf(state, "alice");
-    const read = deps.readBinding ?? (await import("@warrant/agent")).readBinding;
-    const onchain = await read({
-      rpcUrl: deps.rpc,
-      registry: deps.registry,
-      wallet: deps.wallet,
-    });
-    if (reused.publicKey[0] !== onchain.pkX || reused.publicKey[1] !== onchain.pkY) {
-      throw new Error("wallet already bound");
-    }
-    epoch = onchain.epoch;
-    leaf = onchain.leaf;
   } else {
     ensureIdentity(state, "alice", `alice-${seed}`);
-    const alice = identityOf(state, "alice");
+  }
+  const alice = identityOf(state, "alice");
+
+  if (prior?.state.identities.alice) {
+    const read = deps.readBinding ?? (await import("@warrant/agent")).readBinding;
+    try {
+      const onchain = await read({
+        rpcUrl: deps.rpc,
+        registry: deps.registry,
+        wallet: deps.wallet,
+      });
+      if (alice.publicKey[0] !== onchain.pkX || alice.publicKey[1] !== onchain.pkY) {
+        throw new Error("wallet already bound");
+      }
+      epoch = onchain.epoch;
+      leaf = onchain.leaf;
+    } catch (err) {
+      if (!isUnboundError(err)) throw err;
+      const bound = await bind({
+        rpcUrl: deps.rpc,
+        registry: deps.registry,
+        privateKey: deps.bindPrivateKey,
+        wallet: deps.wallet,
+        pkX: alice.publicKey[0],
+        pkY: alice.publicKey[1],
+        tier: 0,
+      });
+      txHash = bound.txHash ?? "0x";
+      leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+    }
+  } else {
     try {
       const bound = await bind({
         rpcUrl: deps.rpc,

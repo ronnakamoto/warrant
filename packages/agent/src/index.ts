@@ -19,7 +19,7 @@ export { startReadyServer, handleReadyRequest, READY_PORT } from "./ready.js";
 export { proveForChallenge, warrantHeaderJson, type ProveResult } from "./prove-flow.js";
 export { createSnarkjsProver } from "./prover.js";
 export { bindRootOnChain, insertMandatesOnChain, readCurrentRoot } from "./bind.js";
-export { readBinding, type SyncRootResult } from "./sync-root.js";
+export { readBinding, UnboundError, isUnboundError, type SyncRootResult } from "./sync-root.js";
 export {
   TierZeroPersonhood,
   AgentBookPersonhood,

@@ -72,6 +72,42 @@ describe("mintGuest", function () {
     assert.notEqual(session.state, store.get("missing"));
   });
 
+  it("rebinds a persisted Alice when the forest has no leaf", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const first = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+    });
+    const alice = store.get(first.sessionId)!.state.identities.alice!;
+    let bound = 0;
+    const second = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x8704606Bde5E257dC009cCe55214Df70975f89c5",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async ({ pkX, pkY }) => {
+        bound += 1;
+        assert.equal(pkX, BigInt(alice.pkX));
+        assert.equal(pkY, BigInt(alice.pkY));
+        return { leaf: 9n, root: 10n, txHash: "0xf" };
+      },
+      readBinding: async () => {
+        throw new Error("The contract function \"leafOf\" reverted with the following signature:\n0x74a04f02");
+      },
+    });
+    assert.equal(bound, 1);
+    assert.notEqual(second.sessionId, first.sessionId);
+    assert.deepEqual(store.get(second.sessionId)?.state.identities.alice, alice);
+  });
+
   it("reuses Alice when the wallet is already bound", async function () {
     const store = createSessionStore({ ttlMs: 60_000 });
     const wallet = "0x00000000000000000000000000000000000000ab";

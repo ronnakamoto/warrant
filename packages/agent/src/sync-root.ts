@@ -30,7 +30,22 @@ const abi = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
+  { type: "error", name: "Unbound", inputs: [] },
 ] as const;
+
+export class UnboundError extends Error {
+  readonly code = "UNBOUND" as const;
+  constructor(wallet: string) {
+    super(`wallet ${wallet} is not bound on registry`);
+    this.name = "UnboundError";
+  }
+}
+
+export function isUnboundError(err: unknown): boolean {
+  if (err instanceof UnboundError) return true;
+  const msg = err instanceof Error ? `${err.message} ${(err as { shortMessage?: string }).shortMessage ?? ""}` : String(err);
+  return /Unbound|is not bound on registry|0x74a04f02/i.test(msg);
+}
 
 export type SyncRootArgs = {
   rpcUrl: string;
@@ -54,13 +69,15 @@ export async function readBinding(args: SyncRootArgs): Promise<SyncRootResult> {
     chain: args.chain ?? baseSepolia,
     transport: http(args.rpcUrl),
   });
-  const [binding, leaf, currentRoot] = await Promise.all([
-    client.readContract({
-      address: args.registry,
-      abi,
-      functionName: "bindings",
-      args: [args.wallet],
-    }),
+  const binding = await client.readContract({
+    address: args.registry,
+    abi,
+    functionName: "bindings",
+    args: [args.wallet],
+  });
+  const [pkX, pkY, tier, epoch, exists] = binding;
+  if (!exists) throw new UnboundError(args.wallet);
+  const [leaf, currentRoot] = await Promise.all([
     client.readContract({
       address: args.registry,
       abi,
@@ -73,8 +90,6 @@ export async function readBinding(args: SyncRootArgs): Promise<SyncRootResult> {
       functionName: "currentRoot",
     }),
   ]);
-  const [pkX, pkY, tier, epoch, exists] = binding;
-  if (!exists) throw new Error(`wallet ${args.wallet} is not bound on registry`);
   const expected = hashLeaf(pkX, pkY, BigInt(tier), BigInt(epoch));
   if (expected !== leaf) {
     throw new Error(`leafOf mismatch: chain=${leaf} localHash=${expected}`);
