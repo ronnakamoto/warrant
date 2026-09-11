@@ -13,6 +13,7 @@ import {
   WARRANT_TTL_MS,
   hashscanTestnetUrl,
   helperSkillMarkdown,
+  mandateRemainingMs,
   remainingLife,
   remainingMsUntil,
   shopIsDead,
@@ -217,9 +218,15 @@ describe("guest first-run copy", function () {
     assert.equal((src.match(/label=\{GUEST_COPY\.authorize\}/g) ?? []).length, 1);
     assert.match(src, /<Button[\s\S]*?label=\{GUEST_COPY\.authorize\}/);
     assert.equal(src.includes('label={GUEST_COPY.authorize} variant="'), false);
-    const lifeAt = src.indexOf("remainingLife(selected.remainingMs)");
+    const lifeAt = src.indexOf("remainingLife(mandateRemainingMs(selected.createdAt))");
     assert.ok(lifeAt >= 0);
-    assert.equal(src.slice(lifeAt, lifeAt + 40).includes("scope"), false);
+    assert.equal(src.slice(lifeAt, lifeAt + 60).includes("scope"), false);
+    assert.match(src, /GUEST_COPY\.promptLead/);
+    assert.match(src, /actingWarrants\.length > 1/);
+    assert.equal(src.includes("idTail"), false);
+    assert.match(src, /label=\{copied \? GUEST_COPY\.copied : GUEST_COPY\.copyPrompt\}[\s\S]*?variant="primary"/);
+    assert.match(src, /\{actingWarrants\.length > 1 \? \(\s*<Button[\s\S]*?label=\{GUEST_COPY\.fireEvery\}/);
+    assert.match(src, /localHost \? \([\s\S]*GUEST_COPY\.fundHint/);
   });
 
   it("hands a memo-only helper skill that cannot hire or translate", function () {
@@ -823,6 +830,13 @@ describe("guest first-run copy", function () {
     assert.equal(remainingLife(29 * 60 * 1000), "29 minutes left");
     assert.equal(remainingLife(40_000), "Less than a minute left");
     assert.equal(remainingLife(0), "This warrant has expired");
+  });
+
+  it("counts bot life from the thirty-minute mandate, not the desk", function () {
+    const now = 1_000_000_000;
+    assert.equal(mandateRemainingMs(now, now), WARRANT_TTL_MS);
+    assert.equal(mandateRemainingMs(now - 31 * 60 * 1000, now), 0);
+    assert.equal(remainingLife(mandateRemainingMs(now, now)), "30 minutes left");
   });
 
   it("recomputes remaining life from an expiry instant", function () {
