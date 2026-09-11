@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Production-oriented Groth16 phase-2 for the product `warrant` circuit (pot16).
+# Production-oriented Groth16 phase-2 for the product `warrant` circuit.
+# pot16 if R1CS < 2^16; pot17 if not. Forest hop-membership is pot17.
 #
 # Requires strong operator entropy. Finalizes with a public beacon contribution so the
 # last phase-2 step has no private toxic waste. Prior contribution entropy must still
@@ -9,7 +10,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="${ROOT}/circuits/build"
 PTAU_DIR="${ROOT}/circuits/ptau"
 NAME="${1:-warrant}"
-PTAU="${PTAU_DIR}/powersOfTau28_hez_final_16.ptau"
 SNARKJS="${ROOT}/node_modules/snarkjs/cli.js"
 
 mkdir -p "$BUILD" "$PTAU_DIR"
@@ -23,8 +23,8 @@ fi
 
 BEACON="${WARRANT_CEREMONY_BEACON:-}"
 if [[ -z "$BEACON" ]]; then
-  # Public deterministic beacon for reproducible demo finals; override for releases.
-  BEACON="$(printf '%s' "warrant/${NAME}/ceremony/v1" | shasum -a 256 | awk '{print $1}')"
+  # Public deterministic beacon for this circuit generation; override for releases.
+  BEACON="$(printf '%s' "warrant/${NAME}/ceremony/v2" | shasum -a 256 | awk '{print $1}')"
   echo "WARRANT_CEREMONY_BEACON unset — using derived public beacon: $BEACON"
 fi
 # snarkjs expects bare hex (no 0x prefix).
@@ -34,11 +34,28 @@ if [[ ! "$BEACON" =~ ^[0-9a-fA-F]+$ ]]; then
   exit 1
 fi
 
+if [[ ! -f "${BUILD}/${NAME}.r1cs" ]]; then
+  "${ROOT}/scripts/compile-circuit" "$NAME"
+fi
+
+CONSTRAINTS="$(node "$SNARKJS" r1cs info "${BUILD}/${NAME}.r1cs" 2>/dev/null | awk '/# of Constraints/{print $NF}')"
+if [[ -z "$CONSTRAINTS" ]]; then
+  echo "could not read constraint count from ${BUILD}/${NAME}.r1cs" >&2
+  exit 1
+fi
+PTAU_POWER=16
+if [[ "$CONSTRAINTS" -ge 65536 ]]; then
+  PTAU_POWER=17
+fi
+PTAU="${PTAU_DIR}/powersOfTau28_hez_final_${PTAU_POWER}.ptau"
+echo "R1CS constraints=${CONSTRAINTS} → pot${PTAU_POWER} (${PTAU})"
+
 if [[ ! -f "$PTAU" ]]; then
-  echo "Downloading Hermez pot16 final..."
+  echo "Downloading pot${PTAU_POWER} final..."
   urls=(
-    "https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_16.ptau"
-    "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_16.ptau"
+    "https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_${PTAU_POWER}.ptau"
+    "https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_${PTAU_POWER}.ptau"
+    "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_${PTAU_POWER}.ptau"
   )
   ok=0
   for url in "${urls[@]}"; do
@@ -50,13 +67,9 @@ if [[ ! -f "$PTAU" ]]; then
     rm -f "$PTAU"
   done
   if [[ "$ok" -ne 1 ]]; then
-    echo "failed to download pot16 from known mirrors" >&2
+    echo "failed to download pot${PTAU_POWER} from known mirrors" >&2
     exit 1
   fi
-fi
-
-if [[ ! -f "${BUILD}/${NAME}.r1cs" ]]; then
-  "${ROOT}/scripts/compile-circuit" "$NAME"
 fi
 
 Z0="${BUILD}/${NAME}_0000.zkey"

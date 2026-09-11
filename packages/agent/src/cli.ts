@@ -8,7 +8,7 @@ import {
   createMandate,
   hashLeaf,
 } from "@ronnakamoto/warrant-core";
-import { bindRootOnChain, readCurrentRoot } from "./bind.js";
+import { bindRootOnChain, insertMandatesOnChain, readCurrentRoot } from "./bind.js";
 import { proveForChallenge, warrantHeaderJson } from "./prove-flow.js";
 import { createSnarkjsProver } from "./prover.js";
 import { warrantFetch } from "./fetch.js";
@@ -261,7 +261,7 @@ function parentScopeBudget(state: WarrantState, from: string): {
   };
 }
 
-function cmdDelegate(args: string[]): void {
+async function cmdDelegate(args: string[]): Promise<void> {
   const from = requireFlag(args, "--from");
   const to = requireFlag(args, "--to");
   const scopeSpec = flag(args, "--scope") ?? "translate";
@@ -309,6 +309,26 @@ function cmdDelegate(args: string[]): void {
       R8y: signed.signature.R8y.toString(),
     },
   });
+  if (!state.members.includes(signed.hash.toString())) {
+    appendLeaf(state, signed.hash);
+  }
+  const rpc = flag(args, "--rpc") ?? process.env.BASE_SEPOLIA_RPC;
+  const registry = (flag(args, "--registry") ?? process.env.REGISTRY_ADDRESS) as
+    | `0x${string}`
+    | undefined;
+  const pk = (flag(args, "--private-key") ?? process.env.BIND_PRIVATE_KEY) as
+    | `0x${string}`
+    | undefined;
+  const wallet = state.rootWallet as `0x${string}` | undefined;
+  if (rpc && registry && pk && wallet) {
+    await insertMandatesOnChain({
+      rpcUrl: rpc,
+      registry,
+      privateKey: pk,
+      wallet,
+      hashes: [signed.hash],
+    });
+  }
   saveState(state, path);
   console.log(
     JSON.stringify(
@@ -515,7 +535,7 @@ async function main(): Promise<void> {
       await cmdSyncRoot(rest);
       break;
     case "delegate":
-      cmdDelegate(rest);
+      await cmdDelegate(rest);
       break;
     case "prove":
       await cmdProve(rest);

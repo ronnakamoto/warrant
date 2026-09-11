@@ -17,6 +17,22 @@ type Binding @entity(immutable: false) {
   updatedAt: BigInt!
 }
 
+type ForestLeaf @entity(immutable: false) {
+  id: ID!
+  index: BigInt!
+  leaf: BigInt!
+  kind: String!
+  wallet: Bytes
+}
+
+type MandateHop @entity(immutable: false) {
+  id: ID!
+  hash: BigInt!
+  wallet: Bytes!
+  index: BigInt!
+  live: Boolean!
+}
+
 type RevokeEvent @entity(immutable: true) {
   id: ID!
   wallet: Bytes!

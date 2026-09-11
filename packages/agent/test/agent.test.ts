@@ -228,6 +228,7 @@ describe("@warrant/agent store + delegate", function () {
         },
       });
     }
+    state.members.push(m1.hash.toString(), m2.hash.toString());
     saveState(state, path);
 
     const prover: IProver = {
@@ -322,6 +323,7 @@ describe("warrant act", function () {
         },
       });
     }
+    state.members.push(m1.hash.toString(), m2.hash.toString());
 
     const payload = {
       extensions: { warrant: { info: { nonce: "n", merkleRoot: rebuildGroup(state).root.toString() } } },

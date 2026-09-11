@@ -74,6 +74,62 @@ export class Revoked__Params {
   }
 }
 
+export class MandateInserted extends ethereum.Event {
+  get params(): MandateInserted__Params {
+    return new MandateInserted__Params(this);
+  }
+}
+
+export class MandateInserted__Params {
+  _event: MandateInserted;
+
+  constructor(event: MandateInserted) {
+    this._event = event;
+  }
+
+  get wallet(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get hash(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get index(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+
+  get root(): BigInt {
+    return this._event.parameters[3].value.toBigInt();
+  }
+}
+
+export class MandateRevoked extends ethereum.Event {
+  get params(): MandateRevoked__Params {
+    return new MandateRevoked__Params(this);
+  }
+}
+
+export class MandateRevoked__Params {
+  _event: MandateRevoked;
+
+  constructor(event: MandateRevoked) {
+    this._event = event;
+  }
+
+  get wallet(): Address {
+    return this._event.parameters[0].value.toAddress();
+  }
+
+  get hash(): BigInt {
+    return this._event.parameters[1].value.toBigInt();
+  }
+
+  get root(): BigInt {
+    return this._event.parameters[2].value.toBigInt();
+  }
+}
+
 export class MandateRegistry extends ethereum.SmartContract {
   static bind(address: Address): MandateRegistry {
     return new MandateRegistry("MandateRegistry", address);

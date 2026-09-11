@@ -21,5 +21,26 @@
       { "name": "epoch", "type": "uint32", "indexed": false }
     ],
     "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MandateInserted",
+    "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "hash", "type": "uint256", "indexed": false },
+      { "name": "index", "type": "uint256", "indexed": false },
+      { "name": "root", "type": "uint256", "indexed": false }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MandateRevoked",
+    "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "hash", "type": "uint256", "indexed": false },
+      { "name": "root", "type": "uint256", "indexed": false }
+    ],
+    "anonymous": false
   }
 ]

@@ -11,7 +11,7 @@ import {
 } from "@warrant/agent";
 import { isAddress, type Address, type Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
-import { mergeGuestLeaf, type LeafLoader } from "./members.js";
+import { mergeForestLeaves, mergeGuestLeaf, type LeafLoader } from "./members.js";
 import { attachWalletDesk, resolveMintDesk } from "./desk.js";
 import {
   createSessionId,
@@ -50,6 +50,11 @@ export type ReadBindingFn = (args: {
   wallet: Address;
 }) => Promise<{ epoch: number; tier: number; leaf: bigint; pkX: bigint; pkY: bigint }>;
 
+export type InsertMandatesFn = (args: {
+  wallet: Address;
+  hashes: bigint[];
+}) => Promise<void>;
+
 export type MintGuestDeps = {
   store: SessionStore;
   bindPrivateKey: Hex;
@@ -59,6 +64,7 @@ export type MintGuestDeps = {
   wallet: Address;
   bindRoot?: BindRootFn;
   readBinding?: ReadBindingFn;
+  insertMandates?: InsertMandatesFn;
   now?: () => number;
   deskId?: string;
   scope?: GuestScopeName;
@@ -116,6 +122,10 @@ export function assembleGuestTree(state: WarrantState, expiry: bigint, bits: big
     parentExpiry: hop1.expiry,
   });
   state.mandates = [storeMandate("alice", "orchestrator", hop1, humanTag), storeMandate("orchestrator", "translator", hop2, humanTag)];
+  state.members = mergeForestLeaves(
+    state.members,
+    state.mandates.map((m) => m.hash),
+  );
 }
 
 function requireHuman(state: WarrantState): { humanTag: string } {
@@ -222,6 +232,12 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   const scope = deps.scope ?? "fetch";
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
   assembleGuestTree(state, expiry, bitsForScope(scope));
+  if (deps.insertMandates) {
+    await deps.insertMandates({
+      wallet: deps.wallet,
+      hashes: state.mandates.map((m) => BigInt(m.hash)),
+    });
+  }
 
   const deskId = resolveMintDesk(deps.store, deps.wallet, deps.deskId);
   const session: GuestSession = {

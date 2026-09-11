@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { FOUNDER_ETH } from "../src/founders.ts";
 import {
+  markHelperFired,
+  markSessionFired,
   markWalletFired,
   prepareGuestRevoke,
   revokeGuest,
@@ -153,6 +155,46 @@ describe("prepareGuestRevoke", function () {
     assert.equal(sponsored, 1);
     assert.equal(out.wallet, "0x00000000000000000000000000000000000000aa");
     assert.ok(Array.isArray(out.siblings));
+    assert.equal(out.kind, "identity");
+  });
+
+  it("prepares siblings for hop 2 when kind is warrant", async function () {
+    const { assembleGuestTree } = await import("../src/mint.ts");
+    const { ensureIdentity, emptyState, freshFieldTag, appendLeaf, identityOf } =
+      await import("@warrant/agent");
+    const { hashLeaf } = await import("@ronnakamoto/warrant-core");
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-hop");
+    ensureIdentity(state, "orchestrator", "orch-hop");
+    ensureIdentity(state, "translator", "trans-hop");
+    state.humanTag = freshFieldTag();
+    state.contextHash = freshFieldTag();
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const alice = identityOf(state, "alice");
+    const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+    appendLeaf(state, leaf);
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
+    const hop2 = state.mandates[1]!.hash;
+    const out = await prepareGuestRevoke({
+      session: {
+        id: "g",
+        deskId: "desk",
+        wallet: "0x00000000000000000000000000000000000000aa",
+        evmPrivateKey: "0x",
+        createdAt: Date.now(),
+        state,
+      },
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      gasSponsorKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      loadMembers: async () => state.members,
+      kind: "warrant",
+      sponsor: async () => undefined,
+    });
+    assert.equal(out.kind, "warrant");
+    assert.equal(out.hash, hop2);
   });
 
   it("marks every session on that wallet fired", function () {
@@ -191,5 +233,65 @@ describe("prepareGuestRevoke", function () {
     assert.equal(store.get("a")?.receipt, undefined);
     assert.equal(store.get("b")?.revoked, true);
     assert.equal(store.get("c")?.revoked, undefined);
+  });
+
+  it("marks this warrant and its helper, not the other wallet", function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put({
+      id: "a",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      helperSessionId: "h",
+      state: emptyState(),
+    });
+    store.put({
+      id: "h",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      parentId: "a",
+      state: emptyState(),
+    });
+    store.put({
+      id: "b",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state: emptyState(),
+    });
+    markSessionFired(store, store.get("a")!);
+    assert.equal(store.get("a")?.revoked, true);
+    assert.equal(store.get("h")?.revoked, true);
+    assert.equal(store.get("b")?.revoked, undefined);
+  });
+
+  it("marks only the helper", function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    store.put({
+      id: "a",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      helperSessionId: "h",
+      state: emptyState(),
+    });
+    store.put({
+      id: "h",
+      deskId: "desk",
+      wallet: "0x00000000000000000000000000000000000000aa",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      parentId: "a",
+      state: emptyState(),
+    });
+    markHelperFired(store, store.get("a")!);
+    assert.equal(store.get("a")?.revoked, undefined);
+    assert.equal(store.get("h")?.revoked, true);
+    assert.equal(store.get("a")?.helperSessionId, undefined);
   });
 });

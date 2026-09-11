@@ -1,5 +1,10 @@
-import { Bound, Revoked } from "../generated/MandateRegistry/MandateRegistry";
-import { Binding, Registry, RevokeEvent } from "../generated/schema";
+import {
+  Bound,
+  MandateInserted,
+  MandateRevoked,
+  Revoked,
+} from "../generated/MandateRegistry/MandateRegistry";
+import { Binding, ForestLeaf, MandateHop, Registry, RevokeEvent } from "../generated/schema";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 function registry(): Registry {
@@ -31,6 +36,13 @@ export function handleBound(event: Bound): void {
   binding.boundAt = event.block.timestamp;
   binding.updatedAt = event.block.timestamp;
   binding.save();
+
+  const row = new ForestLeaf(index.toString());
+  row.index = index;
+  row.leaf = event.params.leaf;
+  row.kind = "identity";
+  row.wallet = event.params.wallet;
+  row.save();
 }
 
 export function handleRevoked(event: Revoked): void {
@@ -63,4 +75,50 @@ export function handleRevoked(event: Revoked): void {
   ev.timestamp = event.block.timestamp;
   ev.txHash = event.transaction.hash;
   ev.save();
+
+  const forest = ForestLeaf.load(binding.index.toString());
+  if (forest != null) {
+    forest.leaf = event.params.newLeaf;
+    forest.save();
+  }
+}
+
+export function handleMandateInserted(event: MandateInserted): void {
+  const reg = registry();
+  reg.currentRoot = event.params.root;
+  reg.size = reg.size.plus(BigInt.fromI32(1));
+  reg.updatedAt = event.block.timestamp;
+  reg.save();
+
+  const row = new ForestLeaf(event.params.index.toString());
+  row.index = event.params.index;
+  row.leaf = event.params.hash;
+  row.kind = "mandate";
+  row.wallet = event.params.wallet;
+  row.save();
+
+  const hop = new MandateHop(event.params.hash.toString());
+  hop.hash = event.params.hash;
+  hop.wallet = event.params.wallet;
+  hop.index = event.params.index;
+  hop.live = true;
+  hop.save();
+}
+
+export function handleMandateRevoked(event: MandateRevoked): void {
+  const reg = registry();
+  reg.currentRoot = event.params.root;
+  reg.updatedAt = event.block.timestamp;
+  reg.save();
+
+  const hop = MandateHop.load(event.params.hash.toString());
+  if (hop != null) {
+    hop.live = false;
+    hop.save();
+    const forest = ForestLeaf.load(hop.index.toString());
+    if (forest != null) {
+      forest.leaf = BigInt.zero();
+      forest.save();
+    }
+  }
 }

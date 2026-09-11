@@ -6,7 +6,7 @@ import {
 import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
 import type { GuestSession } from "./session.js";
 import type { LeafLoader } from "./members.js";
-import { mergeGuestLeaf } from "./members.js";
+import { mergeForestLeaves, mergeGuestLeaf } from "./members.js";
 import { hashLeaf } from "@ronnakamoto/warrant-core";
 import { identityOf } from "@warrant/agent";
 
@@ -26,7 +26,7 @@ export async function refreshMembers(
   try {
     state.members = mergeGuestLeaf(await loadMembers(), leaf);
   } catch {
-    /* keep existing members if Graph is behind */
+    state.members = mergeForestLeaves(state.members, [leaf, ...state.mandates.map((m) => m.hash)]);
   }
 }
 

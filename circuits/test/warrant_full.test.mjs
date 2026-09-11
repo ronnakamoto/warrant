@@ -63,4 +63,8 @@ describe("warrant full (circom_tester)", function () {
       }),
     );
   });
+
+  it("rejects an enabled hop whose mandate hash is not in the forest", async function () {
+    await assertInvalidWitness(circuit, fx.withoutHop2Input());
+  });
 });

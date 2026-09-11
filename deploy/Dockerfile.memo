@@ -11,7 +11,7 @@ COPY services/memo ./services/memo
 RUN pnpm install --frozen-lockfile --filter @warrant/memo... \
   && mkdir -p /app/circuits/build \
   && curl -L --fail -o /app/circuits/build/warrant_vkey.json \
-    https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant_vkey.json
+    https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v2/warrant_vkey.json
 ENV PORT=8789
 ENV NODE_ENV=production
 ENV WARRANT_STRICT_PROD=1

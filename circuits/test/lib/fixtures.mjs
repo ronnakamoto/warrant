@@ -111,12 +111,49 @@ export function buildFullFixture() {
 
   const group = new Group();
   group.addMember(leaf);
-  group.addMember(11n);
-  group.addMember(22n);
-  const mProof = group.generateMerkleProof(0);
 
   const pad = attenuationPad(now);
   const children = [agent, translator, dummy, dummy];
+
+  function hopHashes(tagCValue) {
+    const hashes = [];
+    let parent = 0n;
+    for (let i = 0; i < D; i++) {
+      const M = mandateHash({
+        childPkX: children[i].publicKey[0],
+        childPkY: children[i].publicKey[1],
+        scope: pad.scopes[i],
+        budget: pad.budgets[i],
+        expiry: pad.expiries[i],
+        tier,
+        epoch,
+        parentHash: parent,
+        tagCommitment: tagCValue,
+      });
+      hashes.push(M);
+      parent = M;
+    }
+    return hashes;
+  }
+
+  const hashes = hopHashes(tagC);
+  group.addMember(hashes[0]);
+  group.addMember(hashes[1]);
+  const identityProof = group.generateMerkleProof(0);
+  const hopProofs = [
+    group.generateMerkleProof(1),
+    group.generateMerkleProof(2),
+    group.generateMerkleProof(1),
+    group.generateMerkleProof(1),
+  ];
+
+  function hopFields(proofs = hopProofs) {
+    return {
+      hopIndex: proofs.map((p) => bigish(p.index)),
+      hopDepth: proofs.map((p) => bigish(p.siblings.length)),
+      hopSiblings: proofs.map((p) => padSiblings(p.siblings)),
+    };
+  }
 
   function buildMandateSigs(tagCValue) {
     const sigs = [];
@@ -157,9 +194,10 @@ export function buildFullFixture() {
       rootPkX: bigish(rootId.publicKey[0]),
       rootPkY: bigish(rootId.publicKey[1]),
       epoch: bigish(epoch),
-      merkleDepth: bigish(mProof.siblings.length),
-      merkleIndex: bigish(mProof.index),
-      siblings: padSiblings(mProof.siblings),
+      merkleDepth: bigish(identityProof.siblings.length),
+      merkleIndex: bigish(identityProof.index),
+      siblings: padSiblings(identityProof.siblings),
+      ...hopFields(),
       scopes: pad.scopes.map(bigish),
       budgets: pad.budgets.map(bigish),
       expiries: pad.expiries.map(bigish),
@@ -188,7 +226,11 @@ export function buildFullFixture() {
     contextHash,
     tagC,
     group,
-    mProof,
+    hashes,
+    hopProofs,
+    hopFields,
+    identityProof,
+    mProof: identityProof,
     pad,
     children,
     mandateSigs,
@@ -196,5 +238,20 @@ export function buildFullFixture() {
     reqSig,
     buildMandateSigs,
     input,
+    withoutHop2Input() {
+      const stripped = new Group();
+      stripped.addMember(leaf);
+      stripped.addMember(hashes[0]);
+      const idP = stripped.generateMerkleProof(0);
+      const hop0 = stripped.generateMerkleProof(1);
+      const dummy = [hop0, hop0, hop0, hop0];
+      return input({
+        merkleRoot: bigish(stripped.root),
+        merkleDepth: bigish(idP.siblings.length),
+        merkleIndex: bigish(idP.index),
+        siblings: padSiblings(idP.siblings),
+        ...hopFields(dummy),
+      });
+    },
   };
 }

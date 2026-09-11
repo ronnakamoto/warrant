@@ -22,17 +22,7 @@ function isReject(err: unknown): boolean {
   return /reject|denied|user abort|cancel/i.test(msg);
 }
 
-export async function revokeFromInjected(args: {
-  siblings: string[];
-  wallet: Address;
-  registry: Address;
-}): Promise<Hex> {
-  const eth = injected();
-  const client = createWalletClient({
-    account: args.wallet,
-    chain: baseSepolia,
-    transport: custom(eth),
-  });
+async function switchToBase(client: ReturnType<typeof createWalletClient>): Promise<void> {
   try {
     await client.switchChain({ id: baseSepolia.id });
   } catch (err) {
@@ -45,12 +35,52 @@ export async function revokeFromInjected(args: {
       throw inner;
     }
   }
+}
+
+export async function revokeFromInjected(args: {
+  siblings: string[];
+  wallet: Address;
+  registry: Address;
+}): Promise<Hex> {
+  const eth = injected();
+  const client = createWalletClient({
+    account: args.wallet,
+    chain: baseSepolia,
+    transport: custom(eth),
+  });
+  await switchToBase(client);
   try {
     return await client.writeContract({
       address: args.registry,
       abi: mandateRegistryAbi,
       functionName: "revoke",
       args: [args.siblings.map((s) => BigInt(s))],
+    });
+  } catch (err) {
+    if (isReject(err)) throw new WalletRejectedError();
+    throw err;
+  }
+}
+
+export async function revokeMandateFromInjected(args: {
+  siblings: string[];
+  hash: string;
+  wallet: Address;
+  registry: Address;
+}): Promise<Hex> {
+  const eth = injected();
+  const client = createWalletClient({
+    account: args.wallet,
+    chain: baseSepolia,
+    transport: custom(eth),
+  });
+  await switchToBase(client);
+  try {
+    return await client.writeContract({
+      address: args.registry,
+      abi: mandateRegistryAbi,
+      functionName: "revokeMandate",
+      args: [BigInt(args.hash), args.siblings.map((s) => BigInt(s))],
     });
   } catch (err) {
     if (isReject(err)) throw new WalletRejectedError();

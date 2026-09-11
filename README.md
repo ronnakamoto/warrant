@@ -150,7 +150,7 @@ pnpm --filter @warrant/translate dev
 
 ```bash
 ./scripts/compile-circuit warrant   # if circuits/build missing
-./scripts/download-zkey.sh          # defaults to GitHub release artifacts-groth16-v1
+./scripts/download-zkey.sh          # defaults to GitHub release artifacts-groth16-v2
 export WARRANT_VKEY_PATH=$PWD/circuits/build/warrant_vkey.json
 export FIXED_MERKLE_ROOT=<merkleRoot>
 export ALLOW_DEMO_ROOT=1

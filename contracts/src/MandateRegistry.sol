@@ -5,8 +5,9 @@ import {InternalLeanIMT, LeanIMTData} from "lean-imt/InternalLeanIMT.sol";
 import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
 
 /// @title MandateRegistry
-/// @notice LeanIMT of Poseidon5(DST_leaf, pkX, pkY, tier, epoch). Bind inserts epoch 0; revoke bumps epoch.
+/// @notice LeanIMT forest: identity leaves plus each enabled mandate hash. Bind inserts epoch 0; revoke bumps epoch.
 /// @dev No Groth16. Personhood (AgentBook) is **never** checked on-chain.
+///      `insertMandates` adds hop hashes. `revokeMandate` tombstones one hop (`_remove` → 0).
 ///
 /// Binding policy:
 /// - If `operator != address(0)`: only `operator` may bind (after off-chain PoP + AgentBook).
@@ -40,11 +41,15 @@ contract MandateRegistry {
     mapping(address => RootBinding) public bindings;
     /// @dev Prevents the same leaf from being claimed under a second wallet.
     mapping(uint256 => address) public walletOfLeaf;
+    /// @dev Mandate hash → wallet that may Fire that hop. Not used for identity leaves.
+    mapping(uint256 => address) public walletOfMandate;
 
     uint256 public currentRoot;
 
     event Bound(address indexed wallet, uint256 leaf, uint256 root, uint8 tier);
     event Revoked(address indexed wallet, uint256 oldLeaf, uint256 newLeaf, uint256 root, uint32 epoch);
+    event MandateInserted(address indexed wallet, uint256 hash, uint256 index, uint256 root);
+    event MandateRevoked(address indexed wallet, uint256 hash, uint256 root);
 
     error NotOperator();
     error TierRequiresOperator(uint8 tier);
@@ -52,6 +57,10 @@ contract MandateRegistry {
     error LeafClaimed(address by);
     error BadPublicKey();
     error Unbound();
+    error EmptyMandates();
+    error NotMandate();
+    error NotMandateOwner();
+    error MandateClaimed(address by);
 
     /// @param operator_ Bind authority. Use `address(0)` only for local tests (tier=0 self-bind).
     constructor(address operator_) {
@@ -121,6 +130,45 @@ contract MandateRegistry {
         delete walletOfLeaf[oldLeaf];
         walletOfLeaf[newLeaf] = msg.sender;
         emit Revoked(msg.sender, oldLeaf, newLeaf, root, newEpoch);
+    }
+
+    /// @notice Insert enabled-hop mandate hashes into the live forest. Operator (or self in permissionless mode).
+    /// @dev Dummy hops are not inserted. Wallet must already be bound.
+    function insertMandates(address wallet, uint256[] calldata hashes) external returns (uint256 root) {
+        if (operator != address(0)) {
+            if (msg.sender != operator) revert NotOperator();
+        } else if (wallet != msg.sender) {
+            revert NotOperator();
+        }
+        if (!bindings[wallet].exists) revert Unbound();
+        if (hashes.length == 0) revert EmptyMandates();
+
+        for (uint256 i = 0; i < hashes.length; i++) {
+            if (walletOfLeaf[hashes[i]] != address(0)) revert NotMandate();
+            address prior = walletOfMandate[hashes[i]];
+            if (prior != address(0)) revert MandateClaimed(prior);
+        }
+
+        uint256 start = tree.size;
+        root = tree._insertMany(hashes);
+        currentRoot = root;
+        rootTimestamp[root] = block.timestamp;
+        for (uint256 i = 0; i < hashes.length; i++) {
+            walletOfMandate[hashes[i]] = wallet;
+            emit MandateInserted(wallet, hashes[i], start + i, root);
+        }
+    }
+
+    /// @notice Delete one mandate leaf. Only the MetaMask that owns that hash.
+    function revokeMandate(uint256 hash, uint256[] calldata siblings) external returns (uint256 root) {
+        address owner = walletOfMandate[hash];
+        if (owner == address(0)) revert NotMandate();
+        if (owner != msg.sender) revert NotMandateOwner();
+        root = tree._remove(hash, siblings);
+        currentRoot = root;
+        rootTimestamp[root] = block.timestamp;
+        delete walletOfMandate[hash];
+        emit MandateRevoked(msg.sender, hash, root);
     }
 
     function isCurrentRoot(uint256 root) public view returns (bool) {

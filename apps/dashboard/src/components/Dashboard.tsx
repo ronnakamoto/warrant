@@ -53,7 +53,7 @@ export function Dashboard({ embedded = false }: { embedded?: boolean }) {
     process.env.NEXT_PUBLIC_RPC_URL ?? "https://sepolia.base.org";
   const defaultRegistry =
     process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ??
-    "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89";
+    "0x8704606Bde5E257dC009cCe55214Df70975f89c5";
 
   const [rpcUrl, setRpcUrl] = useState(defaultRpc);
   const [registry, setRegistry] = useState(defaultRegistry);

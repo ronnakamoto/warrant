@@ -6,7 +6,7 @@
     "codegen": "graph codegen",
     "build": "graph build",
     "auth": "graph auth",
-    "deploy": "graph deploy warrant-mandate-registry --version-label 0.0.1 --node https://api.studio.thegraph.com/deploy/"
+    "deploy": "graph deploy warrant-mandate-registry --version-label 0.1.0 --node https://api.studio.thegraph.com/deploy/"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.97.1",

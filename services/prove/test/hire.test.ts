@@ -27,11 +27,11 @@ function parentSession(): GuestSession {
 }
 
 describe("hireHelper", function () {
-  it("clones a FETCH-only third hop and hides it from the desk", function () {
+  it("clones a FETCH-only third hop and hides it from the desk", async function () {
     const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
     const parent = parentSession();
     store.put(parent);
-    const out = hireHelper(store, "parent");
+    const out = await hireHelper(store, "parent");
     assert.equal(out.ok, true);
     if (!out.ok) return;
     const helper = store.get(out.helperSessionId);
@@ -55,13 +55,13 @@ describe("hireHelper", function () {
     assert.deepEqual(store.listByDesk("desk-1").map((v) => v.id), ["parent"]);
   });
 
-  it("overwrites the previous helper", function () {
+  it("overwrites the previous helper", async function () {
     const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
     store.put(parentSession());
-    const first = hireHelper(store, "parent");
+    const first = await hireHelper(store, "parent");
     assert.equal(first.ok, true);
     if (!first.ok) return;
-    const second = hireHelper(store, "parent");
+    const second = await hireHelper(store, "parent");
     assert.equal(second.ok, true);
     if (!second.ok) return;
     assert.notEqual(second.helperSessionId, first.helperSessionId);
@@ -69,30 +69,45 @@ describe("hireHelper", function () {
     assert.equal(store.get("parent")?.helperSessionId, second.helperSessionId);
   });
 
-  it("rejects unknown, fired, and helper bearers", function () {
+  it("rejects unknown, fired, and helper bearers", async function () {
     const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
-    assert.deepEqual(hireHelper(store, "missing"), { ok: false, error: "unknown" });
+    assert.deepEqual(await hireHelper(store, "missing"), { ok: false, error: "unknown" });
     const fired = parentSession();
     fired.revoked = true;
     store.put(fired);
-    assert.deepEqual(hireHelper(store, "parent"), { ok: false, error: "fired" });
+    assert.deepEqual(await hireHelper(store, "parent"), { ok: false, error: "fired" });
     const live = parentSession();
     live.id = "live";
     store.put(live);
-    const hired = hireHelper(store, "live");
+    const hired = await hireHelper(store, "live");
     assert.equal(hired.ok, true);
     if (!hired.ok) return;
-    assert.deepEqual(hireHelper(store, hired.helperSessionId), { ok: false, error: "scope" });
+    assert.deepEqual(await hireHelper(store, hired.helperSessionId), { ok: false, error: "scope" });
   });
 
-  it("refuses a translate-only parent before clone", function () {
+  it("refuses a translate-only parent before clone", async function () {
     const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
     const parent = parentSession();
     assembleGuestTree(parent.state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE);
     store.put(parent);
-    assert.deepEqual(hireHelper(store, "parent"), { ok: false, error: "scope" });
+    assert.deepEqual(await hireHelper(store, "parent"), { ok: false, error: "scope" });
     assert.equal(store.get("parent")?.helperSessionId, undefined);
     assert.equal(store.get("parent")?.state.mandates.length, 2);
     assert.equal(store.dump().length, 1);
+  });
+
+  it("inserts the helper mandate hash when an inserter is provided", async function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    store.put(parentSession());
+    const inserted: string[] = [];
+    const out = await hireHelper(store, "parent", async ({ hashes }) => {
+      inserted.push(...hashes.map(String));
+    });
+    assert.equal(out.ok, true);
+    if (!out.ok) return;
+    const helper = store.get(out.helperSessionId);
+    assert.equal(inserted.length, 1);
+    assert.equal(inserted[0], helper?.state.mandates[2]?.hash);
+    assert.equal(store.get("parent")?.state.members.includes(inserted[0]!), true);
   });
 });

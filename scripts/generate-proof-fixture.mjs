@@ -43,3 +43,4 @@ const [pA, pB, pC, pubs] = JSON.parse(`[${calldata}]`);
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, "proof.json"), JSON.stringify({ pA, pB, pC, pubs, merkleRoot: pubs[0] }, null, 2) + "\n");
 console.log("wrote contracts/test/fixtures/proof.json");
+process.exit(0);
