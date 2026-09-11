@@ -3,13 +3,13 @@
 ## What this is
 
 Warrant’s product circuit (`circuits/warrant.circom`) is proven with **Groth16** over BN254.
-That requires a circuit-specific proving key (`.zkey`) derived from a Powers-of-Tau transcript (**pot16**, enough for &lt; 2^16 constraints).
+That requires a circuit-specific proving key (`.zkey`) derived from a Powers-of-Tau transcript. The live forest circuit is **101,781 constraints**, so this host uses **pot17**. Hermez GCS/S3 returned 403 for `powersOfTau28_hez_final_17.ptau`; the transcript on disk is PSE perpetual Powers of Tau `ppot_0080_17.ptau` (same 2^17 size, prepared for phase 2). pot16 only covers &lt; 2^16.
 
 ## Local / testnet setup
 
 ```bash
 export WARRANT_CEREMONY_ENTROPY="$(openssl rand -hex 32)"
-# optional: public beacon (hex); default derives from warrant/<name>/ceremony/v1
+# optional: public beacon (hex); default derives from warrant/<name>/ceremony/v2
 # export WARRANT_CEREMONY_BEACON=0x...
 ./scripts/setup-groth16 warrant
 ./scripts/export-verifier
@@ -18,7 +18,7 @@ unset WARRANT_CEREMONY_ENTROPY
 
 Pipeline:
 
-1. Download Hermez `powersOfTau28_hez_final_16.ptau` (via `scripts/setup-groth16`).
+1. Download a pot17 transcript (via `scripts/setup-groth16`; PSE `ppot_0080_17` first, Hermez mirrors after; pot16 if a lean circuit still fits).
 2. `snarkjs groth16 setup` → intermediate `*_0000.zkey`.
 3. Operator contribution with **required** entropy (`WARRANT_CEREMONY_ENTROPY`, ≥32 chars).
 4. Public **beacon** finalize (`zkey beacon`) so the last phase-2 step has no private trapdoor.
@@ -42,8 +42,8 @@ This stack (Groth16 + Baby Jubjub EdDSA) is **not post-quantum**.
 
 | Artifact | Location | Notes |
 |---|---|---|
-| pot16 | `circuits/ptau/*.ptau` | gitignored (`*.ptau`) |
-| zkey | `circuits/build/warrant_final.zkey` | ~28 MB; gitignored via `circuits/build/` |
+| pot16 / pot17 | `circuits/ptau/*.ptau` | gitignored (`*.ptau`). Forest is pot17. |
+| zkey | `circuits/build/warrant_final.zkey` | ~46 MB; gitignored via `circuits/build/` |
 | vkey | `circuits/build/warrant_vkey.json` | derived; rebuildable; must be non-empty |
 | verifier | `contracts/src/WarrantVerifier.sol` | **committed**; regenerate only |
 
@@ -53,18 +53,19 @@ Demo / testnet artifacts (solo ceremony — **not** mainnet MPC):
 
 | File | SHA-256 |
 |---|---|
-| `warrant_final.zkey` | `7f283d2b461512f444dc339dc40318277820d968bcffe3e562878e34839e16fa` |
-| `warrant_vkey.json` | `cf95bb6c8717503fdca3651fd867653f52121ebcfcc390313ed8c943bed883e4` |
+| `warrant_final.zkey` | `3efdd40992956931c94aac290417768cac499d8d81b7ac2323c1b61411392e84` |
+| `warrant_vkey.json` | `6bc2262231fe7aa0bb8563860f3bf95cc60524b155527f48c7855ba6c473ce0d` |
+| `warrant.wasm` | `4952f1cf1097ea39c19d89853acfffdcef7d7296a663442f38773cf3e12229d6` |
 
 ```bash
-# Defaults to artifacts-groth16-v1 release URLs
+# Defaults to artifacts-groth16-v2 release URLs
 ./scripts/download-zkey.sh
 
 # Or local ceremony:
 WARRANT_ZKEY_URL=local WARRANT_CEREMONY_ENTROPY="$(openssl rand -hex 32)" ./scripts/download-zkey.sh
 ```
 
-Release: https://github.com/ronnakamoto/warrant/releases/tag/artifacts-groth16-v1
+Release: https://github.com/ronnakamoto/warrant/releases/tag/artifacts-groth16-v2
 
 ## Regenerate verifier
 

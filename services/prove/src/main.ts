@@ -1,4 +1,4 @@
-import { createSnarkjsProver } from "@warrant/agent";
+import { createSnarkjsProver, insertMandatesOnChain } from "@warrant/agent";
 import { createProveApp } from "./app.js";
 import { createGraphLeafLoader } from "./members.js";
 import { createNonceStore } from "./nonce.js";
@@ -66,6 +66,14 @@ async function main(): Promise<void> {
       apiKey: process.env.GRAPH_API_KEY,
     }),
     prover: createSnarkjsProver(),
+    insertMandates: ({ wallet, hashes }) =>
+      insertMandatesOnChain({
+        rpcUrl: rpc,
+        registry,
+        privateKey: bindPrivateKey,
+        wallet,
+        hashes,
+      }).then(() => undefined),
   });
 
   const ports = [...new Set(

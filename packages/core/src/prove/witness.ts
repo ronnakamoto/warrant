@@ -36,6 +36,9 @@ export type WarrantWitness = {
   reqS: bigint;
   reqR8x: bigint;
   reqR8y: bigint;
+  hopIndex: bigint[];
+  hopDepth: bigint[];
+  hopSiblings: bigint[][];
 };
 
 export type BuildWitnessArgs = {
@@ -59,7 +62,7 @@ function fieldToString(v: bigint | string | number): string {
 /** snarkjs witness calculator wants decimal strings. */
 export function stringifyWitness(
   w: WarrantWitness,
-): Record<string, string | string[]> {
+): Record<string, string | string[] | string[][]> {
   return {
     merkleRoot: fieldToString(w.merkleRoot),
     contextHash: fieldToString(w.contextHash),
@@ -88,6 +91,9 @@ export function stringifyWitness(
     reqS: fieldToString(w.reqS),
     reqR8x: fieldToString(w.reqR8x),
     reqR8y: fieldToString(w.reqR8y),
+    hopIndex: w.hopIndex.map(fieldToString),
+    hopDepth: w.hopDepth.map(fieldToString),
+    hopSiblings: w.hopSiblings.map((row) => row.map(fieldToString)),
   };
 }
 
@@ -153,6 +159,26 @@ export function buildWitness(args: BuildWitnessArgs): {
   const leaf = args.children[args.children.length - 1]!;
   const reqSig = sign(leaf, args.requestHash);
   const merkle = membershipProof(args.group, args.leafIndex);
+  const hopIndex: bigint[] = [];
+  const hopDepth: bigint[] = [];
+  const hopSiblings: bigint[][] = [];
+  for (let i = 0; i < DEPTH; i++) {
+    if (padded.enabled[i] === 1n) {
+      const hash = padded.mandates[i]!.hash;
+      const idx = args.group.indexOf(hash);
+      if (idx < 0) {
+        throw new Error(`mandate hash not in the forest at hop ${i}`);
+      }
+      const hop = membershipProof(args.group, idx);
+      hopIndex.push(hop.index);
+      hopDepth.push(hop.depth);
+      hopSiblings.push(hop.siblings);
+    } else {
+      hopIndex.push(merkle.index);
+      hopDepth.push(merkle.depth);
+      hopSiblings.push(merkle.siblings);
+    }
+  }
   const expectedLeaf = hashLeaf(
     args.root.publicKey[0],
     args.root.publicKey[1],
@@ -191,6 +217,9 @@ export function buildWitness(args: BuildWitnessArgs): {
     reqS: reqSig.S,
     reqR8x: reqSig.R8x,
     reqR8y: reqSig.R8y,
+    hopIndex,
+    hopDepth,
+    hopSiblings,
   };
 
   return { witness, publics: publicsFromWitness(witness) };

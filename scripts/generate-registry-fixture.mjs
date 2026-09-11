@@ -44,6 +44,17 @@ const revokeProof = group.generateMerkleProof(0);
 group.updateMember(0, aliceLeaf1);
 const rootAfterRevoke = group.root;
 
+const mandateA = 111n;
+const mandateB = 222n;
+const forest = new Group();
+forest.addMember(aliceLeaf0);
+forest.addMember(mandateA);
+forest.addMember(mandateB);
+const rootAfterMandates = forest.root;
+const revokeMandateProof = forest.generateMerkleProof(2);
+forest.updateMember(2, 0n);
+const rootAfterRevokeMandate = forest.root;
+
 const fixture = {
   poseidon2_35: poseidon2([3n, 5n]).toString(),
   poseidon4_1234: poseidon4([1n, 2n, 3n, 4n]).toString(),
@@ -57,6 +68,11 @@ const fixture = {
   rootAfterRevoke: rootAfterRevoke.toString(),
   revokeSiblings: revokeProof.siblings.map(String),
   revokeIndex: revokeProof.index,
+  mandateA: mandateA.toString(),
+  mandateB: mandateB.toString(),
+  rootAfterMandates: rootAfterMandates.toString(),
+  rootAfterRevokeMandate: rootAfterRevokeMandate.toString(),
+  revokeMandateSiblings: revokeMandateProof.siblings.map(String),
 };
 
 mkdirSync(outDir, { recursive: true });

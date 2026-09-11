@@ -25,6 +25,7 @@ type WarrantView = {
   expiresAt?: number;
   receipt?: { hashscan: string; nullifier: string };
   scope?: GuestScopeName;
+  helperLive?: boolean;
 };
 
 const SCOPE_PICKS = [
@@ -357,11 +358,14 @@ export function GuestTry() {
     }
   }
 
-  async function fireOnChain(sessionId: string, all = false): Promise<boolean> {
+  async function fireOnChain(
+    sessionId: string,
+    kind: "identity" | "warrant" | "helper",
+  ): Promise<boolean> {
     const prep = await fetch("/api/guest/revoke", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(all ? { all: true } : { sessionId }),
+      body: JSON.stringify(kind === "identity" ? { all: true, kind } : { sessionId, kind }),
     });
     const prepBody = (await prep.json().catch(() => ({}))) as {
       error?: string;
@@ -369,22 +373,32 @@ export function GuestTry() {
       wallet?: string;
       registry?: string;
       sessionId?: string;
+      hash?: string;
+      kind?: string;
     };
     if (!prep.ok || !prepBody.siblings || !prepBody.wallet || !prepBody.registry) {
       setError(prepBody.error ?? GUEST_COPY.hostError);
       return false;
     }
-    const { revokeFromInjected } = await import("../lib/browser-revoke");
-    const txHash = await revokeFromInjected({
-      siblings: prepBody.siblings,
-      wallet: prepBody.wallet as `0x${string}`,
-      registry: prepBody.registry as `0x${string}`,
-    });
+    const { revokeFromInjected, revokeMandateFromInjected } = await import("../lib/browser-revoke");
+    const txHash =
+      kind === "identity"
+        ? await revokeFromInjected({
+            siblings: prepBody.siblings,
+            wallet: prepBody.wallet as `0x${string}`,
+            registry: prepBody.registry as `0x${string}`,
+          })
+        : await revokeMandateFromInjected({
+            siblings: prepBody.siblings,
+            hash: prepBody.hash ?? "",
+            wallet: prepBody.wallet as `0x${string}`,
+            registry: prepBody.registry as `0x${string}`,
+          });
     const confirmId = prepBody.sessionId ?? sessionId;
     const confirm = await fetch("/api/guest/revoke", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sessionId: confirmId, txHash }),
+      body: JSON.stringify({ sessionId: confirmId, txHash, kind }),
     });
     if (!confirm.ok) {
       const body = (await confirm.json().catch(() => ({}))) as { error?: string };
@@ -399,7 +413,7 @@ export function GuestTry() {
     setError(null);
     setRevoking(true);
     try {
-      if (!(await fireOnChain(selectedId))) return;
+      if (!(await fireOnChain(selectedId, "warrant"))) return;
       const list = await refreshWarrants();
       const remaining = list.filter(isLive);
       setCopied(false);
@@ -425,12 +439,40 @@ export function GuestTry() {
     }
   }
 
-  async function fireEvery() {
-    if (liveWarrants.length <= 1) return;
+  async function fireHelper() {
+    if (!selectedId || !selected?.helperLive) return;
     setError(null);
     setRevoking(true);
     try {
-      if (!(await fireOnChain(liveWarrants[0]!.id, true))) return;
+      if (!(await fireOnChain(selectedId, "helper"))) return;
+      const list = await refreshWarrants();
+      setCopied(false);
+      setNotice(GUEST_COPY.afterFireHelper);
+      const remaining = list.filter(isLive);
+      if (remaining.length > 0) {
+        setPhase("ready");
+        return;
+      }
+      setNotice(null);
+      setSelectedId(null);
+      setPhase("revoked");
+    } catch (e) {
+      const { WalletRejectedError } = await import("../lib/browser-wallet");
+      if (e instanceof WalletRejectedError) {
+        setError(GUEST_COPY.signRejected);
+        return;
+      }
+      setError(e instanceof Error ? e.message : GUEST_COPY.hostError);
+    } finally {
+      setRevoking(false);
+    }
+  }
+
+  async function fireEvery() {
+    setError(null);
+    setRevoking(true);
+    try {
+      if (!(await fireOnChain(liveWarrants[0]!.id, "identity"))) return;
       const list = await refreshWarrants();
       const remaining = list.filter(isLive);
       setCopied(false);
@@ -588,15 +630,21 @@ export function GuestTry() {
                 onClick={() => void fireThis()}
                 isDisabled={busy}
               />
+              {selected?.helperLive ? (
+                <Button
+                  label={GUEST_COPY.fireHelper}
+                  variant="destructive"
+                  onClick={() => void fireHelper()}
+                  isDisabled={busy}
+                />
+              ) : null}
             </div>
-            {liveWarrants.length > 1 ? (
-              <Button
-                label={GUEST_COPY.fireEvery}
-                variant="destructive"
-                onClick={() => void fireEvery()}
-                isDisabled={busy}
-              />
-            ) : null}
+            <Button
+              label={GUEST_COPY.fireEvery}
+              variant="destructive"
+              onClick={() => void fireEvery()}
+              isDisabled={busy}
+            />
           </VStack>
         </VStack>
       ) : null}

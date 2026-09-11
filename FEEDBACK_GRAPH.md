@@ -4,7 +4,7 @@ Warrant’s dashboard and CLI read **MandateRegistry** from a Studio subgraph on
 
 ## What we pinned
 
-- Custom subgraph: `subgraphs/mandate-registry` (`Bound` / `Revoked`, start block `46413332`).
+- Custom subgraph: `subgraphs/mandate-registry` (`Bound` / `Revoked` / `MandateInserted` / `MandateRevoked`, start block `46661760`).
 - Standardized schema: Agent0 Base Sepolia (same GraphQL on every Agent0 network).
 - Load-bearing use: dashboard list + revoke history; `warrant graph-status` for `currentRoot` before fetch.
 - Subgraph MCP is documented in `packages/agent/SKILL.md` so Cursor can query the same IDs.

@@ -195,7 +195,7 @@ describe("@ronnakamoto/warrant-core unit", function () {
         parentExpiry: hop0.expiry,
       });
       const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], 2n, 0n);
-      const group = createGroup([leaf, 11n, 22n]);
+      const group = createGroup([leaf, hop0.hash, hop1.hash]);
       const { witness } = buildWitness({
         root,
         children: [agent, translator],
@@ -213,6 +213,66 @@ describe("@ronnakamoto/warrant-core unit", function () {
       assert.notEqual(witness.childPkX[3], 0n);
       assert.equal(witness.childPkX[2], translator.publicKey[0]);
       assert.equal(witness.siblings.length, MAX_MERKLE_DEPTH);
+      assert.equal(witness.hopIndex.length, DEPTH);
+      assert.equal(witness.hopSiblings.length, DEPTH);
+      assert.equal(witness.hopSiblings[0]!.length, MAX_MERKLE_DEPTH);
+      assert.equal(
+        witness.hopIndex[0],
+        BigInt(group.generateMerkleProof(group.indexOf(hop0.hash)).index),
+      );
+      assert.equal(
+        witness.hopIndex[1],
+        BigInt(group.generateMerkleProof(group.indexOf(hop1.hash)).index),
+      );
+    });
+
+    it("rejects an enabled mandate missing from the forest", function () {
+      const root = keygen("wp4-miss-root");
+      const agent = keygen("wp4-miss-agent");
+      const translator = keygen("wp4-miss-translator");
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const hop0 = createMandate({
+        parent: root,
+        child: agent,
+        scope: 7n,
+        budgetCap: 2_000_000n,
+        expiry: now + 86400n,
+        tier: 2n,
+        epoch: 0n,
+        parentHash: 0n,
+        humanTag: 42n,
+      });
+      const hop1 = createMandate({
+        parent: agent,
+        child: translator,
+        scope: TRANSLATE,
+        budgetCap: 200_000n,
+        expiry: now + 3600n,
+        tier: 2n,
+        epoch: 0n,
+        parentHash: hop0.hash,
+        humanTag: 42n,
+        parentScope: hop0.scope,
+        parentBudgetCap: hop0.budgetCap,
+        parentExpiry: hop0.expiry,
+      });
+      const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], 2n, 0n);
+      const group = createGroup([leaf, hop0.hash]);
+      assert.throws(
+        () =>
+          buildWitness({
+            root,
+            children: [agent, translator],
+            mandates: [hop0, hop1],
+            group,
+            leafIndex: 0,
+            humanTag: 42n,
+            contextHash: 99n,
+            requestHash: 123456789n,
+            minExpiry: now,
+          }),
+        /not in the forest/,
+      );
     });
   });
 });

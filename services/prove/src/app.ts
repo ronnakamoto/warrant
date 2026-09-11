@@ -3,10 +3,16 @@ import type { ChallengeParts, IProver } from "@ronnakamoto/warrant-core";
 import { isAddress, recoverMessageAddress, type Address, type Hex } from "viem";
 import { attachWalletDesk, deskForWallet, deskMessage } from "./desk.js";
 import { assertNotFounder } from "./founders.js";
-import { mintGuest, parseGuestScope, type BindRootFn, type ReadBindingFn } from "./mint.js";
+import { mintGuest, parseGuestScope, type BindRootFn, type InsertMandatesFn, type ReadBindingFn } from "./mint.js";
 import type { NonceStore } from "./nonce.js";
 import { proveGuest } from "./prove.js";
-import { markWalletFired, prepareGuestRevoke } from "./revoke.js";
+import {
+  markHelperFired,
+  markSessionFired,
+  markWalletFired,
+  prepareGuestRevoke,
+  type RevokeKind,
+} from "./revoke.js";
 import { createRateLimiter, type RateLimiter } from "./rate-limit.js";
 import type { LeafLoader } from "./members.js";
 import { hireHelper } from "./hire.js";
@@ -30,6 +36,7 @@ export type ProveAppOpts = {
   bindRoot?: BindRootFn;
   readBinding?: ReadBindingFn;
   prepareRevoke?: typeof prepareGuestRevoke;
+  insertMandates?: InsertMandatesFn;
   mintLimiter?: RateLimiter;
   deskLimiter?: RateLimiter;
   proveTimeoutMs?: number;
@@ -103,6 +110,7 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       loadMembers: opts.loadMembers,
       bindRoot: opts.bindRoot,
       readBinding: opts.readBinding,
+      insertMandates: opts.insertMandates,
       wallet: body.wallet,
       deskId,
       scope,
@@ -222,7 +230,7 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       return c.json({ error: "invalid json" }, 400);
     }
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
-    const hired = hireHelper(opts.store, body.sessionId);
+    const hired = await hireHelper(opts.store, body.sessionId, opts.insertMandates);
     if (!hired.ok) {
       if (hired.error === "unknown") return c.json({ error: "unknown session" }, 404);
       if (hired.error === "fired") return c.json({ error: "fired" }, 400);
@@ -302,16 +310,27 @@ export function createProveApp(opts: ProveAppOpts): Hono {
     if (!opts.store) {
       return c.json({ error: "revoke not configured" }, 503);
     }
-    const body = await c.req.json<{ sessionId?: string; deskId?: string; txHash?: string }>();
+    const body = await c.req.json<{
+      sessionId?: string;
+      deskId?: string;
+      txHash?: string;
+      kind?: RevokeKind;
+    }>();
     if (!body.sessionId) return c.json({ error: "sessionId required" }, 400);
     const session = opts.store.get(body.sessionId);
     if (!session) return c.json({ error: "unknown session" }, 404);
     if (typeof body.deskId === "string" && session.deskId !== body.deskId) {
       return c.json({ error: "wrong_desk" }, 403);
     }
+    const kind: RevokeKind =
+      body.kind === "warrant" || body.kind === "helper" || body.kind === "identity"
+        ? body.kind
+        : "identity";
     if (typeof body.txHash === "string" && body.txHash.length > 0) {
-      markWalletFired(opts.store, session.wallet);
-      return c.json({ txHash: body.txHash, wallet: session.wallet });
+      if (kind === "warrant") markSessionFired(opts.store, session);
+      else if (kind === "helper") markHelperFired(opts.store, session);
+      else markWalletFired(opts.store, session.wallet);
+      return c.json({ txHash: body.txHash, wallet: session.wallet, kind });
     }
     if (!opts.registry || !opts.rpc || !opts.gasSponsorKey || !opts.loadMembers) {
       return c.json({ error: "revoke not configured" }, 503);
@@ -323,6 +342,8 @@ export function createProveApp(opts: ProveAppOpts): Hono {
       rpc: opts.rpc,
       gasSponsorKey: opts.gasSponsorKey,
       loadMembers: opts.loadMembers,
+      kind,
+      store: opts.store,
     });
     return c.json(out);
   });

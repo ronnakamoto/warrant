@@ -54,6 +54,16 @@ export const mandateRegistryAbi = [
     outputs: [{ name: "root", type: "uint256" }],
   },
   {
+    type: "function",
+    name: "revokeMandate",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "hash", type: "uint256" },
+      { name: "siblings", type: "uint256[]" },
+    ],
+    outputs: [{ name: "root", type: "uint256" }],
+  },
+  {
     type: "event",
     name: "Revoked",
     inputs: [

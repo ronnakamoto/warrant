@@ -9,7 +9,12 @@ import {
   sessionFromCookie,
 } from "../../../../lib/prove-client";
 
-type RevokeBody = { sessionId?: string; all?: boolean; txHash?: string };
+type RevokeKind = "identity" | "warrant" | "helper";
+type RevokeBody = { sessionId?: string; all?: boolean; txHash?: string; kind?: RevokeKind };
+
+function revokeKind(raw: unknown): RevokeKind {
+  return raw === "warrant" || raw === "helper" || raw === "identity" ? raw : "identity";
+}
 type WarrantView = { id: string; status: string };
 
 export async function POST(req: Request): Promise<Response> {
@@ -47,7 +52,11 @@ export async function POST(req: Request): Promise<Response> {
       if (!firstLive) {
         return NextResponse.json({ error: publicGuestError(GUEST_COPY.revokeFailed) }, { status: 404 });
       }
-      const res = await proveRequest("/v1/revoke", { sessionId: firstLive.id, deskId }, req);
+      const res = await proveRequest(
+        "/v1/revoke",
+        { sessionId: firstLive.id, deskId, kind: revokeKind(body.kind) },
+        req,
+      );
       const prep = await res.json().catch(() => ({}));
       return NextResponse.json(
         res.ok ? { ...prep, sessionId: firstLive.id } : { error: publicGuestError(prep.error ?? "revoke failed") },
@@ -62,7 +71,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const res = await proveRequest(
       "/v1/revoke",
-      { sessionId, deskId, ...(txHash ? { txHash } : {}) },
+      { sessionId, deskId, kind: revokeKind(body.kind), ...(txHash ? { txHash } : {}) },
       req,
     );
     const resBody = await res.json().catch(() => ({}));

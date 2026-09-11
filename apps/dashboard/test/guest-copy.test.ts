@@ -799,7 +799,7 @@ describe("guest first-run copy", function () {
   });
 
   it("names fire verbs without protocol words", function () {
-    const words = `${GUEST_COPY.fireThis} ${GUEST_COPY.fireEvery} ${GUEST_COPY.fireOne} ${GUEST_COPY.helperFoot}`;
+    const words = `${GUEST_COPY.fireThis} ${GUEST_COPY.fireEvery} ${GUEST_COPY.fireOne} ${GUEST_COPY.fireHelper} ${GUEST_COPY.helperFoot}`;
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "deskId"]) {
       assert.equal(words.includes(banned), false, banned);
     }

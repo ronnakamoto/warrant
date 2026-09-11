@@ -121,9 +121,11 @@ async function buildLocalState(
       },
     });
   }
+  appendLeaf(state, m1.hash);
+  appendLeaf(state, m2.hash);
 
   saveState(state, storePath);
-  return { state, root: group.root.toString(), storePath };
+  return { state, root: rebuildGroup(state).root.toString(), storePath };
 }
 
 function resolveStorePath(): string {

@@ -31,6 +31,8 @@ export const GUEST_COPY = {
   fireThis: "Fire this warrant",
   fireEvery: "Fire every warrant",
   fireOne: "Fire",
+  fireHelper: "Fire helper",
+  afterFireHelper: "That helper is done. They still do not know who you were.",
   helperFoot:
     "Warrant will prove for you. Warrant sees the witness. The chat can see the bearer. The shop sees a nullifier.",
   afterFireThis: "That warrant is done. They still do not know who you were.",

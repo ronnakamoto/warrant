@@ -77,6 +77,39 @@ export async function sponsorRevokeGas(args: {
   await waitUntilBalance(() => publicClient.getBalance({ address: args.wallet }), REVOKE_FLOOR);
 }
 
+export type RevokeKind = "identity" | "warrant" | "helper";
+
+function identityLeaf(session: GuestSession): string {
+  const root = identityOf(session.state, session.state.rootName ?? "alice");
+  return hashLeaf(
+    root.publicKey[0],
+    root.publicKey[1],
+    BigInt(session.state.rootTier ?? 0),
+    BigInt(session.state.rootEpoch ?? 0),
+  ).toString();
+}
+
+export function mandateHashForKind(
+  session: GuestSession,
+  store: SessionStore | undefined,
+  kind: RevokeKind,
+): string {
+  if (kind === "identity") return identityLeaf(session);
+  if (kind === "warrant") {
+    const hop = session.parentId ? undefined : session.state.mandates[1];
+    if (!hop?.hash) throw new Error("warrant hop missing");
+    return hop.hash;
+  }
+  const helper = session.parentId
+    ? session
+    : session.helperSessionId
+      ? store?.get(session.helperSessionId)
+      : undefined;
+  const hop = helper?.state.mandates[2];
+  if (!hop?.hash) throw new Error("helper hop missing");
+  return hop.hash;
+}
+
 export async function prepareGuestRevoke(args: {
   session: GuestSession;
   registry: Address;
@@ -84,16 +117,19 @@ export async function prepareGuestRevoke(args: {
   gasSponsorKey: Hex;
   loadMembers: LeafLoader;
   sponsor?: (wallet: Address) => Promise<void>;
-}): Promise<{ siblings: string[]; wallet: Address; registry: Address }> {
+  kind?: RevokeKind;
+  store?: SessionStore;
+}): Promise<{
+  siblings: string[];
+  wallet: Address;
+  registry: Address;
+  kind: RevokeKind;
+  hash: string;
+}> {
   assertNotFounder(args.session.wallet);
   await refreshMembers(args.session.state, args.loadMembers);
-  const root = identityOf(args.session.state, args.session.state.rootName ?? "alice");
-  const leaf = hashLeaf(
-    root.publicKey[0],
-    root.publicKey[1],
-    BigInt(args.session.state.rootTier ?? 0),
-    BigInt(args.session.state.rootEpoch ?? 0),
-  ).toString();
+  const kind = args.kind ?? "identity";
+  const leaf = mandateHashForKind(args.session, args.store, kind);
   const siblings = await revokeSiblingsFor(args.session.state.members, leaf);
   if (args.sponsor) {
     await args.sponsor(args.session.wallet);
@@ -108,17 +144,48 @@ export async function prepareGuestRevoke(args: {
     siblings: siblings.map((s) => s.toString()),
     wallet: args.session.wallet,
     registry: args.registry,
+    kind,
+    hash: leaf,
   };
+}
+
+function markFired(session: GuestSession, store: SessionStore): void {
+  session.revoked = true;
+  delete session.receipt;
+  store.put(session);
 }
 
 export function markWalletFired(store: SessionStore, wallet: Address): void {
   const want = wallet.toLowerCase();
   for (const session of store.dump()) {
     if (session.wallet.toLowerCase() !== want) continue;
-    session.revoked = true;
-    delete session.receipt;
-    store.put(session);
+    markFired(session, store);
   }
+}
+
+export function markSessionFired(store: SessionStore, session: GuestSession): void {
+  markFired(session, store);
+  if (session.helperSessionId) {
+    const helper = store.get(session.helperSessionId);
+    if (helper) markFired(helper, store);
+  }
+}
+
+export function markHelperFired(store: SessionStore, session: GuestSession): void {
+  if (session.parentId) {
+    markFired(session, store);
+    const parent = store.get(session.parentId);
+    if (parent) {
+      delete parent.helperSessionId;
+      store.put(parent);
+    }
+    return;
+  }
+  if (!session.helperSessionId) return;
+  const helper = store.get(session.helperSessionId);
+  if (helper) markFired(helper, store);
+  delete session.helperSessionId;
+  store.put(session);
 }
 
 export async function revokeSiblingsFor(members: string[], leaf: string): Promise<bigint[]> {

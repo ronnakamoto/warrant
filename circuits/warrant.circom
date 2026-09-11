@@ -43,6 +43,9 @@ template WarrantFull(D, MAX_DEPTH) {
     signal input reqS;
     signal input reqR8x;
     signal input reqR8y;
+    signal input hopIndex[D];
+    signal input hopDepth[D];
+    signal input hopSiblings[D][MAX_DEPTH];
 
     // Tag commitment binds humanTag into every signed mandate (closes quota rotation).
     component tagC = TagCommitment();
@@ -110,6 +113,18 @@ template WarrantFull(D, MAX_DEPTH) {
         mandateSig[i].R8x <== sigR8x[i];
         mandateSig[i].R8y <== sigR8y[i];
         mandateSig[i].M <== mandateHash[i].out;
+    }
+
+    component hopMerkle[D];
+    for (var i = 0; i < D; i++) {
+        hopMerkle[i] = BinaryMerkleRoot(MAX_DEPTH);
+        hopMerkle[i].leaf <== mandateHash[i].out;
+        hopMerkle[i].depth <== hopDepth[i];
+        hopMerkle[i].index <== hopIndex[i];
+        for (var j = 0; j < MAX_DEPTH; j++) {
+            hopMerkle[i].siblings[j] <== hopSiblings[i][j];
+        }
+        enabled[i] * (hopMerkle[i].out - merkleRoot) === 0;
     }
 
     component muxScope = EnabledMux(D);

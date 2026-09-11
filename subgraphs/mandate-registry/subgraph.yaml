@@ -6,9 +6,9 @@ dataSources:
     name: MandateRegistry
     network: base-sepolia
     source:
-      address: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89"
+      address: "0x8704606Bde5E257dC009cCe55214Df70975f89c5"
       abi: MandateRegistry
-      startBlock: 46413332
+      startBlock: 46661760
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -16,6 +16,8 @@ dataSources:
       entities:
         - Registry
         - Binding
+        - ForestLeaf
+        - MandateHop
         - RevokeEvent
       abis:
         - name: MandateRegistry
@@ -25,4 +27,8 @@ dataSources:
           handler: handleBound
         - event: Revoked(indexed address,uint256,uint256,uint256,uint32)
           handler: handleRevoked
+        - event: MandateInserted(indexed address,uint256,uint256,uint256)
+          handler: handleMandateInserted
+        - event: MandateRevoked(indexed address,uint256,uint256)
+          handler: handleMandateRevoked
       file: ./src/mandate-registry.ts

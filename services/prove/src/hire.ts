@@ -2,6 +2,8 @@ import { randomBytes } from "node:crypto";
 import { createMandate, FETCH } from "@ronnakamoto/warrant-core";
 import { ensureIdentity, identityOf, type WarrantState } from "@warrant/agent";
 import type { Hex } from "viem";
+import { mergeForestLeaves } from "./members.js";
+import type { InsertMandatesFn } from "./mint.js";
 import { createSessionId, type GuestSession, type SessionStore } from "./session.js";
 
 export const HELPER_BUDGET = 20_000n;
@@ -66,9 +68,14 @@ export function appendHelperHop(state: WarrantState): void {
     parentExpiry: BigInt(hop2.expiry),
   });
   state.mandates.push(storeMandate("translator", HELPER_NAME, hop3, humanTag));
+  state.members = mergeForestLeaves(state.members, [hop3.hash.toString()]);
 }
 
-export function hireHelper(store: SessionStore, parentId: string): HireResult {
+export async function hireHelper(
+  store: SessionStore,
+  parentId: string,
+  insertMandates?: InsertMandatesFn,
+): Promise<HireResult> {
   const parent = store.get(parentId);
   if (!parent) return { ok: false, error: "unknown" };
   if (parent.revoked) return { ok: false, error: "fired" };
@@ -81,6 +88,15 @@ export function hireHelper(store: SessionStore, parentId: string): HireResult {
 
   const state = structuredClone(parent.state);
   appendHelperHop(state);
+  const hop3 = state.mandates[2];
+  if (!hop3) throw new Error("helper hop missing");
+  if (insertMandates) {
+    await insertMandates({
+      wallet: parent.wallet,
+      hashes: [BigInt(hop3.hash)],
+    });
+  }
+  parent.state.members = mergeForestLeaves(parent.state.members, [hop3.hash]);
 
   const helperSession: GuestSession = {
     id: createSessionId(),

@@ -57,11 +57,12 @@ describe("protocol docs", function () {
     assert.match(book, /FETCH/);
     assert.match(book, /not post-quantum/i);
     assert.match(book, /solo/);
-    assert.match(book, /0x103749E5529C3Ce31A1EB8e0657280AaE7e9dA89/);
+    assert.match(book, /0x8704606Bde5E257dC009cCe55214Df70975f89c5/);
     assert.match(book, /dummy hops/i);
     assert.match(book, /30 minutes/);
     assert.match(book, /header is `warrant`/);
     assert.match(book, /subgraph/);
+    assert.match(book, /live forest|live-mandate forest|revokeMandate/i);
   });
 
   it("names the four diagrams", function () {

@@ -27,7 +27,7 @@ export const DOCS_COPY = {
 export const DOCS_EXCALIDRAW = {
   title: "How a warrant acts",
   src: "/protocol/how-warrant-works.png",
-  alt: "You authorize, copy a skill into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire bumps the epoch and every hop dies.",
+  alt: "You authorize, copy a skill into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire this deletes one hop from the live forest. Fire every bumps the epoch and every hop dies.",
 } as const;
 
 export const DOCS_DIAGRAMS = [
@@ -219,20 +219,20 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "Groth16 needs a circuit-specific proving key. Testnet artifacts come from a solo phase-2 on Hermez `powersOfTau28_hez_final_16.ptau` (pot16, enough for < 2^16 constraints), then a public beacon finalize. That is not a multi-party ceremony. It is said plainly: fine on testnet, not production-grade MPC. If operator entropy from the contribution leaks, proofs for this circuit can be forged. Beacon finalize does not heal a leaked prior contribution.",
+        text: "Groth16 needs a circuit-specific proving key. The live forest circuit is 101_781 constraints, so testnet artifacts come from a solo phase-2 on a pot17 Powers-of-Tau (PSE `ppot_0080_17.ptau` — Hermez GCS/S3 returned 403 for `powersOfTau28_hez_final_17.ptau`), then a public beacon finalize. That is not a multi-party ceremony. It is said plainly: fine on testnet, not production-grade MPC. If operator entropy from the contribution leaks, proofs for this circuit can be forged. Beacon finalize does not heal a leaked prior contribution.",
       },
       {
         kind: "table",
-        caption: "Released testnet artifacts (tag artifacts-groth16-v1)",
+        caption: "Released testnet artifacts (tag artifacts-groth16-v2)",
         headers: ["File", "SHA-256"],
         rows: [
           [
             "`warrant_final.zkey`",
-            "7f283d2b461512f444dc339dc40318277820d968bcffe3e562878e34839e16fa",
+            "3efdd40992956931c94aac290417768cac499d8d81b7ac2323c1b61411392e84",
           ],
           [
             "`warrant_vkey.json`",
-            "cf95bb6c8717503fdca3651fd867653f52121ebcfcc390313ed8c943bed883e4",
+            "6bc2262231fe7aa0bb8563860f3bf95cc60524b155527f48c7855ba6c473ce0d",
           ],
         ],
       },
@@ -285,6 +285,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         kind: "ol",
         items: [
           "`tagC = Poseidon(DST_tag, humanTag)`. `leaf = Poseidon(DST_leaf, rootPk, tier, epoch)`. `BinaryMerkleRoot` of that leaf against `merkleRoot` (single index, siblings padded to 20).",
+          "Live forest: each enabled hop’s mandate hash is also a LeanIMT leaf in the same `currentRoot`. `enabled[i] * (BinaryMerkleRoot(mandateHash_i) − merkleRoot) === 0`. Dummy hops skip that check. Fire a hop by `_remove` (tombstone 0). A fired hop against a live forest root is `invalid_proof`. `root_revoked` only when the identity epoch moved.",
           "Hops are an enabled prefix: `enabled[i] ∈ {0,1}`, hop 0 is on, and once a hop is off the rest stay off. Typical hosted mint is `[1,1,0,0]`. A helper is `[1,1,1,0]`.",
           "Attenuation: child scope bits ⊆ parent (64-bit `ScopeSubset`). When a hop is enabled, budget and expiry are ≤ parent. Scope subset is checked along the pad even for dummy hops.",
           "Each enabled hop: mandate hash as above, `parentHash_0 = 0`, `parentHash_i = hash(mandate_{i-1})`, EdDSA-Poseidon by the previous public key (hop 0 by the root).",
@@ -361,15 +362,15 @@ export const DOCS_SECTIONS: DocsSection[] = [
         rows: [
           [
             "MandateRegistry",
-            "`0x103749E5529C3Ce31A1EB8e0657280AaE7e9dA89`",
+            "`0x8704606Bde5E257dC009cCe55214Df70975f89c5`",
           ],
           [
             "WarrantVerifier",
-            "`0xf63f8055FA522bb5Ae243FF713cB889f02c4f742`",
+            "`0x040b660Ac81cDd775660EDA2f535AF437782cA20`",
           ],
           [
             "WarrantGate",
-            "`0xb0a73736C5A1eFa09589aB3E30C3201D267A24A1`",
+            "`0x27B47a65F0E4BF3b45Bb38e020351FE6C18F2dE6`",
           ],
         ],
       },
@@ -392,7 +393,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "WarrantVerifier is the snarkjs-generated Groth16 verifier. WarrantGate composes registry + verifier for optional on-chain `onlyWarrant` checks. The product path is the x402 hook, not a gate transaction on every shop call. A Studio subgraph indexes `Bound` / `Revoked` from block 46413332 for the Registry page. That graph is a data plane, not a second mandate model.",
+        text: "WarrantVerifier is the snarkjs-generated Groth16 verifier. WarrantGate composes registry + verifier for optional on-chain `onlyWarrant` checks. The product path is the x402 hook, not a gate transaction on every shop call. A Studio subgraph indexes `Bound` / `Revoked` / `MandateInserted` / `MandateRevoked` from block 46661760. That graph is a data plane, not a second mandate model.",
       },
     ],
   },
@@ -416,7 +417,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. Fire on the parent kills the helper. Multiple live warrants per MetaMask are separate mints under the same bound root (`Fire this` / `Fire every`). That is not extra hops on one proof.",
+        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. `Fire helper` deletes hop 3. `Fire this` deletes hop 2 (the bot and its helper die; other warrants under the same MetaMask stay live). `Fire every` bumps the identity epoch and every hop dies. Only the MetaMask that bound the root can Fire. A new Groth16 ceremony is required before this host proves the forest circuit.",
       },
       {
         kind: "p",
@@ -545,7 +546,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         kind: "ul",
         items: [
           "Compromised bot bearer: can act within its mandate until expiry or Fire. Cannot widen scope. Cannot forge a longer chain (needs parent signatures). Cannot Fire — that needs the MetaMask that bound the leaf.",
-          "Mid-tree revoke without touching the root is a known gap. Mitigation on this host is a 30-minute mandate TTL. v2 would be a live-mandate forest, not Lightning-style punishment secrets.",
+          "Live-mandate forest: one LeanIMT. Identity leaf plus each enabled mandate hash. Delete a hop with `revokeMandate`. Insert and delete move `currentRoot` — in-flight proofs already die on any bind. Hop membership pushed R1CS to 101_781 constraints. Solo ceremony is pot17. Said plainly.",
           "The leaf sees the chain: the Groth16 witness includes every parent mandate. The verifier does not. Recursive / PCD proving is how descendants would stop seeing intermediates. Not this circuit.",
           "Leaked `humanTag`: linking, never forging. Rotate by re-binding (this registry is one bind per wallet; Fire and a new wallet, or a later registry that allows re-bind after full exit).",
           "Anonymity set equals the number of bound roots. On day one that is test users. State this plainly.",

@@ -18,6 +18,7 @@ export type WarrantView = {
   remainingMs: number;
   receipt?: WarrantReceipt;
   scope: GuestScopeName;
+  helperLive?: boolean;
 };
 
 export type GuestSession = {
@@ -146,7 +147,12 @@ export function createSessionStore(opts: {
         if (session.deskId !== deskId) continue;
         if (session.parentId) continue;
         if (expired(session)) continue;
-        views.push(warrantView(session, now(), opts.ttlMs));
+        const view = warrantView(session, now(), opts.ttlMs);
+        if (session.helperSessionId) {
+          const helper = map.get(session.helperSessionId);
+          view.helperLive = !!(helper && !helper.revoked && !expired(helper));
+        }
+        views.push(view);
       }
       views.sort((a, b) => a.createdAt - b.createdAt);
       return views;

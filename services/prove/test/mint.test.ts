@@ -247,4 +247,29 @@ describe("mintGuest", function () {
     assert.equal(BigInt(session.state.mandates[0]!.scope), TRANSLATE | FETCH);
     assert.equal(BigInt(session.state.mandates[1]!.scope), TRANSLATE | FETCH);
   });
+
+  it("inserts hop hashes into the forest after assemble", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const wallet = "0x00000000000000000000000000000000000000ab";
+    const inserted: string[] = [];
+    const out = await mintGuest({
+      store,
+      wallet,
+      bindPrivateKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      registry: "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89",
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+      insertMandates: async ({ hashes }) => {
+        inserted.push(...hashes.map(String));
+      },
+    });
+    const session = store.get(out.sessionId);
+    assert.ok(session);
+    assert.equal(inserted.length, 2);
+    assert.equal(inserted[0], session.state.mandates[0]?.hash);
+    assert.equal(inserted[1], session.state.mandates[1]?.hash);
+    assert.equal(session.state.members.includes(inserted[0]!), true);
+    assert.equal(session.state.members.includes(inserted[1]!), true);
+  });
 });

@@ -196,7 +196,7 @@ describe("WP4 gate: 2-hop prove + on-chain WarrantGate", function () {
     });
 
     const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], tier, epoch);
-    const group = createGroup([leaf]);
+    const group = createGroup([leaf, hop0.hash, hop1.hash]);
     const requestHash = 123456789n;
 
     const prover = new SnarkjsProver(wasm, zkey);
@@ -225,13 +225,37 @@ describe("WP4 gate: 2-hop prove + on-chain WarrantGate", function () {
     try {
       await waitForRpc(rpc);
       const { registry, gate } = deploy(rpc);
-      const currentRoot = bindRoot(
+      bindRoot(
         rpc,
         registry,
         ANVIL_ADDR,
         root.publicKey[0],
         root.publicKey[1],
         Number(tier),
+      );
+      execFileSync(
+        "cast",
+        [
+          "send",
+          registry,
+          "insertMandates(address,uint256[])",
+          ANVIL_ADDR,
+          `[${hop0.hash},${hop1.hash}]`,
+          "--rpc-url",
+          rpc,
+          "--private-key",
+          ANVIL_PK,
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+      const currentRoot = BigInt(
+        execFileSync(
+          "cast",
+          ["call", registry, "currentRoot()(uint256)", "--rpc-url", rpc],
+          { encoding: "utf8" },
+        )
+          .trim()
+          .split(/\s+/)[0]!,
       );
       assert.equal(currentRoot, publics.merkleRoot);
 

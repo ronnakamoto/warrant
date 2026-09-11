@@ -33,6 +33,16 @@ const abi = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
+  {
+    type: "function",
+    name: "insertMandates",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "wallet", type: "address" },
+      { name: "hashes", type: "uint256[]" },
+    ],
+    outputs: [{ name: "root", type: "uint256" }],
+  },
 ] as const;
 
 export type BindRootArgs = {
@@ -82,6 +92,52 @@ export async function bindRootOnChain(
   }
 
   return { leaf: 0n, root, txHash: hash };
+}
+
+export type InsertMandatesArgs = {
+  rpcUrl: string;
+  registry: Address;
+  privateKey: Hex;
+  wallet: Address;
+  hashes: readonly bigint[];
+  chain?: Chain;
+};
+
+export async function insertMandatesOnChain(
+  args: InsertMandatesArgs,
+): Promise<{ root: bigint; txHash: Hex }> {
+  const account: Account = privateKeyToAccount(args.privateKey);
+  const chain = args.chain ?? baseSepolia;
+  const wallet = createWalletClient({
+    account,
+    chain,
+    transport: http(args.rpcUrl),
+  });
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(args.rpcUrl),
+  });
+
+  const hash = await wallet.writeContract({
+    address: args.registry,
+    abi,
+    functionName: "insertMandates",
+    args: [args.wallet, [...args.hashes]],
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`insertMandates reverted (${hash})`);
+  }
+
+  const root = await publicClient.readContract({
+    address: args.registry,
+    abi,
+    functionName: "currentRoot",
+  });
+  if (root === 0n) {
+    throw new Error("insertMandates succeeded but currentRoot is still 0");
+  }
+  return { root, txHash: hash };
 }
 
 export async function readCurrentRoot(opts: {

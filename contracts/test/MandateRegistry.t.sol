@@ -130,4 +130,84 @@ contract MandateRegistryTest is Test {
         vm.expectRevert(MandateRegistry.NotOperator.selector);
         opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
     }
+
+    function testInsertMandatesThenRevokeOne() public {
+        MandateRegistry opReg = new MandateRegistry(operator);
+        vm.prank(operator);
+        opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
+
+        uint256[] memory hashes = new uint256[](2);
+        hashes[0] = _u(".mandateA");
+        hashes[1] = _u(".mandateB");
+        vm.prank(operator);
+        uint256 root = opReg.insertMandates(alice, hashes);
+        assertEq(root, _u(".rootAfterMandates"));
+        assertEq(opReg.size(), 3);
+        assertEq(opReg.walletOfMandate(_u(".mandateA")), alice);
+        assertEq(opReg.walletOfMandate(_u(".mandateB")), alice);
+        assertTrue(opReg.isCurrentRoot(root));
+
+        uint256[] memory siblings = _siblings(".revokeMandateSiblings");
+        vm.prank(alice);
+        uint256 rootFired = opReg.revokeMandate(_u(".mandateB"), siblings);
+        assertEq(rootFired, _u(".rootAfterRevokeMandate"));
+        assertEq(opReg.size(), 3);
+        assertEq(opReg.walletOfMandate(_u(".mandateB")), address(0));
+        assertEq(opReg.walletOfMandate(_u(".mandateA")), alice);
+        assertEq(opReg.leafOf(alice), _u(".alice.leaf0"));
+        assertTrue(opReg.isCurrentRoot(rootFired));
+        assertFalse(opReg.isCurrentRoot(root));
+    }
+
+    function testNonOwnerCannotRevokeMandate() public {
+        MandateRegistry opReg = new MandateRegistry(operator);
+        vm.prank(operator);
+        opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
+        uint256[] memory hashes = new uint256[](1);
+        hashes[0] = _u(".mandateA");
+        vm.prank(operator);
+        opReg.insertMandates(alice, hashes);
+
+        uint256[] memory empty;
+        vm.prank(bob);
+        vm.expectRevert(MandateRegistry.NotMandateOwner.selector);
+        opReg.revokeMandate(_u(".mandateA"), empty);
+    }
+
+    function testCannotRevokeIdentityViaRevokeMandate() public {
+        vm.prank(alice);
+        (uint256 leaf,) = registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
+        uint256[] memory empty;
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.NotMandate.selector);
+        registry.revokeMandate(leaf, empty);
+    }
+
+    function testUnboundCannotInsertMandates() public {
+        uint256[] memory hashes = new uint256[](1);
+        hashes[0] = _u(".mandateA");
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.Unbound.selector);
+        registry.insertMandates(alice, hashes);
+    }
+
+    function testNonOperatorCannotInsertMandates() public {
+        MandateRegistry opReg = new MandateRegistry(operator);
+        vm.prank(operator);
+        opReg.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 2);
+        uint256[] memory hashes = new uint256[](1);
+        hashes[0] = _u(".mandateA");
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.NotOperator.selector);
+        opReg.insertMandates(alice, hashes);
+    }
+
+    function testEmptyMandatesRevert() public {
+        vm.prank(alice);
+        registry.bindRoot(alice, _u(".alice.pkX"), _u(".alice.pkY"), 0);
+        uint256[] memory empty;
+        vm.prank(alice);
+        vm.expectRevert(MandateRegistry.EmptyMandates.selector);
+        registry.insertMandates(alice, empty);
+    }
 }

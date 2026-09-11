@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch the released warrant_final.zkey (~28 MB). Never commit zkeys.
+# Fetch the released warrant_final.zkey (~46 MB). Never commit zkeys.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="${ROOT}/circuits/build"
@@ -9,9 +9,9 @@ VK="${BUILD}/warrant_vkey.json"
 WASM="${BUILD}/warrant_js/warrant.wasm"
 
 # Default: demo/testnet artifacts release (not multi-party MPC — see CEREMONY.md).
-DEFAULT_ZKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant_final.zkey"
-DEFAULT_VKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant_vkey.json"
-DEFAULT_WASM_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v1/warrant.wasm"
+DEFAULT_ZKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v2/warrant_final.zkey"
+DEFAULT_VKEY_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v2/warrant_vkey.json"
+DEFAULT_WASM_URL="https://github.com/ronnakamoto/warrant/releases/download/artifacts-groth16-v2/warrant.wasm"
 
 WARRANT_ZKEY_URL="${WARRANT_ZKEY_URL:-$DEFAULT_ZKEY_URL}"
 WARRANT_VKEY_URL="${WARRANT_VKEY_URL:-$DEFAULT_VKEY_URL}"

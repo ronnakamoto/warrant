@@ -1,6 +1,6 @@
 # MandateRegistry subgraph (Base Sepolia)
 
-Indexes `Bound` / `Revoked` on [`0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89`](https://sepolia.basescan.org/address/0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89) from block `46413332`.
+Indexes `Bound` / `Revoked` / `MandateInserted` / `MandateRevoked` on [`0x8704606Bde5E257dC009cCe55214Df70975f89c5`](https://sepolia.basescan.org/address/0x8704606Bde5E257dC009cCe55214Df70975f89c5) from block `46661760`.
 
 This is a **Subgraph Studio** deployment. Querying it live (plus the public [Agent0 / ERC-8004 subgraph on Base Sepolia](https://thegraph.com/explorer/subgraphs/4yYAvQLFjBhBtdRCY7eUWo181VNoTSLLFd5M7FXQAi6u)) is how the dashboard and CLI read the registry — not a static JSON dump.
 
