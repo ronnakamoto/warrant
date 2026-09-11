@@ -125,6 +125,9 @@ describe("guest first-run copy", function () {
     assert.equal(/0x[0-9a-fA-F]{16,}/.test(skill), false);
     assert.equal(skill.includes("PROVE_URL"), false);
     assert.equal(skill.includes("npx"), false);
+    assert.equal(skill.includes("From a clone"), false);
+    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
+    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant act/);
     assert.match(skill, /api\/agent\/hire/);
     assert.match(skill, /Hand the returned skill/);
     assert.equal(skill.includes("/api/agent/translate"), false);
@@ -376,6 +379,9 @@ describe("guest first-run copy", function () {
     assert.match(skill, /Do not skip/i);
     assert.match(skill, /shop's text and the HashScan/i);
     assert.match(skill, /funded|received/i);
+    assert.equal(skill.includes("npx"), false);
+    assert.equal(skill.includes("From a clone"), false);
+    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
     assert.equal(/Let it spend/i.test(skill), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     const { parseAgentAccount, transactionIdFromExecute } = await import(

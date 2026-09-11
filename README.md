@@ -57,7 +57,12 @@ The shop kit is `@ronnakamoto/warrant-core` + `@ronnakamoto/warrant-x402` `0.1.0
 npm i @ronnakamoto/warrant-core @ronnakamoto/warrant-x402 hono viem
 ```
 
-Do not `npx @warrant/agent`. The CLI stays in this clone.
+The agent CLI is `@ronnakamoto/warrant`. A bot on this machine runs:
+
+```bash
+pnpm dlx @ronnakamoto/warrant ready
+WARRANT_BEARER='<the bearer from Copy>' pnpm dlx @ronnakamoto/warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"hi"}'
+```
 
 `pnpm warrant act --url` already takes any shop. A mandate that includes `fetch` can hit the in-repo echo shop (`services/echo`, port 8788):
 

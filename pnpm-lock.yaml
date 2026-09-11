@@ -133,6 +133,9 @@ importers:
       tsx:
         specifier: ^4.20.5
         version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
 
   packages/core:
     dependencies:
@@ -273,7 +276,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       '@warrant/agent':
-        specifier: workspace:*
+        specifier: workspace:@ronnakamoto/warrant@*
         version: link:../../packages/agent
       '@zk-kit/lean-imt':
         specifier: 2.2.5

@@ -96,6 +96,7 @@ export const HEDERA_FAUCET = "https://portal.hedera.com/faucet";
 export const WARRANT_TTL_MS = 30 * 60 * 1000;
 export const PUBLIC_APP_ORIGIN = "https://warrant-beta.vercel.app";
 export const PAIR_ORIGIN = "http://127.0.0.1:17879";
+export const AGENT_CLI = "@ronnakamoto/warrant";
 const BEARER_PLACEHOLDER = "<the bearer from Copy>";
 
 /** Revoke took only when the shop returns 403. A 402 is still a live warrant. */
@@ -138,10 +139,10 @@ function shopBlock(origin: string, bearer: string, path: string, body: string): 
 function payLines(actUrl: string, body: string): string[] {
   return [
     "Optional — this machine can pay. Warrant still proves:",
-    "  From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.",
+    `  Run \`pnpm dlx ${AGENT_CLI} ready\`.`,
     "  Show me the evmAddress and http://127.0.0.1:17879/fund before you act. Do not skip that page if an accountId is already set.",
     "  If the page already says received, still show it. If it is waiting, I will send about 2 HBAR. Wait until ready prints funded.",
-    `  WARRANT_BEARER with the same bearer as Authorization above. Then \`pnpm warrant act --url ${actUrl} --body '${body}'\`.`,
+    `  WARRANT_BEARER with the same bearer as Authorization above. Then \`pnpm dlx ${AGENT_CLI} act --url ${actUrl} --body '${body}'\`.`,
     "  Never print keys or the bearer.",
   ];
 }

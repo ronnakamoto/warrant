@@ -429,8 +429,24 @@ describe("warrant act", function () {
     assert.equal(skill.includes("hederaPrivateKey"), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     assert.equal(/npx @warrant\/agent/.test(skill), false);
+    assert.equal(skill.includes("npx"), false);
+    assert.equal(skill.includes("From a clone"), false);
+    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
+    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant act/);
     assert.match(skill, /Do not POST a key/);
     assert.match(skill, /Bearer <the bearer from Copy>/);
+  });
+
+  it("publishes the CLI as @ronnakamoto/warrant", async function () {
+    const { readFileSync } = await import("node:fs");
+    const { dirname, join } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const pkg = JSON.parse(
+      readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
+    ) as { name?: string; bin?: { warrant?: string }; private?: boolean };
+    assert.equal(pkg.name, "@ronnakamoto/warrant");
+    assert.equal(pkg.bin?.warrant, "./dist/bin.js");
+    assert.equal(pkg.private, undefined);
   });
 });
 
