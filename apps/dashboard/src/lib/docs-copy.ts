@@ -27,7 +27,7 @@ export const DOCS_COPY = {
 export const DOCS_EXCALIDRAW = {
   title: "How a warrant acts",
   src: "/protocol/how-warrant-works.png",
-  alt: "You authorize, copy a skill into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire this deletes one hop from the live forest. Fire every bumps the epoch and every hop dies.",
+  alt: "You authorize, copy a skill into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire helper deletes hop 3. Fire this deletes hop 2. Fire every bumps the identity epoch and every hop dies.",
 } as const;
 
 export const DOCS_DIAGRAMS = [
@@ -92,11 +92,11 @@ export const DOCS_SECTIONS: DocsSection[] = [
           },
           {
             dt: "Root",
-            dd: "The Baby Jubjub public key bound to your MetaMask wallet on MandateRegistry. One wallet, one root. Authorize again mints another off-chain chain under that same leaf.",
+            dd: "MandateRegistry `currentRoot`: one LeanIMT over the identity leaf and every enabled mandate hash. Your MetaMask binds one Baby Jubjub public key. Authorize again inserts another hop chain under that same identity leaf.",
           },
           {
             dt: "Leaf",
-            dd: "Poseidon5(`warrant/leaf`, pkX, pkY, tier, epoch). That field sits in a LeanIMT. Fire bumps epoch, so the old leaf is gone from the live root.",
+            dd: "Poseidon5(`warrant/leaf`, pkX, pkY, tier, epoch). That identity field sits in the forest next to each enabled mandate hash (`warrant/mandate`). `Fire every` bumps epoch so the old identity leaf is gone. `Fire this` / `Fire helper` tombstone a mandate hash (value 0) and leave the identity leaf in place.",
           },
           {
             dt: "Hop",
@@ -116,11 +116,11 @@ export const DOCS_SECTIONS: DocsSection[] = [
           },
           {
             dt: "Helper",
-            dd: "A third hop your bot can hire. It only gets memo (`FETCH`). It cannot translate. It cannot hire. Fire kills it too. Translate-only warrants cannot hire.",
+            dd: "A third hop your bot can hire. It only gets memo (`FETCH`). It cannot translate. It cannot hire. `Fire helper` deletes that hop. `Fire this` deletes the parent bot and the helper. Translate-only warrants cannot hire.",
           },
           {
             dt: "Fire",
-            dd: "On-chain revoke: epoch += 1, leaf replaced, `currentRoot` moves. Every hop under you dies. The next prove is 403 because the merkle root moved, not because a cookie expired.",
+            dd: "Only the MetaMask that bound the root. `Fire helper` is `revokeMandate` on hop 3 — helper 403, parent live. `Fire this` is `revokeMandate` on hop 2 — that warrant and its helper 403; other warrants under the same wallet stay live. `Fire every` bumps the identity epoch and replaces the identity leaf — every hop dies (`root_revoked`). A hop tombstone against a still-live forest root is `invalid_proof`. `currentRoot` moves on every insert or delete, so in-flight proofs die either way.",
           },
         ],
       },
@@ -165,12 +165,12 @@ export const DOCS_SECTIONS: DocsSection[] = [
           [
             "SNARK",
             "Groth16 over BN254",
-            "Product circuit `WarrantFull(4, 20)` in `circuits/warrant.circom`. ~59,837 constraints. Prove ~2s. zkey ~28 MB, never committed.",
+            "Product circuit `WarrantFull(4, 20)` in `circuits/warrant.circom`. 101_781 constraints (pot17). zkey ~46 MB, never committed. Solo ceremony tag `artifacts-groth16-v2`.",
           ],
           [
             "Merkle tree",
             "LeanIMT / Semaphore Group",
-            "`BinaryMerkleRoot` with `MAX_MERKLE_DEPTH = 20`. That depth is the anonymity set, not agents per warrant.",
+            "`BinaryMerkleRoot` with `MAX_MERKLE_DEPTH = 20`. One forest: identity leaf plus each enabled mandate hash. Depth is tree height, not agents per warrant. `size` counts every insert, so it is larger than the number of bound wallets.",
           ],
         ],
       },
@@ -267,7 +267,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         caption: "publicSignals[0..7]",
         headers: ["i", "Name", "What the shop learns"],
         rows: [
-          ["0", "`merkleRoot`", "Must equal MandateRegistry `currentRoot`. Stale or fired roots abort."],
+          ["0", "`merkleRoot`", "Must equal MandateRegistry `currentRoot`. Identity fire → `root_revoked`. A fired hop against a live forest root → `invalid_proof`."],
           ["1", "`contextHash`", "Scopes the nullifier. Not your name."],
           ["2", "`nullifier`", "Per-human-per-context id for quota and the replay seal. Not a wallet."],
           ["3", "`effectiveScope`", "Last-enabled hop’s uint64 capability bits."],
@@ -353,7 +353,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "A warrant is a leaf under a root. Your MetaMask binds that root on Base Sepolia (chain id 84532) in a LeanIMT. Off-chain hops can only get narrower. The leaf proves membership, the chain, and that this request was the one the shop challenged.",
+        text: "A warrant is an identity leaf plus its enabled mandate hashes under one forest `currentRoot`. Your MetaMask binds the identity leaf on Base Sepolia (chain id 84532). Authorize and hire insert hop hashes. Off-chain hops can only get narrower. The proof shows identity membership, each enabled hop in the same root, the chain, and that this request was the one the shop challenged.",
       },
       {
         kind: "table",
@@ -380,7 +380,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "LeanIMT of Poseidon5 leaves. No Groth16 in this contract. Personhood is never checked on-chain. Bind inserts epoch 0. Revoke bumps epoch and `_update`s the leaf so `currentRoot` changes. Resource servers on this host require `merkleRoot == currentRoot`. They do not accept historical roots (`isKnownRoot` exists on the design, not in the v1 x402 hook), so an in-flight proof dies as soon as you Fire.",
+        text: "LeanIMT of Poseidon5 identity leaves and Poseidon mandate hashes. No Groth16 in this contract. Personhood is never checked on-chain. Bind inserts the identity leaf at epoch 0. The prove operator then `insertMandates` for hops 1 and 2 (hire inserts hop 3). `revokeMandate` tombstones one hop (`_remove` → 0). Identity `revoke` bumps epoch and `_update`s that wallet’s leaf. Resource servers on this host require `merkleRoot == currentRoot`. They do not accept historical roots (`isKnownRoot` exists on the design, not in the v1 x402 hook).",
       },
       {
         kind: "ul",
@@ -417,7 +417,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. `Fire helper` deletes hop 3. `Fire this` deletes hop 2 (the bot and its helper die; other warrants under the same MetaMask stay live). `Fire every` bumps the identity epoch and every hop dies. Only the MetaMask that bound the root can Fire. A new Groth16 ceremony is required before this host proves the forest circuit.",
+        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. `Fire helper` deletes hop 3. `Fire this` deletes hop 2 (the bot and its helper die; other warrants under the same MetaMask stay live). `Fire every` bumps the identity epoch and every hop dies. Only the MetaMask that bound the root can Fire. This host already proves the forest circuit (pot17, `artifacts-groth16-v2`).",
       },
       {
         kind: "p",
@@ -530,7 +530,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "The picture is the protocol. Hops stay on the left. Eight public signals cross Groth16. The shop only ever sees the right. Fire kills the leaf. The four sketches below are the same loop, smaller.",
+        text: "The picture is the protocol. Hops stay on the left. Eight public signals cross Groth16. The shop only ever sees the right. Fire helper or Fire this deletes a hop. Fire every kills the identity leaf. The four sketches below are the same loop, smaller.",
       },
     ],
   },

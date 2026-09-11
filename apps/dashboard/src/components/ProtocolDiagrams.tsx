@@ -138,42 +138,58 @@ export function DiagramSees() {
   );
 }
 
+function FireRow({
+  y,
+  verb,
+  a,
+  b,
+  c,
+}: {
+  y: number;
+  verb: string;
+  a: string;
+  b: string;
+  c: string;
+}) {
+  const dead = (label: string) => label === "403" || label === "Revoked";
+  return (
+    <g>
+      <text
+        x={8}
+        y={y + 26}
+        fill={mute}
+        style={{ fontFamily: "var(--font-family-body)", fontSize: 12 }}
+      >
+        {verb}
+      </text>
+      <Box x={140} y={y} w={100} h={40} label={a} quiet={dead(a)} />
+      <Arrow x1={244} y1={y + 20} x2={268} y2={y + 20} />
+      <Box x={272} y={y} w={100} h={40} label={b} quiet={dead(b)} />
+      <Arrow x1={376} y1={y + 20} x2={400} y2={y + 20} />
+      <Box x={404} y={y} w={100} h={40} label={c} quiet={dead(c)} />
+    </g>
+  );
+}
+
 export function DiagramFire() {
   return (
-    <svg viewBox="0 0 720 168" width="100%" height="auto" role="img" aria-label="Fire kills every hop">
+    <svg
+      viewBox="0 0 720 220"
+      width="100%"
+      height="auto"
+      role="img"
+      aria-label="Fire helper deletes the helper. Fire this deletes that warrant. Fire every kills every hop."
+    >
+      <FireRow y={8} verb="Fire helper" a="Root" b="Hop" c="403" />
+      <FireRow y={68} verb="Fire this" a="Root" b="403" c="403" />
+      <FireRow y={128} verb="Fire every" a="Revoked" b="403" c="403" />
       <text
         x={8}
-        y={18}
+        y={208}
         fill={mute}
         style={{ fontFamily: "var(--font-family-body)", fontSize: 12 }}
       >
-        Before
-      </text>
-      <Box x={8} y={32} w={100} h={40} label="Root" />
-      <Arrow x1={112} y1={52} x2={136} y2={52} />
-      <Box x={140} y={32} w={100} h={40} label="Hop" />
-      <Arrow x1={244} y1={52} x2={268} y2={52} />
-      <Box x={272} y={32} w={100} h={40} label="Helper" />
-      <text
-        x={8}
-        y={100}
-        fill={mute}
-        style={{ fontFamily: "var(--font-family-body)", fontSize: 12 }}
-      >
-        After Fire
-      </text>
-      <Box x={8} y={114} w={100} h={40} label="Revoked" quiet />
-      <Arrow x1={112} y1={134} x2={136} y2={134} />
-      <Box x={140} y={114} w={100} h={40} label="403" quiet />
-      <Arrow x1={244} y1={134} x2={268} y2={134} />
-      <Box x={272} y={114} w={100} h={40} label="403" quiet />
-      <text
-        x={500}
-        y={88}
-        fill={ink}
-        style={{ fontFamily: "var(--font-family-body)", fontSize: 13 }}
-      >
-        One epoch bump. Every hop dies.
+        Hop fire is invalid_proof. Identity fire is root_revoked. Other warrants stay live unless you Fire every.
       </text>
     </svg>
   );
