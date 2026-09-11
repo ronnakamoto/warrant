@@ -17,6 +17,7 @@ import {
   saveState,
   type WarrantState,
 } from "../src/store.ts";
+import { UnboundError, isUnboundError } from "../src/sync-root.ts";
 import { warrantHeaderJson, proveForChallenge } from "../src/prove-flow.ts";
 import type { IProver, WarrantProof } from "@ronnakamoto/warrant-core";
 
@@ -643,6 +644,17 @@ describe("@warrant/agent purse", function () {
         return true;
       },
     );
+  });
+});
+
+describe("isUnboundError", function () {
+  it("recognizes Unbound and the forest revert selector", function () {
+    assert.equal(isUnboundError(new UnboundError("0xabc")), true);
+    assert.equal(
+      isUnboundError(new Error('leafOf reverted with the following signature:\n0x74a04f02')),
+      true,
+    );
+    assert.equal(isUnboundError(new Error("already bound")), false);
   });
 });
 
