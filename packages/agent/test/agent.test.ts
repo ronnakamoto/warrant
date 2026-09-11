@@ -431,8 +431,9 @@ describe("warrant act", function () {
     assert.equal(/npx @warrant\/agent/.test(skill), false);
     assert.equal(skill.includes("npx"), false);
     assert.equal(skill.includes("From a clone"), false);
-    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
-    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant act/);
+    assert.match(skill, /Do not install pnpm, npm, or bun/);
+    assert.match(skill, /npm exec --yes -- @ronnakamoto\/warrant ready/);
+    assert.match(skill, /npm exec --yes -- @ronnakamoto\/warrant act/);
     assert.match(skill, /Do not POST a key/);
     assert.match(skill, /Bearer <the bearer from Copy>/);
   });

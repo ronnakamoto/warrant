@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  agentCli,
   agentPrompt,
   GUEST_COPY,
   landHeadlineLines,
@@ -126,8 +127,12 @@ describe("guest first-run copy", function () {
     assert.equal(skill.includes("PROVE_URL"), false);
     assert.equal(skill.includes("npx"), false);
     assert.equal(skill.includes("From a clone"), false);
-    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
-    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant act/);
+    assert.match(skill, /Do not install pnpm, npm, or bun/);
+    assert.match(skill, /already on PATH/);
+    assert.match(skill, /npm exec --yes -- @ronnakamoto\/warrant ready/);
+    assert.match(skill, /npm exec --yes -- @ronnakamoto\/warrant act/);
+    assert.match(skill, /bunx @ronnakamoto\/warrant ready/);
+    assert.equal(agentCli("ready"), "npm exec --yes -- @ronnakamoto/warrant ready");
     assert.match(skill, /api\/agent\/hire/);
     assert.match(skill, /Hand the returned skill/);
     assert.equal(skill.includes("/api/agent/translate"), false);
@@ -381,7 +386,8 @@ describe("guest first-run copy", function () {
     assert.match(skill, /funded|received/i);
     assert.equal(skill.includes("npx"), false);
     assert.equal(skill.includes("From a clone"), false);
-    assert.match(skill, /pnpm dlx @ronnakamoto\/warrant ready/);
+    assert.match(skill, /Do not install pnpm, npm, or bun/);
+    assert.match(skill, /npm exec --yes -- @ronnakamoto\/warrant ready/);
     assert.equal(/Let it spend/i.test(skill), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
     const { parseAgentAccount, transactionIdFromExecute } = await import(

@@ -22,10 +22,11 @@ Show me the shop's text and the HashScan link. Do not show me the bearer token, 
 This leaf lasts about 30 minutes unless I Fire sooner.
 
 Optional — this machine can pay. Warrant still proves:
-  Run `pnpm dlx @ronnakamoto/warrant ready`.
+  Run @ronnakamoto/warrant with a JS runner already on PATH. Do not install pnpm, npm, or bun. Do not clone.
+  If npm is on PATH: `npm exec --yes -- @ronnakamoto/warrant ready`. If bun is on PATH: `bunx @ronnakamoto/warrant ready`. If pnpm is on PATH: `pnpm dlx @ronnakamoto/warrant ready`.
   Show me the evmAddress and http://127.0.0.1:17879/fund before you act. Do not skip that page if an accountId is already set.
   If the page already says received, still show it. If it is waiting, I will send about 2 HBAR. Wait until ready prints funded.
-  WARRANT_BEARER with the same bearer as Authorization above. Then `pnpm dlx @ronnakamoto/warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"<what I asked you to send>"}'`.
+  WARRANT_BEARER with the same bearer as Authorization above. Then the same runner: `npm exec --yes -- @ronnakamoto/warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"<what I asked you to send>"}'`.
   Never print keys or the bearer.
 
 To hire a helper that can only scar memo:

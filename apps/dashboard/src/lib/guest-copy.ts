@@ -136,13 +136,19 @@ function shopBlock(origin: string, bearer: string, path: string, body: string): 
   ];
 }
 
+/** Run the published bin with a JS runner already on PATH. Do not assume pnpm. */
+export function agentCli(args: string): string {
+  return `npm exec --yes -- ${AGENT_CLI} ${args}`;
+}
+
 function payLines(actUrl: string, body: string): string[] {
   return [
     "Optional — this machine can pay. Warrant still proves:",
-    `  Run \`pnpm dlx ${AGENT_CLI} ready\`.`,
+    `  Run ${AGENT_CLI} with a JS runner already on PATH. Do not install pnpm, npm, or bun. Do not clone.`,
+    `  If npm is on PATH: \`${agentCli("ready")}\`. If bun is on PATH: \`bunx ${AGENT_CLI} ready\`. If pnpm is on PATH: \`pnpm dlx ${AGENT_CLI} ready\`.`,
     "  Show me the evmAddress and http://127.0.0.1:17879/fund before you act. Do not skip that page if an accountId is already set.",
     "  If the page already says received, still show it. If it is waiting, I will send about 2 HBAR. Wait until ready prints funded.",
-    `  WARRANT_BEARER with the same bearer as Authorization above. Then \`pnpm dlx ${AGENT_CLI} act --url ${actUrl} --body '${body}'\`.`,
+    `  WARRANT_BEARER with the same bearer as Authorization above. Then the same runner: \`${agentCli(`act --url ${actUrl} --body '${body}'`)}\`.`,
     "  Never print keys or the bearer.",
   ];
 }
