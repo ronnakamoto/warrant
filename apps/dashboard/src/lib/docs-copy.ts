@@ -120,7 +120,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           },
           {
             dt: "Fire",
-            dd: "Only the MetaMask that bound the root. `Fire helper` is `revokeMandate` on hop 3 — helper 403, parent live. `Fire this` is `revokeMandate` on hop 2 — that warrant and its helper 403; other warrants under the same wallet stay live. `Fire every` bumps the identity epoch and replaces the identity leaf — every hop dies (`root_revoked`). A hop tombstone against a still-live forest root is `invalid_proof`. `currentRoot` moves on every insert or delete, so in-flight proofs die either way.",
+            dd: "Only the MetaMask that bound the root. `Fire helper` is `revokeMandate` on hop 3 — helper 403, parent live. `Fire this` is `revokeMandate` on hop 2 — that warrant and its helper 403; other warrants under the same wallet stay live. `Fire every` bumps the identity epoch and replaces the identity leaf — every hop dies. Any of those moves `currentRoot`, so a copied bearer dies as `root_revoked` (the shop pins `currentRoot` before Groth16). `invalid_proof` is a Groth16 fail against a still-accepted root — a later prove that names today's root but still claims a deleted hop cannot be built honestly.",
           },
         ],
       },
@@ -267,7 +267,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         caption: "publicSignals[0..7]",
         headers: ["i", "Name", "What the shop learns"],
         rows: [
-          ["0", "`merkleRoot`", "Must equal MandateRegistry `currentRoot`. Identity fire → `root_revoked`. A fired hop against a live forest root → `invalid_proof`."],
+          ["0", "`merkleRoot`", "Must equal MandateRegistry `currentRoot`. After any Fire the copied bearer's root is stale → `root_revoked`. Groth16 fail against a still-accepted root → `invalid_proof`."],
           ["1", "`contextHash`", "Scopes the nullifier. Not your name."],
           ["2", "`nullifier`", "Per-human-per-context id for quota and the replay seal. Not a wallet."],
           ["3", "`effectiveScope`", "Last-enabled hop’s uint64 capability bits."],
@@ -285,7 +285,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         kind: "ol",
         items: [
           "`tagC = Poseidon(DST_tag, humanTag)`. `leaf = Poseidon(DST_leaf, rootPk, tier, epoch)`. `BinaryMerkleRoot` of that leaf against `merkleRoot` (single index, siblings padded to 20).",
-          "Live forest: each enabled hop’s mandate hash is also a LeanIMT leaf in the same `currentRoot`. `enabled[i] * (BinaryMerkleRoot(mandateHash_i) − merkleRoot) === 0`. Dummy hops skip that check. Fire a hop by `_remove` (tombstone 0). A fired hop against a live forest root is `invalid_proof`. `root_revoked` only when the identity epoch moved.",
+          "Live forest: each enabled hop’s mandate hash is also a LeanIMT leaf in the same `currentRoot`. `enabled[i] * (BinaryMerkleRoot(mandateHash_i) − merkleRoot) === 0`. Dummy hops skip that check. Fire a hop by `_remove` (tombstone 0). That moves `currentRoot`, so a copied bearer is `root_revoked`. A new witness that still enables a tombstoned hop cannot satisfy the R1CS.",
           "Hops are an enabled prefix: `enabled[i] ∈ {0,1}`, hop 0 is on, and once a hop is off the rest stay off. Typical hosted mint is `[1,1,0,0]`. A helper is `[1,1,1,0]`.",
           "Attenuation: child scope bits ⊆ parent (64-bit `ScopeSubset`). When a hop is enabled, budget and expiry are ≤ parent. Scope subset is checked along the pad even for dummy hops.",
           "Each enabled hop: mandate hash as above, `parentHash_0 = 0`, `parentHash_i = hash(mandate_{i-1})`, EdDSA-Poseidon by the previous public key (hop 0 by the root).",

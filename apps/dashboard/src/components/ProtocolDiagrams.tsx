@@ -189,7 +189,7 @@ export function DiagramFire() {
         fill={mute}
         style={{ fontFamily: "var(--font-family-body)", fontSize: 12 }}
       >
-        Hop fire is invalid_proof. Identity fire is root_revoked. Other warrants stay live unless you Fire every.
+        Any Fire moves currentRoot, so a copied bearer dies as root_revoked. Fire this leaves other warrants live.
       </text>
     </svg>
   );

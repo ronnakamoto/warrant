@@ -11,6 +11,7 @@ import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { Heading, Text } from "@astryxdesign/core/Text";
 import { hashLeaf } from "../lib/leaf";
+import { defaultRegistryAddress } from "../lib/live-registry";
 import {
   AGENT0_RECENT_QUERY,
   WARRANT_MIRROR_QUERY,
@@ -51,9 +52,7 @@ type BusyAction = null | "refresh" | "revoke" | "graph";
 export function Dashboard({ embedded = false }: { embedded?: boolean }) {
   const defaultRpc =
     process.env.NEXT_PUBLIC_RPC_URL ?? "https://sepolia.base.org";
-  const defaultRegistry =
-    process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ??
-    "0x8704606Bde5E257dC009cCe55214Df70975f89c5";
+  const defaultRegistry = defaultRegistryAddress();
 
   const [rpcUrl, setRpcUrl] = useState(defaultRpc);
   const [registry, setRegistry] = useState(defaultRegistry);

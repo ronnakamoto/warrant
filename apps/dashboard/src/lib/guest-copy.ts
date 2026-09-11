@@ -182,7 +182,7 @@ function skillLines(origin: string, bearer: string, scope: GuestScopeName = "fet
     GUEST_COPY.helperFoot,
     ...memoHonesty,
     "",
-    "If I say fire everyone, open the tab and Fire. Do not POST a key.",
+    "If I say fire, open the tab and Fire helper, Fire this warrant, or Fire every warrant. Do not POST a key.",
     "Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.",
     "This leaf lasts about 30 minutes unless I Fire sooner.",
     "",

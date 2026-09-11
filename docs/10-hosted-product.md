@@ -1,5 +1,7 @@
 # 10 — Hosted Warrant (production-grade testnet)
 
+**Live host (2026-09):** the loop is Authorize (MetaMask) → Copy → a real agent → a real testnet shop → Fire helper / Fire this / Fire every. There is no in-tab shop and no wallet-less Try-it. Fire is three on-chain acts (`revokeMandate` hop 3, hop 2, or identity epoch), not one “Fire everyone” POST. The public book is https://warrant-beta.vercel.app/docs. Copy below that still says Door 1 Try-it / in-page shop / Fire everyone is the design history that got us here.
+
 Warrant as an **Apple-simple hosted product on public testnets**: one site, no clone, no `.env`, no zkey ritual. This file locks the **security model**, the **first-run UX**, what we will not do, and a **phased build** that does not break the protocol pitch.
 
 CLI, circuits, and `@warrant/x402` stay. Hosting is a new composition root, not a second mandate model. **Testnet is the product environment** (Base Sepolia + Hedera testnet). Mainnet is out of scope.

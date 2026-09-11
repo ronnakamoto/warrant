@@ -2,6 +2,8 @@
 
 This is the build plan for Warrant product code. Every numeric claim and API shape below was measured against live networks and real packages (2026-09-02–04). Evidence: `spikes/*/results.json`. Architecture law (patterns, SOLID, smells): [`docs/07-architecture.md`](07-architecture.md). Design: [`docs/02-design.md`](02-design.md).
 
+**Live host (2026-09):** the forest circuit is **101,781** constraints on pot17 (`artifacts-groth16-v2`). Mid-tree hop fire shipped as `revokeMandate` on one LeanIMT. Principle 5's "no mid-tree revoke" was the pre-forest law. The public book is https://warrant-beta.vercel.app/docs.
+
 **Rule:** do not start the next work package until the current gate is green. Each gate is a command or observable outcome that can fail.
 
 ---
@@ -12,7 +14,7 @@ This is the build plan for Warrant product code. Every numeric claim and API sha
 2. **Crypto behind ports.** Swapping Groth16 for Honk is a new `IVerifier` / `IProver` adapter — not a rewrite of x402.
 3. **Generated artifacts are frozen.** Circom outputs and `WarrantVerifier.sol` are regenerated, never hand-edited.
 4. **Spikes are radioactive.** Copy measurements and API shapes. Never `import` from `spikes/`.
-5. **YAGNI.** No mid-tree revoke, Noir stub, plugin framework, or second Poseidon. One extra public input or package is a defect.
+5. **YAGNI.** Noir stub, plugin framework, or second Poseidon stay out. Hop fire is `revokeMandate` on the live forest — not a second tree. One extra public input or package is a defect.
 6. **Acyclic dependencies.** Types shared across packages live in `@warrant/core`. There is no `packages/types` or `packages/shared`.
 
 ---
@@ -197,8 +199,8 @@ pnpm exec node scripts/check-boundaries.mjs
 | Nullifier | `Poseidon(3)([DST_nullifier, humanTag, contextHash])` |
 | `requestHash` | `keccak256(method\|path\|nonce\|merkleRoot\|amount\|payTo\|bodyHash) mod r` |
 | Lean target | &lt; 15k constraints (measured 13,205 with domain tags) |
-| Full target | &lt; 65k constraints (measured 59,837 with domain tags + tag binding); prove &lt; 8 s |
-| pot / zkey | pot16; zkey ~27.9 MB — host via release, never commit |
+| Full target | Pre-forest WP2: 59,837 (pot16, zkey ~28 MB). Live forest: **101,781** (pot17, zkey ~46 MB). Public inputs stay 8. |
+| pot / zkey | Live: pot17 / `artifacts-groth16-v2`. Host via release, never commit. |
 
 ### Chains
 

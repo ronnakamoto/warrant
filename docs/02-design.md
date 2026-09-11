@@ -1,5 +1,7 @@
 # 02 — Warrant: design
 
+**Live host (2026-09):** forest circuit `WarrantFull(4, 20)` is **101,781** constraints (pot17, `artifacts-groth16-v2`). Identity leaf plus each enabled mandate hash share one LeanIMT. `revokeMandate` tombstones a hop; identity `revoke` still bumps epoch. Addresses: [`deployments/base-sepolia.json`](../deployments/base-sepolia.json). The public book is https://warrant-beta.vercel.app/docs. Numbers below that say 59,837 / pot16 are the pre-forest WP2 measurement.
+
 ## 0. The claim in one sentence
 
 Warrant is a **delegatable anonymous credential** for agents. A verifier learns exactly four things about a request: *(1)* it was authorized by a chain that starts at a **World-ID-backed human** (or a Selfie-Check-tier human — the proof carries the assurance tier), *(2)* the **effective scope and budget ceiling** at the leaf, *(3)* the chain is **not revoked and not expired**, and *(4)* a **context-scoped nullifier** that lets the verifier rate-limit or de-duplicate per human without linking across verifiers. It learns nothing else: not the human, not the root agent, not the intermediate agents, not the depth of the chain.
