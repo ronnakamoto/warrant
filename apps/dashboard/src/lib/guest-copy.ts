@@ -39,7 +39,7 @@ export const GUEST_COPY = {
   receipt:
     "Your agent acted. The shop has a HashScan link and a nullifier. It still does not know who you are.",
   helperSkillFoot:
-    "This helper can scar memo. It cannot translate. Fire in the tab kills it too.",
+    "This helper can scar memo. It cannot translate. Fire helper in the tab kills it. Fire this warrant kills it too.",
   scopeLead: "Your bot may leave a memo, translate, or both.",
   scopeMemo: "Memo",
   scopeTranslate: "Translate",

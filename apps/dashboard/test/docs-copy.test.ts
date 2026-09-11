@@ -63,6 +63,17 @@ describe("protocol docs", function () {
     assert.match(book, /header is `warrant`/);
     assert.match(book, /subgraph/);
     assert.match(book, /live forest|live-mandate forest|revokeMandate/i);
+    assert.match(book, /101_781/);
+    assert.match(book, /pot17/);
+    assert.match(book, /artifacts-groth16-v2/);
+    assert.match(book, /Fire helper/);
+    assert.match(book, /Fire this/);
+    assert.match(book, /Fire every/);
+    assert.match(book, /invalid_proof/);
+    assert.match(book, /insertMandates/);
+    assert.equal(/59,?837/.test(book), false);
+    assert.equal(/ceremony is required/i.test(book), false);
+    assert.equal(/zkey ~28 MB/.test(book), false);
   });
 
   it("names the four diagrams", function () {
