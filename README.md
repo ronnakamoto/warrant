@@ -77,7 +77,7 @@ PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursi
 | ERC-7710 | No | Yes | No | Per-session |
 | World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
 | Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
-| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **`tier=0` on the host; AgentBook when that bind is live** | **On-chain epoch** |
+| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **`tier=0` on the host; AgentBook when that bind is live** | **Hop tombstone or identity epoch** |
 
 ## Status
 
@@ -160,7 +160,7 @@ pnpm --filter @warrant/translate dev
 
 Production-shaped root check: set `REGISTRY_ADDRESS` + `BASE_SEPOLIA_RPC` instead of `FIXED_MERKLE_ROOT` (and omit `ALLOW_DEMO_*`). Prefer `WARRANT_VKEY_PATH` for real Groth16 verify. Optional durable free-quota: `WARRANT_NULLIFIER_PATH=/tmp/warrant-nullifiers.json`.
 
-After on-chain revoke: `warrant sync-root` then re-`delegate` (epoch bump clears local mandates).
+After identity Fire: `warrant sync-root` then re-`delegate` (epoch bump clears local mandates). Hop fire (`revokeMandate`) leaves the identity leaf in place.
 
 ### 3. Call as the translator sub-agent (terminal B)
 
@@ -293,7 +293,7 @@ Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/0
 
 - **Authorization, not identity** — Verifiers learn that a mandate is valid under a personhood-rooted tree; they do not learn the human or intermediate agents.
 - **Attenuation** — Each hop can only narrow scope, budget, and TTL.
-- **Cascade revocation** — Killing the root immediately invalidates every descendant mandate.
+- **Cascade revocation** — `Fire every` bumps the identity epoch and every hop dies. `Fire this` / `Fire helper` tombstone one hop and leave the other warrants under that wallet live. Any Fire moves `currentRoot`, so a copied bearer is `root_revoked`.
 - **Practical integration** — Drop-in x402 middleware, CLI + SKILL.md, Hedera translate via Blocky402, dashboard with [Astryx](https://astryx.atmeta.com/docs/getting-started) under [IBM Carbon](https://carbondesignsystem.com/) roles.
 
 ## Layout

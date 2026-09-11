@@ -70,6 +70,8 @@ describe("protocol docs", function () {
     assert.match(book, /Fire this/);
     assert.match(book, /Fire every/);
     assert.match(book, /invalid_proof/);
+    assert.match(book, /copied bearer dies as `root_revoked`/);
+    assert.equal(/Fire helper \/ Fire this → invalid_proof/i.test(book), false);
     assert.match(book, /insertMandates/);
     assert.equal(/59,?837/.test(book), false);
     assert.equal(/ceremony is required/i.test(book), false);
@@ -93,6 +95,12 @@ describe("protocol docs", function () {
     const book = docsBookText();
     assert.match(book, /Hops stay on the left/);
     assert.match(book, /Eight public signals cross Groth16/);
+    const picture = readFileSync(
+      join(dashboard, "public/protocol/how-warrant-works.excalidraw"),
+      "utf8",
+    );
+    assert.match(picture, /Any Fire moves currentRoot/);
+    assert.equal(/Fire helper \/ Fire this → invalid_proof/.test(picture), false);
   });
 
   it("does not sell a proxy or say npx", function () {

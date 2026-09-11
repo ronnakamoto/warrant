@@ -248,6 +248,8 @@ describe("guest first-run copy", function () {
     assert.equal(repo, md);
     assert.equal(md.includes("/api/agent/translate"), false);
     assert.match(md, /api\/agent\/memo/);
+    assert.match(md, /Fire helper, Fire this warrant, or Fire every warrant/);
+    assert.equal(/fire everyone/i.test(md), false);
     assert.equal(PUBLIC_APP_ORIGIN, "https://warrant-beta.vercel.app");
     assert.equal(WARRANT_TTL_MS, 30 * 60 * 1000);
   });
