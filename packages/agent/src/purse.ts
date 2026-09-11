@@ -174,13 +174,16 @@ export async function bindPurseFromMirror(
   );
 }
 
-/** Poll the mirror until the alias is funded. Stops after the first bind. */
+/** Poll the mirror until the alias is funded. Does not fire for a purse that already has an account. */
 export function watchPurseFunding(opts: {
   path: string;
   fetchImpl?: typeof fetch;
   intervalMs?: number;
   onFunded?: (accountId: string) => void;
 }): { stop: () => void } {
+  if (loadPurse(opts.path)?.accountId) {
+    return { stop() {} };
+  }
   let stopped = false;
   let inflight = false;
   const fetchImpl = opts.fetchImpl ?? fetch;

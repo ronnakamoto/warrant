@@ -18,13 +18,13 @@ Warrant will prove for you. Warrant sees the witness. The chat can see the beare
 The shop writes that text to a public Hedera testnet topic. Anyone with the HashScan link can read it. They still do not learn who authorized you.
 
 If I say fire, open the tab and Fire helper, Fire this warrant, or Fire every warrant. Do not POST a key.
-Show me only the shop's text. Do not show me the bearer token, any proof, or any keys.
+Show me the shop's text and the HashScan link. Do not show me the bearer token, any proof, or any keys.
 This leaf lasts about 30 minutes unless I Fire sooner.
 
 Optional — this machine can pay. Warrant still proves:
   From a clone of https://github.com/ronnakamoto/warrant run `pnpm warrant ready`.
-  Show me the evmAddress and http://127.0.0.1:17879/fund. I will send about 2 HBAR there.
-  Wait until ready prints funded or the fund page says received.
+  Show me the evmAddress and http://127.0.0.1:17879/fund before you act. Do not skip that page if an accountId is already set.
+  If the page already says received, still show it. If it is waiting, I will send about 2 HBAR. Wait until ready prints funded.
   WARRANT_BEARER with the same bearer as Authorization above. Then `pnpm warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"<what I asked you to send>"}'`.
   Never print keys or the bearer.
 

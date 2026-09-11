@@ -381,7 +381,7 @@ async function cmdReady(args: string[]): Promise<void> {
         ...view,
         ready: `http://127.0.0.1:${handle.port}`,
         fund: `http://127.0.0.1:${handle.port}/fund`,
-        next: "Show the human the evmAddress and fund URL. This process notices the send and prints funded. Never print keys.",
+        next: "Always show the human the evmAddress and fund URL before acting. Do not skip if this JSON already has accountId. Never print keys.",
       },
       null,
       2,
@@ -458,7 +458,7 @@ Store: $WARRANT_STORE (default ~/.warrant/state.json)
 Pay: local purse. Human sends HBAR to the 0x address. Never print keys.
 Hosted leaf: --bearer or WARRANT_BEARER (Copy). Warrant still proves. No local zkey.
 Local prove: omit bearer (zkey via scripts/download-zkey.sh / WARRANT_ZKEY_URL).
-Prints only the shop text.
+Prints the shop text and HashScan link.
 `);
     return;
   }

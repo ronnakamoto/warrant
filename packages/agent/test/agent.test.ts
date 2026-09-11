@@ -405,7 +405,7 @@ describe("warrant act", function () {
     assert.equal(proved, 0);
     assert.equal(postedKey, false);
     assert.equal(out.status, 200);
-    assert.equal(out.text, "scarred");
+    assert.equal(out.text, "scarred\nhttps://hashscan.io/testnet/transaction/1");
     assert.equal(out.text.includes("sess"), false);
   });
 
@@ -423,6 +423,7 @@ describe("warrant act", function () {
     assert.equal(skill.includes("translate-production"), false);
     assert.match(skill, /warrant ready/);
     assert.match(skill, /17879\/fund/);
+    assert.match(skill, /Do not skip/i);
     assert.match(skill, /funded/);
     assert.equal(/Let it spend/i.test(skill), false);
     assert.equal(skill.includes("hederaPrivateKey"), false);
@@ -608,6 +609,28 @@ describe("@warrant/agent purse", function () {
     });
     assert.equal(accountId, "0.0.77");
     assert.equal(loadPurse(path)?.accountId, "0.0.77");
+  });
+
+  it("does not announce funded for a purse that already has an account", async function () {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { initPurse, bindPurse, watchPurseFunding } = await import("../src/purse.ts");
+    const path = join(mkdtempSync(join(tmpdir(), "warrant-already-")), "purse.json");
+    initPurse(path);
+    bindPurse(path, { accountId: "0.0.10401485" });
+    let funded = 0;
+    const watch = watchPurseFunding({
+      path,
+      intervalMs: 20,
+      fetchImpl: async () => new Response(JSON.stringify({ account: "0.0.10401485" }), { status: 200 }),
+      onFunded: () => {
+        funded += 1;
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    watch.stop();
+    assert.equal(funded, 0);
   });
 
   it("pays from a funded purse without a vault", async function () {
