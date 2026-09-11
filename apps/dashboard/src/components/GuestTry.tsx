@@ -10,6 +10,7 @@ import {
   GUEST_COPY,
   WARRANT_TTL_MS,
   landHeadlineLines,
+  mandateRemainingMs,
   remainingLife,
   remainingMsUntil,
   type GuestScopeName,
@@ -44,16 +45,39 @@ const wrapRow = {
   gap: "var(--spacing-2)",
 } as const;
 
-function isLive(w: WarrantView): boolean {
+function deskLive(w: WarrantView): boolean {
   return w.status === "live" && w.remainingMs > 0;
 }
 
-function latestLive(warrants: WarrantView[]): WarrantView | undefined {
-  return warrants.filter(isLive).sort((a, b) => b.createdAt - a.createdAt)[0];
+function isActing(w: WarrantView, now = Date.now()): boolean {
+  return deskLive(w) && mandateRemainingMs(w.createdAt, now) > 0;
 }
 
-function idTail(id: string): string {
-  return id.length <= 4 ? id : `…${id.slice(-4)}`;
+function latestLive(warrants: WarrantView[]): WarrantView | undefined {
+  return warrants.filter(deskLive).sort((a, b) => b.createdAt - a.createdAt)[0];
+}
+
+function latestActing(warrants: WarrantView[]): WarrantView | undefined {
+  return warrants.filter((w) => isActing(w)).sort((a, b) => b.createdAt - a.createdAt)[0];
+}
+
+function scopeWord(scope: GuestScopeName | undefined): string {
+  if (scope === "translate") return GUEST_COPY.scopeTranslate;
+  if (scope === "both") return GUEST_COPY.scopeBoth;
+  return GUEST_COPY.scopeMemo;
+}
+
+function warrantPickLabel(w: WarrantView, acting: WarrantView[]): string {
+  const key = w.scope ?? "fetch";
+  const same = acting.filter((x) => (x.scope ?? "fetch") === key);
+  const word = scopeWord(w.scope);
+  if (same.length <= 1) return word;
+  const n =
+    same
+      .slice()
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .findIndex((x) => x.id === w.id) + 1;
+  return `${word} ${n}`;
 }
 
 function ScopePicks(props: {
@@ -150,15 +174,18 @@ export function GuestTry() {
   }, []);
 
   const selected = warrants.find((w) => w.id === selectedId);
-  const liveWarrants = warrants.filter(isLive);
-  const token = selected && isLive(selected) ? selected.id : null;
+  const liveWarrants = warrants.filter(deskLive);
+  const actingWarrants = warrants.filter((w) => isActing(w));
+  const token = selected && isActing(selected) ? selected.id : null;
   const prompt = selected && token ? agentPrompt(origin, token, selected.scope ?? "fetch") : "";
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
 
   const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
     setWarrants(list.map((w) => stampExpiry(w)));
     const pick =
-      (preferId ? list.find((w) => w.id === preferId && isLive(w)) : undefined) ?? latestLive(list);
+      (preferId ? list.find((w) => w.id === preferId && deskLive(w)) : undefined) ??
+      latestActing(list) ??
+      latestLive(list);
     if (pick) {
       setSelectedId(pick.id);
       return pick;
@@ -222,7 +249,7 @@ export function GuestTry() {
   useEffect(() => {
     if (!selectedId) return;
     const current = warrants.find((w) => w.id === selectedId);
-    if (current && isLive(current)) return;
+    if (current && deskLive(current)) return;
     const next = latestLive(warrants);
     if (next) {
       setSelectedId(next.id);
@@ -415,7 +442,7 @@ export function GuestTry() {
     try {
       if (!(await fireOnChain(selectedId, "warrant"))) return;
       const list = await refreshWarrants();
-      const remaining = list.filter(isLive);
+      const remaining = list.filter(deskLive);
       setCopied(false);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
@@ -448,7 +475,7 @@ export function GuestTry() {
       const list = await refreshWarrants();
       setCopied(false);
       setNotice(GUEST_COPY.afterFireHelper);
-      const remaining = list.filter(isLive);
+      const remaining = list.filter(deskLive);
       if (remaining.length > 0) {
         setPhase("ready");
         return;
@@ -474,7 +501,7 @@ export function GuestTry() {
     try {
       if (!(await fireOnChain(liveWarrants[0]!.id, "identity"))) return;
       const list = await refreshWarrants();
-      const remaining = list.filter(isLive);
+      const remaining = list.filter(deskLive);
       setCopied(false);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
@@ -507,7 +534,11 @@ export function GuestTry() {
   }
 
   const busy = phase === "minting" || revoking || recovering;
-  const live = token !== null && phase !== "land" && phase !== "limited" && phase !== "revoked";
+  const live =
+    Boolean(selected && deskLive(selected)) &&
+    phase !== "land" &&
+    phase !== "limited" &&
+    phase !== "revoked";
   const landing = phase === "land" || phase === "limited" || phase === "minting";
   const titleLines = landHeadlineLines();
 
@@ -566,7 +597,7 @@ export function GuestTry() {
             <Text>{GUEST_COPY.authorized}</Text>
             {selected ? (
               <Text type="supporting" color="secondary">
-                {remainingLife(selected.remainingMs)}
+                {remainingLife(mandateRemainingMs(selected.createdAt))}
               </Text>
             ) : null}
             {selected?.receipt ? (
@@ -588,14 +619,14 @@ export function GuestTry() {
               </VStack>
             ) : null}
           </VStack>
-          {liveWarrants.length > 1 ? (
+          {actingWarrants.length > 1 ? (
             <div style={wrapRow}>
-              {liveWarrants.map((w) => (
+              {actingWarrants.map((w) => (
                 <Button
                   key={w.id}
                   size="sm"
                   variant={w.id === selectedId ? "primary" : "secondary"}
-                  label={idTail(w.id)}
+                  label={warrantPickLabel(w, actingWarrants)}
                   isDisabled={busy}
                   onClick={() => {
                     setSelectedId(w.id);
@@ -606,26 +637,31 @@ export function GuestTry() {
             </div>
           ) : null}
 
-          <VStack gap={2}>
-            <Text type="supporting" color="secondary">
-              {GUEST_COPY.botLead}
-            </Text>
+          <VStack gap={3}>
+            {token ? (
+              <VStack gap={2}>
+                <Text>{GUEST_COPY.promptLead}</Text>
+                <Button
+                  label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
+                  variant="primary"
+                  size="lg"
+                  onClick={() => void copyPrompt()}
+                />
+              </VStack>
+            ) : null}
             {localHost ? (
               <Text type="supporting" color="secondary">
                 {GUEST_COPY.localhostHint}
               </Text>
             ) : null}
-            <Text type="supporting" color="secondary">
-              {GUEST_COPY.fundHint}
-            </Text>
+            {localHost ? (
+              <Text type="supporting" color="secondary">
+                {GUEST_COPY.fundHint}
+              </Text>
+            ) : null}
             <div style={wrapRow}>
               <Button
-                label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
-                variant="secondary"
-                onClick={() => void copyPrompt()}
-              />
-              <Button
-                label={liveWarrants.length > 1 ? GUEST_COPY.fireThis : GUEST_COPY.fireOne}
+                label={actingWarrants.length > 1 ? GUEST_COPY.fireThis : GUEST_COPY.fireOne}
                 variant="destructive"
                 onClick={() => void fireThis()}
                 isDisabled={busy}
@@ -639,12 +675,14 @@ export function GuestTry() {
                 />
               ) : null}
             </div>
-            <Button
-              label={GUEST_COPY.fireEvery}
-              variant="destructive"
-              onClick={() => void fireEvery()}
-              isDisabled={busy}
-            />
+            {actingWarrants.length > 1 ? (
+              <Button
+                label={GUEST_COPY.fireEvery}
+                variant="destructive"
+                onClick={() => void fireEvery()}
+                isDisabled={busy}
+              />
+            ) : null}
           </VStack>
         </VStack>
       ) : null}

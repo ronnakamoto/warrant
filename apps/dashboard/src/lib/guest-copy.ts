@@ -107,6 +107,11 @@ export function remainingMsUntil(expiresAt: number, now = Date.now()): number {
   return Math.max(0, expiresAt - now);
 }
 
+/** How long the bot can still act. Desk life is longer so you can Fire after this. */
+export function mandateRemainingMs(createdAt: number, now = Date.now()): number {
+  return remainingMsUntil(createdAt + WARRANT_TTL_MS, now);
+}
+
 export function remainingLife(ms: number): string {
   if (ms <= 0) return "This warrant has expired";
   const days = Math.floor(ms / 86_400_000);
