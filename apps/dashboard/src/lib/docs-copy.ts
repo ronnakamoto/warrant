@@ -520,7 +520,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "Packages: `@ronnakamoto/warrant-core` (domain, hashes, prove/verify — no HTTP), `@ronnakamoto/warrant-x402` (shop factory + `warrantHono`), `@warrant/agent` in this clone (CLI + `warrant.fetch`). Do not call prove from a bot.",
+        text: "Packages: `@ronnakamoto/warrant-core` (domain, hashes, prove/verify — no HTTP), `@ronnakamoto/warrant-x402` (shop factory + `warrantHono`), `@ronnakamoto/warrant` (ready / act via a JS runner already on PATH). Do not call prove from a bot.",
       },
     ],
   },
