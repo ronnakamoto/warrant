@@ -89,8 +89,11 @@ export async function hederaPaymentFetchFromEnv(
 
 function shopText(status: number, raw: string): string {
   try {
-    const parsed = JSON.parse(raw) as { text?: unknown; error?: unknown };
-    if (typeof parsed.text === "string") return parsed.text;
+    const parsed = JSON.parse(raw) as { text?: unknown; error?: unknown; hashscan?: unknown };
+    if (typeof parsed.text === "string") {
+      const scan = typeof parsed.hashscan === "string" ? parsed.hashscan.trim() : "";
+      return scan ? `${parsed.text}\n${scan}` : parsed.text;
+    }
     if (typeof parsed.error === "string") return parsed.error;
   } catch {
     /* not JSON */

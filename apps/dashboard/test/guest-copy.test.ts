@@ -373,6 +373,8 @@ describe("guest first-run copy", function () {
     assert.match(skill, /warrant ready/);
     assert.match(skill, /127\.0\.0\.1:17879\/fund/);
     assert.match(skill, /evmAddress/);
+    assert.match(skill, /Do not skip/i);
+    assert.match(skill, /shop's text and the HashScan/i);
     assert.match(skill, /funded|received/i);
     assert.equal(/Let it spend/i.test(skill), false);
     assert.match(skill, /I cannot sign Hedera from this chat/);
