@@ -11,7 +11,7 @@ export function LandViz({ scope }: { scope: GuestScopeName }) {
   const beats = [
     { key: "you", name: LAND_DAY.you, foot: LAND_DAY.youFoot },
     { key: "bot", name: LAND_DAY.bot, foot: LAND_DAY.botFoot },
-    { key: "act", name: day.act, foot: day.actFoot, live: true },
+    { key: "act", name: day.act, foot: day.actFoot },
     { key: "fire", name: LAND_DAY.fire, foot: LAND_DAY.fireFoot },
   ] as const;
 
@@ -23,7 +23,7 @@ export function LandViz({ scope }: { scope: GuestScopeName }) {
             key={`${scope}-${beat.key}`}
             className="land-viz-beat"
             data-beat={beat.key}
-            data-live={beat.live ? "true" : undefined}
+            data-live={beat.key === "act" ? "true" : undefined}
           >
             {beat.key === "act" ? (
               <div className="land-viz-act" aria-hidden="true">
