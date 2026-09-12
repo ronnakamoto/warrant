@@ -8,6 +8,7 @@ export function SiteChrome({ wide = false }: { wide?: boolean }) {
         {GUEST_COPY.warrantTab}
       </Link>
       <nav className="site-nav">
+        <span id="land-chrome-cta" className="site-chrome-cta" />
         <Link href="/docs">{GUEST_COPY.docs}</Link>
       </nav>
     </header>

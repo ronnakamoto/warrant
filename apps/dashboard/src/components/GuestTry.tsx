@@ -16,7 +16,6 @@ import {
   type GuestScopeName,
 } from "../lib/guest-copy";
 import { LandDay } from "./LandDay";
-import { LandViz } from "./LandViz";
 
 type Phase = "land" | "minting" | "ready" | "revoked" | "limited";
 type WarrantView = {
@@ -66,6 +65,18 @@ function scopeWord(scope: GuestScopeName | undefined): string {
   if (scope === "translate") return GUEST_COPY.scopeTranslate;
   if (scope === "both") return GUEST_COPY.scopeBoth;
   return GUEST_COPY.scopeMemo;
+}
+
+function LandAuthorize(props: { busy: boolean; size?: "sm" | "lg"; onClick: () => void }) {
+  return (
+    <Button
+      label={GUEST_COPY.authorize}
+      variant="primary"
+      size={props.size ?? "lg"}
+      onClick={props.onClick}
+      isDisabled={props.busy}
+    />
+  );
 }
 
 function warrantPickLabel(w: WarrantView, acting: WarrantView[]): string {
@@ -567,24 +578,13 @@ export function GuestTry() {
                 </span>
               ))}
             </h1>
-            <LandViz scope={scope} />
-          </div>
-          {phase === "limited" ? <Banner status="warning" title={GUEST_COPY.rateLimited} /> : null}
-          {phase === "minting" ? <p className="land-note">{GUEST_COPY.minting}</p> : null}
-          <div className="land-board">
+            <p className="land-problem">{GUEST_COPY.problem}</p>
             <p className="land-standfirst">{GUEST_COPY.standfirst}</p>
             {phase === "land" || phase === "limited" ? (
-              <div className="land-act">
+              <div className="land-offer">
                 <ScopePicks tone="land" scope={scope} busy={busy} onPick={setScope} />
-                <LandDay scope={scope} />
                 <div className="land-cta">
-                  <Button
-                    label={GUEST_COPY.authorize}
-                    variant="primary"
-                    size="lg"
-                    onClick={() => void authorize()}
-                    isDisabled={busy}
-                  />
+                  <LandAuthorize busy={busy} onClick={() => void authorize()} />
                   <button
                     type="button"
                     className="land-connect"
@@ -595,8 +595,18 @@ export function GuestTry() {
                   </button>
                 </div>
                 <p className="land-note">
-                  {GUEST_COPY.world} {GUEST_COPY.twoWallets}
+                  {GUEST_COPY.world} {GUEST_COPY.signHint}
                 </p>
+              </div>
+            ) : null}
+          </div>
+          {phase === "limited" ? <Banner status="warning" title={GUEST_COPY.rateLimited} /> : null}
+          {phase === "minting" ? <p className="land-note">{GUEST_COPY.minting}</p> : null}
+          <div className="land-board">
+            {phase === "land" || phase === "limited" ? (
+              <div className="land-act">
+                <LandDay scope={scope} />
+                <p className="land-next">{GUEST_COPY.nextHint}</p>
               </div>
             ) : null}
           </div>

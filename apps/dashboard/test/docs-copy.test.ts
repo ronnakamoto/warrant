@@ -23,7 +23,7 @@ describe("protocol docs", function () {
     assert.match(book, /shop sees a nullifier/i);
     assert.match(book, /HashScan/);
     assert.match(book, /tier=0|tier 0/);
-    assert.match(book, /Not a World ID/i);
+    assert.equal(/World ID/i.test(book), false);
     assert.match(book, /ceremony/i);
     assert.match(book, /reverse proxy/i);
     assert.match(book, /createWarrantShop|@ronnakamoto\/warrant-x402/);

@@ -56,15 +56,30 @@ describe("guest first-run copy", function () {
         return `${d.title} ${d.story} ${d.act} ${d.actFoot}`;
       })
       .join(" ");
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead} ${days} ${LAND_DAY.youFoot} ${LAND_DAY.botFoot} ${LAND_DAY.fireFoot}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead} ${days} ${LAND_DAY.youFoot} ${LAND_DAY.botFoot} ${LAND_DAY.fireFoot}`;
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free", "shop", "API"]) {
       assert.equal(new RegExp(banned, banned === "API" ? "" : "i").test(land), false, banned);
     }
   });
 
   it("does not put Registry in the land sentence", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/Registry/i.test(land), false);
+  });
+
+  it("names the problem Warrant fixes today", function () {
+    assert.match(GUEST_COPY.problem, /leave a note/i);
+    assert.match(GUEST_COPY.problem, /translate a sentence/i);
+    assert.match(GUEST_COPY.problem, /name you/i);
+    assert.match(GUEST_COPY.problem, /hire a helper/i);
+    assert.match(GUEST_COPY.problem, /fire the chain/i);
+    assert.equal(/World ID|shop|API|merkle|Groth16/i.test(GUEST_COPY.problem), false);
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    assert.match(src, /land-problem/);
+    assert.match(src, /GUEST_COPY\.problem/);
   });
 
   it("splits the land headline onto poster display lines", function () {
@@ -99,7 +114,7 @@ describe("guest first-run copy", function () {
   });
 
   it("is a warrant for an existing agent, not a hiring demo", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story}`;
     assert.equal(/Hire an agent/i.test(land), false);
     assert.equal(/Try it/i.test(land), false);
     assert.match(GUEST_COPY.authorize, /Authorize/i);
@@ -174,11 +189,11 @@ describe("guest first-run copy", function () {
   });
 
   it("keeps picker copy quiet and out of land bans", function () {
-    assert.match(GUEST_COPY.scopeLead, /memo|translate|both/i);
-    assert.match(GUEST_COPY.scopeMemo, /memo/i);
+    assert.match(GUEST_COPY.scopeLead, /note|translate|both/i);
+    assert.match(GUEST_COPY.scopeMemo, /note/i);
     assert.match(GUEST_COPY.scopeTranslate, /translate/i);
     assert.match(GUEST_COPY.scopeBoth, /both/i);
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story} ${landDayFor("translate").story} ${landDayFor("both").story}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead} ${landDayFor("fetch").story} ${landDayFor("translate").story} ${landDayFor("both").story}`;
     assert.equal(/Hire an agent/i.test(land), false);
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "desk", "shop"]) {
       assert.equal(land.toLowerCase().includes(banned.toLowerCase()), false, banned);
@@ -189,9 +204,9 @@ describe("guest first-run copy", function () {
     const fetchDay = landDayFor("fetch");
     const translateDay = landDayFor("translate");
     const bothDay = landDayFor("both");
-    assert.match(fetchDay.story, /memo/i);
+    assert.match(fetchDay.story, /note/i);
     assert.match(translateDay.story, /translat/i);
-    assert.match(bothDay.story, /memo or translate/i);
+    assert.match(bothDay.story, /note or translate/i);
     assert.notEqual(fetchDay.story, translateDay.story);
     assert.notEqual(translateDay.story, bothDay.story);
     assert.notEqual(fetchDay.title, translateDay.title);
@@ -302,12 +317,16 @@ describe("guest first-run copy", function () {
     assert.match(set, /HttpOnly/);
   });
 
-  it("says plainly this is not a World ID check", function () {
-    assert.match(GUEST_COPY.world, /World ID/i);
+  it("does not mention World ID on the land", function () {
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    assert.equal(/World ID/i.test(land), false);
     assert.equal(/merkle|Groth16|zkey|epoch/i.test(GUEST_COPY.world), false);
+    assert.equal(/HBAR/i.test(land), false);
     assert.match(GUEST_COPY.twoWallets, /MetaMask/);
     assert.match(GUEST_COPY.twoWallets, /Send HBAR/i);
     assert.match(GUEST_COPY.connectWallet, /You keep the key/);
+    assert.match(GUEST_COPY.connectAction, /already authorized/i);
+    assert.equal(/Paste one paragraph|Fire whenever/i.test(GUEST_COPY.standfirst), false);
   });
 
   it("pairs Let it spend through a fake listener and never posts a key", async function () {
@@ -417,9 +436,18 @@ describe("guest first-run copy", function () {
     assert.match(src, /signDeskMessage|personal_sign/);
     assert.match(src, /connectWallet/);
     assert.match(src, /land-hero/);
+    assert.match(src, /land-problem/);
     assert.match(src, /land-scope/);
     assert.match(src, /LandDay/);
     assert.match(src, /connectAction/);
+    assert.equal(src.includes("createPortal"), false);
+    assert.equal(src.includes("GUEST_COPY.twoWallets"), false);
+    assert.match(src, /GUEST_COPY\.nextHint/);
+    assert.match(src, /GUEST_COPY\.signHint/);
+    assert.equal((src.match(/className="land-cta"/g) ?? []).length, 2);
+    const offerAt = src.indexOf('className="land-offer"');
+    const dayAt = src.indexOf("<LandDay scope={scope}");
+    assert.ok(offerAt >= 0 && dayAt > offerAt);
     assert.equal(src.includes("label={GUEST_COPY.connectWallet}"), false);
     assert.match(src, /recovering/);
     assert.match(src, /status === 429/);
@@ -531,7 +559,7 @@ describe("guest first-run copy", function () {
   });
 
   it("does not put a shop or a key on the console land", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.standfirst} ${GUEST_COPY.botLead} ${GUEST_COPY.copyPrompt}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.botLead} ${GUEST_COPY.copyPrompt}`;
     assert.equal(/402|private key|Call the shop|Pay the shop/i.test(land), false);
     assert.match(GUEST_COPY.botLead, /bot you already have/i);
     assert.match(GUEST_COPY.fundHint, /send HBAR/i);

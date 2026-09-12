@@ -72,7 +72,7 @@ pnpm warrant delegate --from alice --to helper --scope fetch --budget 1 --ttl 1h
 pnpm warrant act --url http://127.0.0.1:8788/v1/echo --body '{"text":"ping"}'
 ```
 
-**Testnet. Not a World ID proof.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
+**Testnet.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
 
 PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
 

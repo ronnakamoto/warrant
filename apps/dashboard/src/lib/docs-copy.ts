@@ -277,7 +277,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           ["3", "`effectiveScope`", "Leaf hop’s uint64 capability bits."],
           ["4", "`effectiveBudgetCap`", "Leaf hop’s budget ceiling. Not a conserved coin."],
           ["5", "`minExpiry`", "Shop’s `now`. Circuit checks `minExpiry ≤` leaf expiry."],
-          ["6", "`tier`", "Personhood floor. This host binds `tier=0`. Not a World ID proof."],
+          ["6", "`tier`", "This host binds `tier=0`."],
           ["7", "`requestHash`", "This exact challenge. A copied proof on a different request fails."],
         ],
       },
@@ -567,7 +567,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Not a World ID proof. The host binds `tier=0`. Groth16 is a solo ceremony — fine on testnet, said plainly. Memo text you post is public on HashScan testnet. We do not host a reverse proxy and we do not protect a URL you paste. Wrap your own shop.",
+        text: "The host binds `tier=0`. Groth16 is a solo ceremony — fine on testnet, said plainly. Memo text you post is public on HashScan testnet. We do not host a reverse proxy and we do not protect a URL you paste. Wrap your own shop.",
       },
     ],
   },
