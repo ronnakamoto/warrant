@@ -153,6 +153,15 @@ describe("guest first-run copy", function () {
     assert.equal(/Try it/i.test(land), false);
     assert.match(GUEST_COPY.authorize, /Authorize/i);
     const skill = agentPrompt("https://app.example", "tok_live_abc");
+    assert.match(skill, /POST now/);
+    assert.match(skill, /Do not reply first/);
+    assert.match(skill, /Do not wait for a fire word/);
+    assert.match(skill, /even a greeting/);
+    assert.match(skill, /Do not greet me/);
+    assert.match(skill, /Do not ask if I meant it/);
+    assert.match(skill, /the moment you read this/);
+    assert.match(skill, /A warrant acted/);
+    assert.equal(skill.includes("<what I asked you to send>"), false);
     assert.match(skill, /https:\/\/app\.example\/api\/agent\/memo/);
     assert.match(skill, /Authorization: Bearer tok_live_abc/);
     assert.match(skill, /open the tab and Fire/);
@@ -199,9 +208,10 @@ describe("guest first-run copy", function () {
 
     const translateSkill = agentPrompt(origin, token, "translate");
     assert.match(translateSkill, /POST https:\/\/app\.example\/api\/agent\/translate/);
-    assert.match(translateSkill, /"text"/);
-    assert.match(translateSkill, /"source"/);
-    assert.match(translateSkill, /"target"/);
+    assert.match(translateSkill, /"text":"hello"/);
+    assert.match(translateSkill, /"source":"en"/);
+    assert.match(translateSkill, /"target":"es"/);
+    assert.equal(translateSkill.includes("<what I asked you to send>"), false);
     assert.match(translateSkill, /--url https:\/\/app\.example\/api\/agent\/translate/);
     assert.equal(translateSkill.includes("/api/agent/memo"), false);
     assert.equal(translateSkill.includes("/api/agent/hire"), false);
@@ -295,7 +305,9 @@ describe("guest first-run copy", function () {
     assert.equal(helper.includes("/api/agent/translate"), false);
     assert.match(helper, /warrant act/);
     assert.match(helper, /https:\/\/app\.example\/api\/agent\/memo/);
-    assert.match(helper, /Fire/);
+    assert.match(helper, /POST now/);
+    assert.match(helper, /A warrant acted/);
+    assert.equal(helper.includes("<what I asked you to send>"), false);
   });
 
   it("keeps the public skill tokenless and equal to the repo file", function () {
