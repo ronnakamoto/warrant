@@ -53,9 +53,9 @@ Demo / testnet artifacts (solo ceremony — **not** mainnet MPC):
 
 | File | SHA-256 |
 |---|---|
-| `warrant_final.zkey` | replace after `setup-groth16` + GitHub release `artifacts-groth16-v3` |
-| `warrant_vkey.json` | replace after `setup-groth16` + GitHub release `artifacts-groth16-v3` |
-| `warrant.wasm` | replace after `setup-groth16` + GitHub release `artifacts-groth16-v3` |
+| `warrant_final.zkey` | b97ca5dec3b187b59b513b8aaf70b7447c0ec35e584a7065c175ec2f3b50abd2 |
+| `warrant_vkey.json` | 6bbd75496678755487820a83f7184da784ccfb1bad1db1ad577535a25cdb2652 |
+| `warrant.wasm` | 8709811b852c70ca56c094953d60d6ad54e0538b9c3aa685ac2dabb6a493b30a |
 
 ```bash
 # Defaults to artifacts-groth16-v3 release URLs
