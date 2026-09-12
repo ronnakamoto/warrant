@@ -1,6 +1,6 @@
 # 02 — Warrant: design
 
-**Live host (2026-09):** forest circuit `WarrantFull(4, 20)` is **101,781** constraints (pot17, `artifacts-groth16-v2`). Identity leaf plus each enabled mandate hash share one LeanIMT. `revokeMandate` tombstones a hop; identity `revoke` still bumps epoch. Addresses: [`deployments/base-sepolia.json`](../deployments/base-sepolia.json). The public book is https://warrant-beta.vercel.app/docs. Numbers below that say 59,837 / pot16 are the pre-forest WP2 measurement.
+**Live host (2026-09):** circuit `WarrantHop(20)` is **39,424 non-linear / 61,111 snarkjs** constraints (pot16, `artifacts-groth16-v3`). The leaf sees the immediate parent, not the chain. This is not pairing recursion. Identity leaf plus each enabled mandate hash share one LeanIMT. `revokeMandate` tombstones a hop; identity `revoke` still bumps epoch. Addresses: [`deployments/base-sepolia.json`](../deployments/base-sepolia.json). The public book is https://warrant-beta.vercel.app/docs.
 
 ## 0. The claim in one sentence
 
@@ -107,7 +107,7 @@ Anonymity and exact per-human budget accounting are in tension (exact accounting
 ## 7. Threat model and limitations
 
 - **Compromised sub-agent key:** can spend within its mandate until expiry or root revocation; cannot widen scope; cannot forge a longer chain (needs parent signatures). Mid-tree revocation without touching the root is a known gap — mitigated by short TTLs on sub-mandates (minutes to hours). v2 is a **live-mandate forest** (delete the node; every hop proves inclusion), not Lightning-style punishment secrets.
-- **Leaf sees the chain:** the Groth16 witness includes every parent mandate. The *verifier* does not. Recursive / PCD proving is how descendants stop seeing intermediates (ePrint 2026/1855). Not this week's circuit.
+- **Leaf sees the immediate parent:** the Groth16 witness includes the parent mandate, not the chain above it. The *verifier* sees neither. This is not pairing recursion. Recursive / PCD proving is a later path (ePrint 2026/1855). Not this circuit.
 - **Leaked `humanTag`:** allows *linking* a human's nullifiers, never forging authority. Rotate by re-binding the root.
 - **Anonymity set:** equals the number of bound roots. On day one that is our test users; the real set is every AgentBook agent that binds a key. State this plainly; it is the same bootstrapping every Semaphore app faces.
 - **Trusted setup:** Groth16 needs one; use a Semaphore-style ceremony or switch to Honk. For a hackathon, a local powers-of-tau is acceptable if disclosed.

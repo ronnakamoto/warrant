@@ -2,7 +2,7 @@
 
 This is the build plan for Warrant product code. Every numeric claim and API shape below was measured against live networks and real packages (2026-09-02–04). Evidence: `spikes/*/results.json`. Architecture law (patterns, SOLID, smells): [`docs/07-architecture.md`](07-architecture.md). Design: [`docs/02-design.md`](02-design.md).
 
-**Live host (2026-09):** the forest circuit is **101,781** constraints on pot17 (`artifacts-groth16-v2`). Mid-tree hop fire shipped as `revokeMandate` on one LeanIMT. Principle 5's "no mid-tree revoke" was the pre-forest law. The public book is https://warrant-beta.vercel.app/docs.
+**Live host (2026-09):** `WarrantHop(20)` is **39,424 non-linear / 61,111 snarkjs** constraints on pot16 (`artifacts-groth16-v3`). Mid-tree hop fire shipped as `revokeMandate` on one LeanIMT. Principle 5's "no mid-tree revoke" was the pre-forest law. The public book is https://warrant-beta.vercel.app/docs.
 
 **Rule:** do not start the next work package until the current gate is green. Each gate is a command or observable outcome that can fail.
 
@@ -199,8 +199,8 @@ pnpm exec node scripts/check-boundaries.mjs
 | Nullifier | `Poseidon(3)([DST_nullifier, humanTag, contextHash])` |
 | `requestHash` | `keccak256(method\|path\|nonce\|merkleRoot\|amount\|payTo\|bodyHash) mod r` |
 | Lean target | &lt; 15k constraints (measured 13,205 with domain tags) |
-| Full target | Pre-forest WP2: 59,837 (pot16, zkey ~28 MB). Live forest: **101,781** (pot17, zkey ~46 MB). Public inputs stay 8. |
-| pot / zkey | Live: pot17 / `artifacts-groth16-v2`. Host via release, never commit. |
+| Full target | Pre-forest WP2: 59,837 (pot16). Live `WarrantHop(20)`: **39,424 non-linear / 61,111 snarkjs** (pot16). Public inputs stay 8. |
+| pot / zkey | Live: pot16 / `artifacts-groth16-v3`. Host via release, never commit. |
 
 ### Chains
 

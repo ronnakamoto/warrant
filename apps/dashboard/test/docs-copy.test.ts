@@ -36,7 +36,7 @@ describe("protocol docs", function () {
       "EdDSA-Poseidon",
       "Poseidon",
       "BN254",
-      "WarrantFull",
+      "WarrantHop",
       "BinaryMerkleRoot",
       "humanTag",
       "contextHash",
@@ -51,21 +51,26 @@ describe("protocol docs", function () {
     assert.match(book, /warrant\/mandate/);
     assert.match(book, /warrant\/nullifier/);
     assert.match(book, /warrant\/tag/);
-    assert.match(book, /D=4/);
+    assert.match(book, /WarrantHop/);
+    assert.match(book, /immediate parent/);
+    assert.match(book, /artifacts-groth16-v3/);
+    assert.equal(/WarrantFull\(4/.test(book), false);
+    assert.equal(book.includes("101_781"), false);
+    assert.equal(/artifacts-groth16-v2/.test(book), false);
+    assert.equal(/dummy hops/i.test(book), false);
+    assert.equal(/D=4/.test(book), false);
+    assert.equal(/the leaf sees the chain/i.test(book), false);
     assert.match(book, /MAX_MERKLE_DEPTH = 20|MAX_DEPTH=20/);
     assert.match(book, /TRANSLATE/);
     assert.match(book, /FETCH/);
     assert.match(book, /not post-quantum/i);
     assert.match(book, /solo/);
     assert.match(book, /0x8704606Bde5E257dC009cCe55214Df70975f89c5/);
-    assert.match(book, /dummy hops/i);
+    assert.match(book, /pot16/);
     assert.match(book, /30 minutes/);
     assert.match(book, /header is `warrant`/);
     assert.match(book, /subgraph/);
     assert.match(book, /live forest|live-mandate forest|revokeMandate/i);
-    assert.match(book, /101_781/);
-    assert.match(book, /pot17/);
-    assert.match(book, /artifacts-groth16-v2/);
     assert.match(book, /Fire helper/);
     assert.match(book, /Fire this/);
     assert.match(book, /Fire every/);

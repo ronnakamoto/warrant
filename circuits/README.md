@@ -17,4 +17,4 @@ pnpm test:circuit:full       # + Groth16 prove/verify
 ./scripts/compile-circuit warrant
 ```
 
-Ceremony / verifier: see `CEREMONY.md`.
+Ceremony / verifier: see `CEREMONY.md`. Live tag `artifacts-groth16-v3`.

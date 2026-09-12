@@ -100,7 +100,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           },
           {
             dt: "Hop",
-            dd: "One signed handoff of a mandate: A signs permission over to B. B can only receive a subset of scope, and a budget and expiry that do not grow. One proof attests at most four hops (`D=4`). Unused slots are dummy hops.",
+            dd: "One signed handoff of a mandate: A signs permission over to B. B can only receive a subset of scope, and a budget and expiry that do not grow. The live circuit is two always-on hops. The leaf sees the immediate parent, not the chain.",
           },
           {
             dt: "Mandate",
@@ -150,7 +150,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           [
             "Signatures",
             "EdDSA-Poseidon",
-            "Each enabled hop, plus the request, is verified in-circuit. About five EdDSAPoseidon verifiers on the product circuit (four mandate slots + one request).",
+            "Each always-on hop, plus the request, is verified in-circuit. Three EdDSAPoseidon verifiers on the product circuit (two mandate slots + one request).",
           ],
           [
             "Hashes in-circuit",
@@ -165,7 +165,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           [
             "SNARK",
             "Groth16 over BN254",
-            "Product circuit `WarrantFull(4, 20)` in `circuits/warrant.circom`. 101_781 constraints (pot17). zkey ~46 MB, never committed. Solo ceremony tag `artifacts-groth16-v2`.",
+            "Product circuit `WarrantHop(20)` in `circuits/warrant.circom`. 39,424 non-linear / 61,111 snarkjs constraints (pot16). zkey never committed. Solo ceremony tag `artifacts-groth16-v3`.",
           ],
           [
             "Merkle tree",
@@ -219,20 +219,20 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "Groth16 needs a circuit-specific proving key. The live forest circuit is 101_781 constraints, so testnet artifacts come from a solo phase-2 on a pot17 Powers-of-Tau (PSE `ppot_0080_17.ptau` — Hermez GCS/S3 returned 403 for `powersOfTau28_hez_final_17.ptau`), then a public beacon finalize. That is not a multi-party ceremony. It is said plainly: fine on testnet, not production-grade MPC. If operator entropy from the contribution leaks, proofs for this circuit can be forged. Beacon finalize does not heal a leaked prior contribution.",
+        text: "Groth16 needs a circuit-specific proving key. The live circuit `WarrantHop(20)` is 39,424 non-linear / 61,111 snarkjs constraints, so testnet artifacts come from a solo phase-2 on a pot16 Powers-of-Tau (2^16 = 65536). That is not a multi-party ceremony. It is said plainly: fine on testnet, not production-grade MPC. If operator entropy from the contribution leaks, proofs for this circuit can be forged. Beacon finalize does not heal a leaked prior contribution.",
       },
       {
         kind: "table",
-        caption: "Released testnet artifacts (tag artifacts-groth16-v2)",
+        caption: "Released testnet artifacts (tag artifacts-groth16-v3)",
         headers: ["File", "SHA-256"],
         rows: [
           [
             "`warrant_final.zkey`",
-            "3efdd40992956931c94aac290417768cac499d8d81b7ac2323c1b61411392e84",
+            "replace after `setup-groth16` + GitHub release `artifacts-groth16-v3`",
           ],
           [
             "`warrant_vkey.json`",
-            "6bc2262231fe7aa0bb8563860f3bf95cc60524b155527f48c7855ba6c473ce0d",
+            "replace after `setup-groth16` + GitHub release `artifacts-groth16-v3`",
           ],
         ],
       },
@@ -242,7 +242,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "note",
-        text: "This stack (Groth16 + Baby Jubjub EdDSA) is not post-quantum. A later `IVerifier` swap to a transparent setup (for example Honk) is the intended path when pairing-based trust is unacceptable. Dummy zeros as public keys are also forbidden: disabled EdDSA slots still need on-curve Baby Jubjub points, so dummy hops reuse a real Identity.",
+        text: "This stack (Groth16 + Baby Jubjub EdDSA) is not post-quantum. A later `IVerifier` swap to a transparent setup (for example Honk) is the intended path when pairing-based trust is unacceptable.",
       },
     ],
   },
@@ -252,7 +252,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Live Groth16 is `WarrantFull(D=4, MAX_DEPTH=20)` in `circuits/warrant.circom`. `warrant_lean.circom` is the membership-and-attenuation subset with no EdDSA; it is not what shops verify. Public inputs stay the same eight-tuple on both, so the verifier ABI does not move.",
+        text: "Live Groth16 is `WarrantHop(20)` in `circuits/warrant.circom` (`MAX_MERKLE_DEPTH = 20`). The leaf sees the immediate parent, not the chain. This is not pairing recursion. `warrant_lean.circom` is the membership-and-attenuation subset with no EdDSA; it is not what shops verify. Public inputs stay the same eight-tuple on both, so the verifier ABI does not move.",
       },
       {
         kind: "h3",
@@ -285,12 +285,12 @@ export const DOCS_SECTIONS: DocsSection[] = [
         kind: "ol",
         items: [
           "`tagC = Poseidon(DST_tag, humanTag)`. `leaf = Poseidon(DST_leaf, rootPk, tier, epoch)`. `BinaryMerkleRoot` of that leaf against `merkleRoot` (single index, siblings padded to 20).",
-          "Live forest: each enabled hop’s mandate hash is also a LeanIMT leaf in the same `currentRoot`. `enabled[i] * (BinaryMerkleRoot(mandateHash_i) − merkleRoot) === 0`. Dummy hops skip that check. Fire a hop by `_remove` (tombstone 0). That moves `currentRoot`, so a copied bearer is `root_revoked`. A new witness that still enables a tombstoned hop cannot satisfy the R1CS.",
-          "Hops are an enabled prefix: `enabled[i] ∈ {0,1}`, hop 0 is on, and once a hop is off the rest stay off. Typical hosted mint is `[1,1,0,0]`. A helper is `[1,1,1,0]`.",
-          "Attenuation: child scope bits ⊆ parent (64-bit `ScopeSubset`). When a hop is enabled, budget and expiry are ≤ parent. Scope subset is checked along the pad even for dummy hops.",
-          "Each enabled hop: mandate hash as above, `parentHash_0 = 0`, `parentHash_i = hash(mandate_{i-1})`, EdDSA-Poseidon by the previous public key (hop 0 by the root).",
-          "Last-enabled child key EdDSA-signs `requestHash`.",
-          "`minExpiry ≤` last-enabled expiry. `effectiveScope` and `effectiveBudgetCap` mux from the last enabled hop.",
+          "Live forest: each always-on hop’s mandate hash is also a LeanIMT leaf in the same `currentRoot`. Fire a hop by `_remove` (tombstone 0). That moves `currentRoot`, so a copied bearer is `root_revoked`. A new witness that still names a tombstoned hop cannot satisfy the R1CS.",
+          "Two always-on hops. The leaf sees the immediate parent, not the chain. `parentParentHash = 0` when the parent is the root; otherwise it is the parent’s parent hash. This is not pairing recursion.",
+          "Attenuation: child scope bits ⊆ parent (64-bit `ScopeSubset`). The leaf’s budget and expiry are ≤ the immediate parent.",
+          "Each hop: mandate hash as above, EdDSA-Poseidon by the previous public key (parent slot by the root when `parentParentHash = 0`).",
+          "Leaf child key EdDSA-signs `requestHash`.",
+          "`minExpiry ≤` leaf expiry. `effectiveScope` and `effectiveBudgetCap` are the leaf hop.",
           "`nullifier = Poseidon(DST_nullifier, humanTag, contextHash)`.",
         ],
       },
@@ -313,11 +313,11 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "h3",
-        text: "D=4 and dummy hops",
+        text: "WarrantHop(20)",
       },
       {
         kind: "p",
-        text: "The circuit is a fixed-size gadget. One proof is one path, at most four hops. A fifth handoff in that same chain cannot satisfy the R1CS. Shorter chains pad with `enabled=0`. Dummy keys must be on-curve; Ax=0 fails because curve operations are not fully gated. The prover reuses a real Identity for padding.",
+        text: "The live circuit is two always-on hops at `MAX_MERKLE_DEPTH = 20`. The leaf sees the immediate parent, not the chain. A longer handoff is a later two-slot proof, not a padded gadget. This is not pairing recursion.",
       },
     ],
   },
@@ -410,14 +410,13 @@ export const DOCS_SECTIONS: DocsSection[] = [
         headers: ["Hop", "From → to", "Role"],
         rows: [
           ["1", "alice → orchestrator", "Root signs the first mandate. Scope is the bits you picked (memo, translate, or both). Budget ceiling 2_000_000."],
-          ["2", "orchestrator → translator", "Your bot’s leaf key. Budget ceiling 200_000. Last hop of a mint. Expiry is now + 30 minutes."],
-          ["3", "translator → helper", "Only if the bot hires, and only if hop 2 includes `FETCH`. Budget ceiling 20_000. Same expiry. Re-hire deletes the previous helper session."],
-          ["4", "(dummy)", "Padding. Enabled bit off. On-curve dummy key."],
+          ["2", "orchestrator → translator", "Your bot’s leaf key. Budget ceiling 200_000. Last hop of a mint. Expiry is now + 30 minutes. The leaf sees this immediate parent, not the chain."],
+          ["3", "translator → helper", "Only if the bot hires, and only if hop 2 includes `FETCH`. Budget ceiling 20_000. Same expiry. Re-hire deletes the previous helper session. A new two-slot proof: the helper leaf sees hop 2 as the immediate parent."],
         ],
       },
       {
         kind: "p",
-        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. `Fire helper` deletes hop 3. `Fire this` deletes hop 2 (the bot and its helper die; other warrants under the same MetaMask stay live). `Fire every` bumps the identity epoch and every hop dies. Only the MetaMask that bound the root can Fire. This host already proves the forest circuit (pot17, `artifacts-groth16-v2`).",
+        text: "A helper cannot hire (`parentId` → 403 scope). A helper cannot translate. `Fire helper` deletes hop 3. `Fire this` deletes hop 2 (the bot and its helper die; other warrants under the same MetaMask stay live). `Fire every` bumps the identity epoch and every hop dies. Only the MetaMask that bound the root can Fire. This host already proves `WarrantHop(20)` (pot16, `artifacts-groth16-v3`).",
       },
       {
         kind: "p",
@@ -546,8 +545,8 @@ export const DOCS_SECTIONS: DocsSection[] = [
         kind: "ul",
         items: [
           "Compromised bot bearer: can act within its mandate until expiry or Fire. Cannot widen scope. Cannot forge a longer chain (needs parent signatures). Cannot Fire — that needs the MetaMask that bound the leaf.",
-          "Live-mandate forest: one LeanIMT. Identity leaf plus each enabled mandate hash. Delete a hop with `revokeMandate`. Insert and delete move `currentRoot` — in-flight proofs already die on any bind. Hop membership pushed R1CS to 101_781 constraints. Solo ceremony is pot17. Said plainly.",
-          "The leaf sees the chain: the Groth16 witness includes every parent mandate. The verifier does not. Recursive / PCD proving is how descendants would stop seeing intermediates. Not this circuit.",
+          "Live-mandate forest: one LeanIMT. Identity leaf plus each enabled mandate hash. Delete a hop with `revokeMandate`. Insert and delete move `currentRoot` — in-flight proofs already die on any bind. `WarrantHop(20)` is 39,424 non-linear / 61,111 snarkjs constraints. Solo ceremony is pot16. Said plainly.",
+          "The leaf sees the immediate parent, not the chain. The Groth16 witness includes the parent mandate, not the hops above it. The verifier sees neither. This is not pairing recursion.",
           "Leaked `humanTag`: linking, never forging. Rotate by re-binding (this registry is one bind per wallet; Fire and a new wallet, or a later registry that allows re-bind after full exit).",
           "Anonymity set equals the number of bound roots. On day one that is test users. State this plainly.",
           "Trusted setup: solo ceremony, disclosed. Groth16 + Baby Jubjub is not post-quantum.",
@@ -614,7 +613,7 @@ app.post("/v1/orders", handler);`,
       },
       {
         kind: "p",
-        text: "Node 20+. Put the Groth16 vkey on disk. This package does not include a zkey. `initializeWarrantShop` after construct. Registering ExactHedera happens inside the factory before initialize.",
+        text: "Node 20+. Put the Groth16 vkey on disk from GitHub release `artifacts-groth16-v3` (`scripts/download-zkey.sh`). This package does not include a zkey. `initializeWarrantShop` after construct. Registering ExactHedera happens inside the factory before initialize.",
       },
       {
         kind: "internal",
