@@ -113,6 +113,12 @@ describe("protocol docs", function () {
       "utf8",
     );
     assert.match(picture, /Any Fire moves currentRoot/);
+    assert.match(picture, /WarrantHop/);
+    assert.match(picture, /immediate parent/);
+    assert.equal(/WarrantFull/.test(picture), false);
+    assert.equal(/D=4/.test(picture), false);
+    assert.equal(/enabled=0/.test(picture), false);
+    assert.equal(/last enabled hop/.test(picture), false);
     assert.equal(/Fire helper \/ Fire this → invalid_proof/.test(picture), false);
   });
 

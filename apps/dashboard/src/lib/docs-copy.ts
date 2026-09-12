@@ -88,7 +88,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         items: [
           {
             dt: "Warrant",
-            dd: "A Groth16 proof that this request is authorized by a live leaf, through a chain of hops that only got narrower, bound to this shop challenge. It is not a session cookie and not your MetaMask key.",
+            dd: "A Groth16 proof that this request is authorized by a live leaf and its immediate parent, through hops that only got narrower, bound to this shop challenge. It is not a session cookie and not your MetaMask key.",
           },
           {
             dt: "Root",
@@ -357,7 +357,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "A warrant is an identity leaf plus its enabled mandate hashes under one forest `currentRoot`. Your MetaMask binds the identity leaf on Base Sepolia (chain id 84532). Authorize and hire insert hop hashes. Off-chain hops can only get narrower. The proof shows identity membership, each enabled hop in the same root, the chain, and that this request was the one the shop challenged.",
+        text: "A warrant is an identity leaf plus its mandate hashes under one forest `currentRoot`. Your MetaMask binds the identity leaf on Base Sepolia (chain id 84532). Authorize and hire insert hop hashes. Off-chain hops can only get narrower. The proof shows identity membership, the leaf hop and its immediate parent in the same root, and that this request was the one the shop challenged.",
       },
       {
         kind: "table",
@@ -533,7 +533,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "The picture is the protocol. Hops stay on the left. Eight public signals cross Groth16. The shop only ever sees the right. Fire helper or Fire this deletes a hop. Fire every kills the identity leaf. The four sketches below are the same loop, smaller.",
+        text: "The picture is the protocol. Hops stay on the left. Eight public signals cross Groth16 (`WarrantHop`). The shop only ever sees the right. A proof opens the leaf and its immediate parent — not the chain above. Fire helper or Fire this deletes a hop. Fire every kills the identity leaf. The four sketches below are the same loop, smaller.",
       },
     ],
   },

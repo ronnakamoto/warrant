@@ -81,7 +81,7 @@ export function DiagramLoop() {
 
 export function DiagramChain() {
   return (
-    <svg viewBox="0 0 720 140" width="100%" height="auto" role="img" aria-label="You, then a narrower helper">
+    <svg viewBox="0 0 720 140" width="100%" height="auto" role="img" aria-label="You, then a narrower helper. The leaf sees the immediate parent.">
       <Box x={8} y={46} w={140} h={48} label="You" />
       <Arrow x1={152} y1={70} x2={188} y2={70} />
       <Box x={192} y={46} w={180} h={48} label="Root (MetaMask)" />
@@ -97,7 +97,7 @@ export function DiagramChain() {
         fill={mute}
         style={{ fontFamily: "var(--font-family-body)", fontSize: 12 }}
       >
-        Each hop can only get narrower
+        Each hop can only get narrower. The leaf sees the immediate parent.
       </text>
     </svg>
   );

@@ -55,7 +55,7 @@ Split by responsibility, not by “utils”:
 | `src/crypto/poseidon.ts` | Re-export poseidon-lite `poseidon2/4/5` only |
 | `src/crypto/identity.ts` | Wrap Semaphore `Identity` (keygen, sign, verify) |
 | `src/crypto/tree.ts` | Wrap Semaphore `Group` (add, update, merkle proof + sibling pad) |
-| `src/prove/witness.ts` | Private input assembly for D=4, dummy hops with **on-curve** points |
+| `src/prove/witness.ts` | Private input assembly for two always-on hops (`WarrantHop`); no dummy padding |
 | `src/prove/snarkjs-prover.ts` | `IProver` — snarkjs groth16.prove |
 | `src/prove/snarkjs-verifier.ts` | `IVerifier` — snarkjs groth16.verify |
 | `src/index.ts` | Public barrel: `keygen`, `createMandate`, `prove`, `verify`, `hashChallenge`, types |
@@ -369,7 +369,7 @@ rg "generate_witness" packages circuits && exit 1
 
 | Layer | What | Must not |
 |---|---|---|
-| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, tampered sig, dummy hops | Network |
+| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, tampered sig, helper-shaped parent | Network |
 | `contracts/test` | bind, revoke, current vs known root, `verifyProof` gas, tampered publics | Hono |
 | `packages/core` | mandate hash, challenge hash, public-inputs length=8, pad siblings | RPC |
 | `packages/x402` | pipeline table: 402 / grant / 403 reasons, with fake `IVerifier` | Live Blocky402 |

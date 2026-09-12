@@ -230,7 +230,7 @@ Do not deploy `MandateRegistry` on Hedera for v1. Root check is an `eth_call` fr
 
 | Layer | Assert | Must not |
 |---|---|---|
-| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, sig, dummy hops | Network |
+| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, sig, helper-shaped parent | Network |
 | `contracts/test` | bind, revoke, current vs known root, verify gas, tampered publics | Hono |
 | `packages/core` | mandate hash, challenge hash, publics length = 8, sibling pad | RPC |
 | `packages/x402` | pipeline table with fake `IVerifier` | Live Blocky402 |

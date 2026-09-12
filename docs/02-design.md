@@ -54,28 +54,24 @@ sig = EdDSA_Poseidon(parentSk, Poseidon(all fields except humanTag) )
 ### 2.3 Warrant (the proof)
 
 Public inputs: `merkleRoot, contextHash, nullifier, effectiveScope, effectiveBudgetCap, minExpiry (= now), tier, requestHash`.
-Private inputs: `rootPk, epoch, merkleDepth, merkleIndex, siblings[MAX_DEPTH], mandates[0..D-1], sigs[0..D-1], enabled[D], humanTag, leafSk`. Membership is Semaphore v4 `BinaryMerkleRoot` (single `index`, not `pathIndices[]`). See `docs/05-implementation-plan.md` for measured constraint counts.
+Private inputs: `rootPk`, `parentSignerPk`, two always-on mandates (parent + leaf), `humanTag`, merkle siblings. No `enabled[]`. Membership is Semaphore v4 `BinaryMerkleRoot` (single `index`, not `pathIndices[]`). See `docs/05-implementation-plan.md` for measured constraint counts.
 
-## 3. The circuit (Noir or circom; fixed max depth D = 4, padded)
+## 3. The circuit (circom; `WarrantHop(20)`, two always-on slots)
 
 ```
 1. tagC = Poseidon(DST_tag, humanTag)
    leaf = Poseidon(DST_leaf, rootPk, tier, epoch) ; assert MerkleVerify(leaf, path) == merkleRoot
-2. for i in 0..D:
-     parentHash_0 = 0 ; parentHash_i = H(mandate_{i-1})
-     M_i = Poseidon(DST_mandate, childPk, scope, budget, expiry, tier, epoch, parentHash_i, tagC)
-     if enabled[i]:
-        assert EdDSAVerify(pk_{i-1} (pk_{-1} = rootPk), M_i, sig_i)
-        assert scope ⊆ parent.scope ; budget ≤ parent.budget ; expiry ≤ parent.expiry
-     else: padding (on-curve dummy keys)
-3. leafPk = last-enabled childPk
+2. Two slots (parent, leaf). parentParentHash = 0 on the first hop (signer = rootPk);
+   else signer = parentAx/Ay. Leaf parentHash === parent mandate hash.
+   Both mandate hashes and the identity leaf sit in the same LeanIMT.
+3. Attenuation: leaf scope ⊆ parent; leaf budget and expiry ≤ parent.
 4. assert EdDSAVerify(leafPk, requestHash)          ; binds this proof to this exact HTTP request / tx
-5. assert minExpiry ≤ last-enabled expiry
-6. effectiveScope / effectiveBudgetCap = last-enabled hop
+5. assert minExpiry ≤ leaf expiry
+6. effectiveScope / effectiveBudgetCap = leaf hop
 7. nullifier = Poseidon(DST_nullifier, humanTag, contextHash)
 ```
 
-Cost (measured on WP2 product circuit): **59,837** constraints; Groth16 prove ~**1.8 s** in CI-local runs. Public inputs stay 8. zkey ~**28 MB** (do not commit). Domain tags and `tagC` inside every mandate close quota-rotation. If time allows, Noir + UltraHonk avoids the trusted setup (still not PQ by itself).
+Live `WarrantHop(20)`: **39,424 non-linear / 61,111 snarkjs** constraints; pot16; ceremony `artifacts-groth16-v3`. Public inputs stay 8. zkey is not in git. Domain tags and `tagC` inside every mandate close quota-rotation. A later `IVerifier` swap (for example Honk) is the path when pairing-based trust is unacceptable (still not PQ by itself).
 
 Why `requestHash` matters: the proof is not a bearer token. Replaying it against a different request fails. Pinned formula (spike 16): `requestHash = keccak256(method|path|nonce|merkleRoot|amount|payTo|bodyHash) mod r` (`r` = bn254 scalar field). The leaf EdDSA-signs that field. The x402 hook requires `publicSignals[7]` to equal the live challenge.
 
