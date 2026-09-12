@@ -1,13 +1,17 @@
 export const GUEST_COPY = {
   headline: "Your agent can act. Nobody it called learns who you are.",
   problem:
-    "Hand the bot a key to leave a note or translate a sentence, and whoever it called can name you. Hire a helper, and you cannot fire the chain.",
-  standfirst: "You already have the bot.",
+    "Hand the agent/bot a key to leave a note or translate a sentence, and whoever it called can name you. Hire a helper, and you cannot fire the chain.",
+  standfirst: "You already have the agent/bot.",
   world: "Public trial.",
-  signHint: "You sign. The bot never gets that key.",
+  signHint: "You sign. The agent/bot never gets that key.",
   nextHint: "After you sign, you get one paragraph to paste. Fire lives in the tab.",
+  explain:
+    "Warrant is the permission slip the agent/bot carries instead of your name. You keep the key. You paste one paragraph into the agent/bot you already have. It acts. They cannot tell who asked. Fire when you are done. They still do not know who you were.",
+  honesty:
+    "A note you post is still public. Anyone with the link can read the words. They cannot tell it was you.",
   twoWallets:
-    "You sign in MetaMask. The bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
+    "You sign in MetaMask. The agent/bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
   connectWallet: "You keep the key. Connect to authorize.",
   connectAction: "I already authorized",
   hostError: "Something went wrong. Try again in a moment.",
@@ -16,7 +20,7 @@ export const GUEST_COPY = {
   minting: "Issuing the warrant…",
   authorized: "Your agent is authorized.",
   promptLead: "Paste this into Grok, Hermes, or OpenClaw. This is the warrant — not a wish.",
-  botLead: "For the bot you already have.",
+  botLead: "For the agent/bot you already have.",
   copyPrompt: "Copy for my agent",
   copied: "Copied.",
   revoke: "Fire everyone",
@@ -52,7 +56,7 @@ export const GUEST_COPY = {
 export const LAND_DAY = {
   you: "You",
   youFoot: "Keep the key",
-  bot: "Your bot",
+  bot: "Your agent/bot",
   botFoot: "Gets one paragraph",
   fire: "Fire",
   fireFoot: "Take it back",
@@ -82,6 +86,19 @@ export const LAND_DAY = {
 export function landDayFor(scope: GuestScopeName) {
   return scope === "translate" ? LAND_DAY.translate : scope === "both" ? LAND_DAY.both : LAND_DAY.fetch;
 }
+
+export const LAND_FIGURES = [
+  {
+    title: "Without a warrant",
+    src: "/land/without.png",
+    alt: "You hand the agent/bot a key. Whoever it called can name you. A helper you hired keeps acting.",
+  },
+  {
+    title: "With a warrant",
+    src: "/land/with.png",
+    alt: "You keep the key. Authorize. Paste one paragraph. Your agent/bot acts. They cannot tell who asked. Fire takes it back.",
+  },
+] as const;
 
 export type GuestScopeName = "fetch" | "translate" | "both";
 

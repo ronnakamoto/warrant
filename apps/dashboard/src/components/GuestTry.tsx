@@ -605,6 +605,8 @@ export function GuestTry() {
           <div className="land-board">
             {phase === "land" || phase === "limited" ? (
               <div className="land-act">
+                <p className="land-explain">{GUEST_COPY.explain}</p>
+                <p className="land-honesty">{GUEST_COPY.honesty}</p>
                 <LandDay scope={scope} />
                 <p className="land-next">{GUEST_COPY.nextHint}</p>
               </div>

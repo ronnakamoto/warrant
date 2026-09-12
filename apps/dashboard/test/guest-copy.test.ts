@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,6 +9,7 @@ import {
   landHeadlineLines,
   landDayFor,
   LAND_DAY,
+  LAND_FIGURES,
   HEDERA_FAUCET,
   PUBLIC_APP_ORIGIN,
   WARRANT_TTL_MS,
@@ -56,7 +57,8 @@ describe("guest first-run copy", function () {
         return `${d.title} ${d.story} ${d.act} ${d.actFoot}`;
       })
       .join(" ");
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead} ${days} ${LAND_DAY.youFoot} ${LAND_DAY.botFoot} ${LAND_DAY.fireFoot}`;
+    const figures = LAND_FIGURES.map((f) => `${f.title} ${f.alt}`).join(" ");
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.explain} ${GUEST_COPY.honesty} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.minting} ${GUEST_COPY.scopeLead} ${days} ${LAND_DAY.youFoot} ${LAND_DAY.botFoot} ${LAND_DAY.fireFoot} ${figures}`;
     for (const banned of ["merkle", "epoch", "zkey", "Groth16", "Baby Jubjub", "LeanIMT", "Free", "shop", "API"]) {
       assert.equal(new RegExp(banned, banned === "API" ? "" : "i").test(land), false, banned);
     }
@@ -68,6 +70,7 @@ describe("guest first-run copy", function () {
   });
 
   it("names the problem Warrant fixes today", function () {
+    assert.match(GUEST_COPY.problem, /agent\/bot/i);
     assert.match(GUEST_COPY.problem, /leave a note/i);
     assert.match(GUEST_COPY.problem, /translate a sentence/i);
     assert.match(GUEST_COPY.problem, /name you/i);
@@ -80,6 +83,37 @@ describe("guest first-run copy", function () {
     );
     assert.match(src, /land-problem/);
     assert.match(src, /GUEST_COPY\.problem/);
+  });
+
+  it("explains the warrant in plain language under the ask", function () {
+    assert.match(GUEST_COPY.standfirst, /agent\/bot/i);
+    assert.match(GUEST_COPY.explain, /permission slip/i);
+    assert.match(GUEST_COPY.explain, /agent\/bot/i);
+    assert.match(GUEST_COPY.explain, /paste one paragraph/i);
+    assert.match(GUEST_COPY.explain, /Fire/i);
+    assert.match(GUEST_COPY.honesty, /still public/i);
+    assert.equal(/World ID|shop|API|merkle|Groth16/i.test(`${GUEST_COPY.explain} ${GUEST_COPY.honesty}`), false);
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
+      "utf8",
+    );
+    assert.match(src, /GUEST_COPY\.explain/);
+    assert.match(src, /GUEST_COPY\.honesty/);
+  });
+
+  it("replaces the land viz with Excalidraw figures", function () {
+    const dashboard = join(dirname(fileURLToPath(import.meta.url)), "..");
+    assert.equal(LAND_FIGURES.length, 2);
+    for (const figure of LAND_FIGURES) {
+      assert.equal(existsSync(join(dashboard, "public", figure.src.slice(1))), true, figure.src);
+      assert.equal(/shop|Groth16|merkle|World ID/i.test(`${figure.title} ${figure.alt}`), false);
+    }
+    const daySrc = readFileSync(join(dashboard, "src/components/LandDay.tsx"), "utf8");
+    assert.match(daySrc, /LandFigures/);
+    assert.equal(daySrc.includes("LandViz"), false);
+    assert.equal(existsSync(join(dashboard, "src/components/LandViz.tsx")), false);
+    assert.equal(existsSync(join(dashboard, "public/land/without.excalidraw")), true);
+    assert.equal(existsSync(join(dashboard, "public/land/with.excalidraw")), true);
   });
 
   it("splits the land headline onto poster display lines", function () {
@@ -318,7 +352,7 @@ describe("guest first-run copy", function () {
   });
 
   it("does not mention World ID on the land", function () {
-    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
+    const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.explain} ${GUEST_COPY.honesty} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/World ID/i.test(land), false);
     assert.equal(/merkle|Groth16|zkey|epoch/i.test(GUEST_COPY.world), false);
     assert.equal(/HBAR/i.test(land), false);
@@ -438,6 +472,7 @@ describe("guest first-run copy", function () {
     assert.match(src, /land-hero/);
     assert.match(src, /land-problem/);
     assert.match(src, /land-scope/);
+    assert.match(src, /GUEST_COPY\.explain/);
     assert.match(src, /LandDay/);
     assert.match(src, /connectAction/);
     assert.equal(src.includes("createPortal"), false);
@@ -561,7 +596,7 @@ describe("guest first-run copy", function () {
   it("does not put a shop or a key on the console land", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.botLead} ${GUEST_COPY.copyPrompt}`;
     assert.equal(/402|private key|Call the shop|Pay the shop/i.test(land), false);
-    assert.match(GUEST_COPY.botLead, /bot you already have/i);
+    assert.match(GUEST_COPY.botLead, /agent\/bot you already have/i);
     assert.match(GUEST_COPY.fundHint, /send HBAR/i);
   });
 
