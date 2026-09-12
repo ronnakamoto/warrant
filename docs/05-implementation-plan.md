@@ -2,7 +2,7 @@
 
 This is the build plan for Warrant product code. Every numeric claim and API shape below was measured against live networks and real packages (2026-09-02–04). Evidence: `spikes/*/results.json`. Architecture law (patterns, SOLID, smells): [`docs/07-architecture.md`](07-architecture.md). Design: [`docs/02-design.md`](02-design.md).
 
-**Live host (2026-09):** the forest circuit is **101,781** constraints on pot17 (`artifacts-groth16-v2`). Mid-tree hop fire shipped as `revokeMandate` on one LeanIMT. Principle 5's "no mid-tree revoke" was the pre-forest law. The public book is https://warrant-beta.vercel.app/docs.
+**Live host (2026-09):** `WarrantHop(20)` is **39,424 non-linear / 61,111 snarkjs** constraints on pot16 (`artifacts-groth16-v3`). Mid-tree hop fire shipped as `revokeMandate` on one LeanIMT. Principle 5's "no mid-tree revoke" was the pre-forest law. The public book is https://warrant-beta.vercel.app/docs.
 
 **Rule:** do not start the next work package until the current gate is green. Each gate is a command or observable outcome that can fail.
 
@@ -68,7 +68,7 @@ spikes    ×  everything product
 | `src/crypto/poseidon.ts` | poseidon-lite `poseidon2/4/5` only |
 | `src/crypto/identity.ts` | Semaphore `Identity` wrap |
 | `src/crypto/tree.ts` | Semaphore `Group` wrap + sibling pad |
-| `src/prove/witness.ts` | Private inputs for D=4; dummy hops on-curve |
+| `src/prove/witness.ts` | Private inputs for two always-on hops; three EdDSA (parent, leaf, request) |
 | `src/prove/snarkjs-prover.ts` | `IProver` |
 | `src/prove/snarkjs-verifier.ts` | `IVerifier` |
 | `src/index.ts` | Public barrel: `keygen`, `createMandate`, `prove`, `verify`, `hashChallenge` |
@@ -190,17 +190,17 @@ pnpm exec node scripts/check-boundaries.mjs
 | Constant | Value |
 |---|---|
 | Public inputs (8) | `merkleRoot, contextHash, nullifier, effectiveScope, effectiveBudgetCap, minExpiry, tier, requestHash` |
-| Max depth D | 4 (padded) |
+| Hops | Two always-on (parent, leaf). Not D=4 padded. |
 | LeanIMT | `BinaryMerkleRoot(20)`, pin `@zk-kit/binary-merkle-root.circom` ≥ 2.0.0 |
-| EdDSA | 5× `EdDSAPoseidonVerifier` (4 mandate + 1 request) |
+| EdDSA | 3× `EdDSAPoseidonVerifier` (parent, leaf, request) |
 | Mandate hash | `Poseidon(10)([DST_mandate, childPkX, childPkY, scope, budgetCap, expiry, tier, epoch, parentHash, tagCommitment])` |
 | Leaf | `Poseidon(5)([DST_leaf, pkX, pkY, tier, epoch])` |
 | Tag commitment | `Poseidon(2)([DST_tag, humanTag])` (bound into every mandate) |
 | Nullifier | `Poseidon(3)([DST_nullifier, humanTag, contextHash])` |
 | `requestHash` | `keccak256(method\|path\|nonce\|merkleRoot\|amount\|payTo\|bodyHash) mod r` |
 | Lean target | &lt; 15k constraints (measured 13,205 with domain tags) |
-| Full target | Pre-forest WP2: 59,837 (pot16, zkey ~28 MB). Live forest: **101,781** (pot17, zkey ~46 MB). Public inputs stay 8. |
-| pot / zkey | Live: pot17 / `artifacts-groth16-v2`. Host via release, never commit. |
+| Full target | Pre-forest WP2: 59,837 (pot16). Live `WarrantHop(20)`: **39,424 non-linear / 61,111 snarkjs** (pot16). Public inputs stay 8. |
+| pot / zkey | Live: pot16 / `artifacts-groth16-v3`. Host via release, never commit. |
 
 ### Chains
 
@@ -230,7 +230,7 @@ Do not deploy `MandateRegistry` on Hedera for v1. Root check is an `eth_call` fr
 
 | Layer | Assert | Must not |
 |---|---|---|
-| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, sig, dummy hops | Network |
+| `circuits/test` | Witness pass/fail: scope, budget, expiry, epoch, sig, helper-shaped parent | Network |
 | `contracts/test` | bind, revoke, current vs known root, verify gas, tampered publics | Hono |
 | `packages/core` | mandate hash, challenge hash, publics length = 8, sibling pad | RPC |
 | `packages/x402` | pipeline table with fake `IVerifier` | Live Blocky402 |

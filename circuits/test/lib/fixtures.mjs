@@ -6,7 +6,7 @@ import { Identity } from "@semaphore-protocol/identity";
 import { leafHash, mandateHash, nullifierHash, tagCommitment } from "./hashes.mjs";
 
 export const MAX_DEPTH = 20;
-export const D = 4;
+export const D = 2;
 
 export function padSiblings(siblings) {
   const out = siblings.map((s) => BigInt(s).toString());
@@ -18,12 +18,21 @@ export function bigish(v) {
   return typeof v === "bigint" ? v.toString() : String(v);
 }
 
-/** Shared attenuation pad used across lean/full happy paths. */
+/** Shared two-hop attenuation pad used across lean/full happy paths. */
 export function attenuationPad(now) {
   return {
-    scopes: [7n, 1n, 1n, 1n],
-    budgets: [2_000_000n, 200_000n, 200_000n, 200_000n],
-    expiries: [now + 86400n, now + 3600n, now + 3600n, now + 3600n],
+    scopes: [7n, 1n],
+    budgets: [2_000_000n, 200_000n],
+    expiries: [now + 86400n, now + 3600n],
+  };
+}
+
+function leanPad(now) {
+  const pad = attenuationPad(now);
+  return {
+    scopes: [pad.scopes[0], pad.scopes[1], pad.scopes[1], pad.scopes[1]],
+    budgets: [pad.budgets[0], pad.budgets[1], pad.budgets[1], pad.budgets[1]],
+    expiries: [pad.expiries[0], pad.expiries[1], pad.expiries[1], pad.expiries[1]],
     enabled: [1, 1, 0, 0],
   };
 }
@@ -53,7 +62,7 @@ export function buildLeanFixture() {
   const rootAfter = group.root;
   const proofAfter = group.generateMerkleProof(0);
 
-  const pad = attenuationPad(now);
+  const pad = leanPad(now);
 
   function input({ merkleRoot, epoch, proof, requestHash = 123456789n, overrides = {} }) {
     return {
@@ -99,7 +108,9 @@ export function buildFullFixture() {
   const rootId = new Identity("warrant-wp2-root");
   const agent = new Identity("warrant-wp2-agent");
   const translator = new Identity("warrant-wp2-translator");
-  const dummy = agent;
+  const helper = new Identity("warrant-wp2-helper");
+  // On-curve unused parent signer when parentParentHash == 0.
+  const orchestrator = new Identity("warrant-wp2-orchestrator");
 
   const now = BigInt(Math.floor(Date.now() / 1000));
   const tier = 2n;
@@ -113,7 +124,7 @@ export function buildFullFixture() {
   group.addMember(leaf);
 
   const pad = attenuationPad(now);
-  const children = [agent, translator, dummy, dummy];
+  const children = [agent, translator];
 
   function hopHashes(tagCValue) {
     const hashes = [];
@@ -140,12 +151,7 @@ export function buildFullFixture() {
   group.addMember(hashes[0]);
   group.addMember(hashes[1]);
   const identityProof = group.generateMerkleProof(0);
-  const hopProofs = [
-    group.generateMerkleProof(1),
-    group.generateMerkleProof(2),
-    group.generateMerkleProof(1),
-    group.generateMerkleProof(1),
-  ];
+  const hopProofs = [group.generateMerkleProof(1), group.generateMerkleProof(2)];
 
   function hopFields(proofs = hopProofs) {
     return {
@@ -181,6 +187,64 @@ export function buildFullFixture() {
   const requestHash = 123456789n;
   const reqSig = translator.signMessage(requestHash);
 
+  const hop3 = {
+    scope: pad.scopes[1],
+    budget: pad.budgets[1],
+    expiry: pad.expiries[1],
+  };
+  hop3.hash = mandateHash({
+    childPkX: helper.publicKey[0],
+    childPkY: helper.publicKey[1],
+    scope: hop3.scope,
+    budget: hop3.budget,
+    expiry: hop3.expiry,
+    tier,
+    epoch,
+    parentHash: hashes[1],
+    tagCommitment: tagC,
+  });
+  hop3.sig = translator.signMessage(hop3.hash);
+  hop3.reqSig = helper.signMessage(requestHash);
+
+  function helperShapedGroup(includeHop2) {
+    const shaped = new Group();
+    shaped.addMember(leaf);
+    shaped.addMember(hashes[0]);
+    if (includeHop2) shaped.addMember(hashes[1]);
+    shaped.addMember(hop3.hash);
+    return shaped;
+  }
+
+  function helperShapedInput({ includeHop2 }) {
+    const shaped = helperShapedGroup(includeHop2);
+    const idP = shaped.generateMerkleProof(0);
+    const hop1P = shaped.generateMerkleProof(1);
+    const hop2P = includeHop2 ? shaped.generateMerkleProof(2) : hop1P;
+    const hop3P = shaped.generateMerkleProof(includeHop2 ? 3 : 2);
+    const hop2Sig = agent.signMessage(hashes[1]);
+    return input({
+      merkleRoot: bigish(shaped.root),
+      merkleDepth: bigish(idP.siblings.length),
+      merkleIndex: bigish(idP.index),
+      siblings: padSiblings(idP.siblings),
+      parentParentHash: bigish(hashes[0]),
+      parentAx: bigish(agent.publicKey[0]),
+      parentAy: bigish(agent.publicKey[1]),
+      scopes: [bigish(pad.scopes[1]), bigish(hop3.scope)],
+      budgets: [bigish(pad.budgets[1]), bigish(hop3.budget)],
+      expiries: [bigish(pad.expiries[1]), bigish(hop3.expiry)],
+      childPkX: [bigish(translator.publicKey[0]), bigish(helper.publicKey[0])],
+      childPkY: [bigish(translator.publicKey[1]), bigish(helper.publicKey[1])],
+      sigS: [bigish(hop2Sig.S), bigish(hop3.sig.S)],
+      sigR8x: [bigish(hop2Sig.R8[0]), bigish(hop3.sig.R8[0])],
+      sigR8y: [bigish(hop2Sig.R8[1]), bigish(hop3.sig.R8[1])],
+      reqS: bigish(hop3.reqSig.S),
+      reqR8x: bigish(hop3.reqSig.R8[0]),
+      reqR8y: bigish(hop3.reqSig.R8[1]),
+      ...hopFields([hop2P, hop3P]),
+    });
+  }
+
   function input(overrides = {}) {
     return {
       merkleRoot: bigish(group.root),
@@ -197,11 +261,13 @@ export function buildFullFixture() {
       merkleDepth: bigish(identityProof.siblings.length),
       merkleIndex: bigish(identityProof.index),
       siblings: padSiblings(identityProof.siblings),
+      parentParentHash: "0",
+      parentAx: bigish(orchestrator.publicKey[0]),
+      parentAy: bigish(orchestrator.publicKey[1]),
       ...hopFields(),
       scopes: pad.scopes.map(bigish),
       budgets: pad.budgets.map(bigish),
       expiries: pad.expiries.map(bigish),
-      enabled: pad.enabled.map(bigish),
       humanTag: bigish(humanTag),
       childPkX: children.map((c) => bigish(c.publicKey[0])),
       childPkY: children.map((c) => bigish(c.publicKey[1])),
@@ -219,6 +285,8 @@ export function buildFullFixture() {
     rootId,
     agent,
     translator,
+    helper,
+    orchestrator,
     tier,
     epoch,
     now,
@@ -236,6 +304,7 @@ export function buildFullFixture() {
     mandateSigs,
     requestHash,
     reqSig,
+    hop3,
     buildMandateSigs,
     input,
     withoutHop2Input() {
@@ -243,15 +312,17 @@ export function buildFullFixture() {
       stripped.addMember(leaf);
       stripped.addMember(hashes[0]);
       const idP = stripped.generateMerkleProof(0);
-      const hop0 = stripped.generateMerkleProof(1);
-      const dummy = [hop0, hop0, hop0, hop0];
+      const hop1 = stripped.generateMerkleProof(1);
+      // hop 2 dummy against a missing leaf so the leaf-forest check fails
       return input({
         merkleRoot: bigish(stripped.root),
         merkleDepth: bigish(idP.siblings.length),
         merkleIndex: bigish(idP.index),
         siblings: padSiblings(idP.siblings),
-        ...hopFields(dummy),
+        ...hopFields([hop1, hop1]),
       });
     },
+    helperShapedInput: () => helperShapedInput({ includeHop2: true }),
+    helperShapedWithoutHop2Input: () => helperShapedInput({ includeHop2: false }),
   };
 }

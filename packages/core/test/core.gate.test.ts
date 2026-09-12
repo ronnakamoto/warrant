@@ -203,8 +203,9 @@ describe("WP4 gate: 2-hop prove + on-chain WarrantGate", function () {
     const verifier = SnarkjsVerifier.fromPath(vkey);
     const { proof, publics } = await prove(
       {
-        root,
-        children: [agent, translator],
+        rootPk: root.publicKey,
+        parentSignerPk: root.publicKey,
+        leaf: translator,
         mandates: [hop0, hop1],
         group,
         leafIndex: 0,
@@ -212,6 +213,8 @@ describe("WP4 gate: 2-hop prove + on-chain WarrantGate", function () {
         contextHash,
         requestHash,
         minExpiry: now,
+        epoch,
+        tier,
       },
       prover,
     );

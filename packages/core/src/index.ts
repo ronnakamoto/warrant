@@ -53,7 +53,7 @@ import type { IVerifier } from "./prove/snarkjs-verifier.js";
 import { buildWitness, type BuildWitnessArgs } from "./prove/witness.js";
 import type { PublicInputs } from "./domain/public-inputs.js";
 
-/** Facade: assemble D=4 witness (on-curve dummy hops) and prove. */
+/** Facade: assemble two-hop WarrantHop witness and prove. */
 export async function prove(
   args: BuildWitnessArgs,
   prover: IProver,

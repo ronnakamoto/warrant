@@ -11,10 +11,13 @@ import {
   loadState,
   parseScope,
   parseTtl,
+  hasPrivateKey,
+  loadMandates,
   rebuildGroup,
   replayMandates,
   requireTags,
   saveState,
+  stripPrivateKey,
   type WarrantState,
 } from "../src/store.ts";
 import { UnboundError, isUnboundError } from "../src/sync-root.ts";
@@ -257,6 +260,204 @@ describe("@warrant/agent store + delegate", function () {
     };
     assert.equal(header.nonce, "test-nonce");
     assert.equal(header.publicSignals.length, 8);
+  });
+
+  it("loadMandates matches stored hashes without parent private keys", function () {
+    const alice = keygen("seed-alice");
+    const orch = keygen("seed-orch");
+    const tr = keygen("seed-tr");
+    const tier = 2;
+    const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], BigInt(tier), 0n);
+    const humanTag = freshFieldTag();
+    const state: WarrantState = {
+      version: 1,
+      identities: {
+        alice: {
+          privateKey: String(alice.privateKey),
+          pkX: alice.publicKey[0].toString(),
+          pkY: alice.publicKey[1].toString(),
+        },
+        orchestrator: {
+          privateKey: String(orch.privateKey),
+          pkX: orch.publicKey[0].toString(),
+          pkY: orch.publicKey[1].toString(),
+        },
+        translator: {
+          privateKey: String(tr.privateKey),
+          pkX: tr.publicKey[0].toString(),
+          pkY: tr.publicKey[1].toString(),
+        },
+      },
+      members: [leaf.toString()],
+      rootName: "alice",
+      rootTier: tier,
+      rootEpoch: 0,
+      humanTag,
+      contextHash: freshFieldTag(),
+      mandates: [],
+    };
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const m1 = createMandate({
+      parent: alice,
+      child: orch,
+      scope: TRANSLATE,
+      budgetCap: 1_000_000n,
+      expiry: now + 86400n,
+      tier: BigInt(tier),
+      epoch: 0n,
+      parentHash: 0n,
+      humanTag: BigInt(humanTag),
+    });
+    const m2 = createMandate({
+      parent: orch,
+      child: tr,
+      scope: TRANSLATE,
+      budgetCap: 100_000n,
+      expiry: now + 3600n,
+      tier: BigInt(tier),
+      epoch: 0n,
+      parentHash: m1.hash,
+      humanTag: BigInt(humanTag),
+      parentScope: m1.scope,
+      parentBudgetCap: m1.budgetCap,
+      parentExpiry: m1.expiry,
+    });
+    for (const [from, to, m] of [
+      ["alice", "orchestrator", m1] as const,
+      ["orchestrator", "translator", m2] as const,
+    ]) {
+      state.mandates.push({
+        from,
+        to,
+        scope: m.scope.toString(),
+        budgetCap: m.budgetCap.toString(),
+        expiry: m.expiry.toString(),
+        tier: m.tier.toString(),
+        epoch: m.epoch.toString(),
+        parentHash: m.parentHash.toString(),
+        humanTag,
+        hash: m.hash.toString(),
+        signature: {
+          S: m.signature.S.toString(),
+          R8x: m.signature.R8x.toString(),
+          R8y: m.signature.R8y.toString(),
+        },
+      });
+    }
+    stripPrivateKey(state, "alice");
+    stripPrivateKey(state, "orchestrator");
+    assert.equal(hasPrivateKey(state, "alice"), false);
+    const loaded = loadMandates(state);
+    assert.equal(loaded.length, 2);
+    assert.equal(loaded[0]!.hash, BigInt(state.mandates[0]!.hash));
+  });
+
+  it("proveForChallenge works after ancestor keys are stripped", async function () {
+    const alice = keygen("a2");
+    const orch = keygen("o2");
+    const tr = keygen("t2");
+    const tier = 1;
+    const leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], BigInt(tier), 0n);
+    const humanTag = freshFieldTag();
+    const contextHash = freshFieldTag();
+    const state: WarrantState = {
+      version: 1,
+      identities: {
+        alice: {
+          privateKey: String(alice.privateKey),
+          pkX: alice.publicKey[0].toString(),
+          pkY: alice.publicKey[1].toString(),
+        },
+        orchestrator: {
+          privateKey: String(orch.privateKey),
+          pkX: orch.publicKey[0].toString(),
+          pkY: orch.publicKey[1].toString(),
+        },
+        translator: {
+          privateKey: String(tr.privateKey),
+          pkX: tr.publicKey[0].toString(),
+          pkY: tr.publicKey[1].toString(),
+        },
+      },
+      members: [leaf.toString()],
+      rootName: "alice",
+      rootTier: tier,
+      rootEpoch: 0,
+      humanTag,
+      contextHash,
+      mandates: [],
+    };
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const m1 = createMandate({
+      parent: alice,
+      child: orch,
+      scope: TRANSLATE,
+      budgetCap: 1000n,
+      expiry: now + 1000n,
+      tier: BigInt(tier),
+      epoch: 0n,
+      parentHash: 0n,
+      humanTag: BigInt(humanTag),
+    });
+    const m2 = createMandate({
+      parent: orch,
+      child: tr,
+      scope: TRANSLATE,
+      budgetCap: 500n,
+      expiry: now + 500n,
+      tier: BigInt(tier),
+      epoch: 0n,
+      parentHash: m1.hash,
+      humanTag: BigInt(humanTag),
+      parentScope: m1.scope,
+      parentBudgetCap: m1.budgetCap,
+      parentExpiry: m1.expiry,
+    });
+    for (const [from, to, m] of [
+      ["alice", "orchestrator", m1] as const,
+      ["orchestrator", "translator", m2] as const,
+    ]) {
+      state.mandates.push({
+        from,
+        to,
+        scope: m.scope.toString(),
+        budgetCap: m.budgetCap.toString(),
+        expiry: m.expiry.toString(),
+        tier: m.tier.toString(),
+        epoch: m.epoch.toString(),
+        parentHash: m.parentHash.toString(),
+        humanTag,
+        hash: m.hash.toString(),
+        signature: {
+          S: m.signature.S.toString(),
+          R8x: m.signature.R8x.toString(),
+          R8y: m.signature.R8y.toString(),
+        },
+      });
+    }
+    state.members.push(m1.hash.toString(), m2.hash.toString());
+    stripPrivateKey(state, "alice");
+    stripPrivateKey(state, "orchestrator");
+    const fakeProver: IProver = {
+      async prove(): Promise<WarrantProof> {
+        return { pi_a: [], pi_b: [], pi_c: [] };
+      },
+    };
+    const result = await proveForChallenge({
+      state,
+      as: "translator",
+      challenge: {
+        method: "POST",
+        path: "/v1/translate",
+        nonce: "test-nonce",
+        merkleRoot: rebuildGroup(state).root.toString(),
+        amount: "100000",
+        payTo: "0.0.10311260",
+        bodyHash: "",
+      },
+      prover: fakeProver,
+    });
+    assert.equal(result.publics.effectiveScope, TRANSLATE);
   });
 });
 

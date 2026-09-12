@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createMandate, FETCH } from "@ronnakamoto/warrant-core";
-import { ensureIdentity, identityOf, type WarrantState } from "@warrant/agent";
+import { emptyState, ensureIdentity, identityOf, type WarrantState } from "@warrant/agent";
 import type { Hex } from "viem";
 import { mergeForestLeaves } from "./members.js";
 import type { InsertMandatesFn } from "./mint.js";
@@ -40,7 +40,10 @@ function storeMandate(
   };
 }
 
-export function appendHelperHop(state: WarrantState): void {
+export function appendHelperHop(state: WarrantState): {
+  hop3: ReturnType<typeof createMandate>;
+  helper: ReturnType<typeof identityOf>;
+} {
   if (state.mandates.length !== 2) throw new Error("expected two hops");
   const hop2 = state.mandates[1];
   if (!hop2 || hop2.to !== "translator") throw new Error("last hop must end at translator");
@@ -69,6 +72,7 @@ export function appendHelperHop(state: WarrantState): void {
   });
   state.mandates.push(storeMandate("translator", HELPER_NAME, hop3, humanTag));
   state.members = mergeForestLeaves(state.members, [hop3.hash.toString()]);
+  return { hop3, helper };
 }
 
 export async function hireHelper(
@@ -86,17 +90,36 @@ export async function hireHelper(
 
   if (parent.helperSessionId) store.delete(parent.helperSessionId);
 
-  const state = structuredClone(parent.state);
-  appendHelperHop(state);
-  const hop3 = state.mandates[2];
-  if (!hop3) throw new Error("helper hop missing");
+  const working = structuredClone(parent.state);
+  const { hop3 } = appendHelperHop(working);
+  const hop2 = working.mandates[1];
+  const hop3Stored = working.mandates[2];
+  const helperIdentity = working.identities[HELPER_NAME];
+  if (!hop2 || !hop3Stored || !helperIdentity) throw new Error("helper hop missing");
+
+  const helperState = emptyState();
+  helperState.humanTag = parent.state.humanTag;
+  helperState.contextHash = parent.state.contextHash;
+  helperState.rootName = parent.state.rootName;
+  helperState.rootTier = parent.state.rootTier;
+  helperState.rootEpoch = parent.state.rootEpoch;
+
+  for (const name of ["alice", "orchestrator", "translator"] as const) {
+    const row = parent.state.identities[name];
+    if (!row) throw new Error(`missing identity: ${name}`);
+    helperState.identities[name] = { privateKey: "", pkX: row.pkX, pkY: row.pkY };
+  }
+  helperState.identities[HELPER_NAME] = structuredClone(helperIdentity);
+  helperState.members = mergeForestLeaves(parent.state.members, [hop3.hash.toString()]);
+  helperState.mandates = [structuredClone(hop2), structuredClone(hop3Stored)];
+
   if (insertMandates) {
     await insertMandates({
       wallet: parent.wallet,
-      hashes: [BigInt(hop3.hash)],
+      hashes: [hop3.hash],
     });
   }
-  parent.state.members = mergeForestLeaves(parent.state.members, [hop3.hash]);
+  parent.state.members = mergeForestLeaves(parent.state.members, [hop3.hash.toString()]);
 
   const helperSession: GuestSession = {
     id: createSessionId(),
@@ -105,7 +128,7 @@ export async function hireHelper(
     createdAt: parent.createdAt,
     evmPrivateKey: EMPTY_EVM_KEY,
     parentId: parent.id,
-    state,
+    state: helperState,
     scope: "fetch",
   };
   parent.helperSessionId = helperSession.id;

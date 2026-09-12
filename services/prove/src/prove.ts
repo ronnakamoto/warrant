@@ -1,5 +1,6 @@
 import {
   proveForChallenge,
+  publicOf,
   warrantHeaderJson,
   type WarrantState,
 } from "@warrant/agent";
@@ -8,7 +9,16 @@ import type { GuestSession } from "./session.js";
 import type { LeafLoader } from "./members.js";
 import { mergeForestLeaves, mergeGuestLeaf } from "./members.js";
 import { hashLeaf } from "@ronnakamoto/warrant-core";
-import { identityOf } from "@warrant/agent";
+
+export function identityLeafOf(state: WarrantState): string {
+  const [pkX, pkY] = publicOf(state, state.rootName ?? "alice");
+  return hashLeaf(
+    pkX,
+    pkY,
+    BigInt(state.rootTier ?? 0),
+    BigInt(state.rootEpoch ?? 0),
+  ).toString();
+}
 
 export async function refreshMembers(
   state: WarrantState,
@@ -16,13 +26,7 @@ export async function refreshMembers(
 ): Promise<void> {
   const name = state.rootName;
   if (!name || !state.identities[name]) return;
-  const root = identityOf(state, name);
-  const leaf = hashLeaf(
-    root.publicKey[0],
-    root.publicKey[1],
-    BigInt(state.rootTier ?? 0),
-    BigInt(state.rootEpoch ?? 0),
-  ).toString();
+  const leaf = identityLeafOf(state);
   try {
     state.members = mergeGuestLeaf(await loadMembers(), leaf);
   } catch {

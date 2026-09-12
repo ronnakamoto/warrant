@@ -36,7 +36,7 @@ describe("protocol docs", function () {
       "EdDSA-Poseidon",
       "Poseidon",
       "BN254",
-      "WarrantFull",
+      "WarrantHop",
       "BinaryMerkleRoot",
       "humanTag",
       "contextHash",
@@ -51,21 +51,34 @@ describe("protocol docs", function () {
     assert.match(book, /warrant\/mandate/);
     assert.match(book, /warrant\/nullifier/);
     assert.match(book, /warrant\/tag/);
-    assert.match(book, /D=4/);
+    assert.match(book, /WarrantHop/);
+    assert.match(book, /immediate parent/);
+    assert.match(book, /artifacts-groth16-v3/);
+    assert.match(book, /b97ca5dec3b187b59b513b8aaf70b7447c0ec35e584a7065c175ec2f3b50abd2/);
+    assert.match(book, /6bbd75496678755487820a83f7184da784ccfb1bad1db1ad577535a25cdb2652/);
+    assert.match(book, /8709811b852c70ca56c094953d60d6ad54e0538b9c3aa685ac2dabb6a493b30a/);
+    assert.equal(/replace after `setup-groth16`/.test(book), false);
+    assert.match(book, /recovers the same hop tree/);
+    assert.match(book, /those hops are dead/);
+    assert.equal(/Authorize again inserts another hop chain/.test(book), false);
+    assert.equal(/Last-enabled hop/.test(book), false);
+    assert.equal(/WarrantFull\(4/.test(book), false);
+    assert.equal(book.includes("101_781"), false);
+    assert.equal(/artifacts-groth16-v2/.test(book), false);
+    assert.equal(/dummy hops/i.test(book), false);
+    assert.equal(/D=4/.test(book), false);
+    assert.equal(/the leaf sees the chain/i.test(book), false);
     assert.match(book, /MAX_MERKLE_DEPTH = 20|MAX_DEPTH=20/);
     assert.match(book, /TRANSLATE/);
     assert.match(book, /FETCH/);
     assert.match(book, /not post-quantum/i);
     assert.match(book, /solo/);
     assert.match(book, /0x8704606Bde5E257dC009cCe55214Df70975f89c5/);
-    assert.match(book, /dummy hops/i);
+    assert.match(book, /pot16/);
     assert.match(book, /30 minutes/);
     assert.match(book, /header is `warrant`/);
     assert.match(book, /subgraph/);
     assert.match(book, /live forest|live-mandate forest|revokeMandate/i);
-    assert.match(book, /101_781/);
-    assert.match(book, /pot17/);
-    assert.match(book, /artifacts-groth16-v2/);
     assert.match(book, /Fire helper/);
     assert.match(book, /Fire this/);
     assert.match(book, /Fire every/);
@@ -100,6 +113,12 @@ describe("protocol docs", function () {
       "utf8",
     );
     assert.match(picture, /Any Fire moves currentRoot/);
+    assert.match(picture, /WarrantHop/);
+    assert.match(picture, /immediate parent/);
+    assert.equal(/WarrantFull/.test(picture), false);
+    assert.equal(/D=4/.test(picture), false);
+    assert.equal(/enabled=0/.test(picture), false);
+    assert.equal(/last enabled hop/.test(picture), false);
     assert.equal(/Fire helper \/ Fire this → invalid_proof/.test(picture), false);
   });
 

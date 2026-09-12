@@ -58,7 +58,7 @@ describe("warrant full (circom_tester)", function () {
     await assertInvalidWitness(
       circuit,
       fx.input({
-        scopes: ["7", "7", "7", "7"],
+        scopes: ["7", "7"],
         effectiveScope: "7",
       }),
     );
@@ -66,5 +66,10 @@ describe("warrant full (circom_tester)", function () {
 
   it("rejects an enabled hop whose mandate hash is not in the forest", async function () {
     await assertInvalidWitness(circuit, fx.withoutHop2Input());
+  });
+
+  it("helper-shaped parent is valid in-forest and invalid when hop 2 is missing", async function () {
+    await assertValidWitness(circuit, fx.helperShapedInput());
+    await assertInvalidWitness(circuit, fx.helperShapedWithoutHop2Input());
   });
 });

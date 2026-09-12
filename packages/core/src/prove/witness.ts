@@ -3,12 +3,13 @@ import { sign } from "../crypto/identity.js";
 import { membershipProof } from "../crypto/tree.js";
 import type { Group } from "../crypto/tree.js";
 import { hashLeaf, hashNullifier } from "../domain/hashes.js";
-import { createMandate, type SignedMandate } from "../domain/mandate.js";
+import type { SignedMandate } from "../domain/mandate.js";
 import { publicsFromWitness, type PublicInputs } from "../domain/public-inputs.js";
 
-export const DEPTH = 4;
+export const DEPTH = 2;
 
 export type WarrantWitness = {
+  // public 8-tuple unchanged
   merkleRoot: bigint;
   contextHash: bigint;
   nullifier: bigint;
@@ -23,10 +24,12 @@ export type WarrantWitness = {
   merkleDepth: bigint;
   merkleIndex: bigint;
   siblings: bigint[];
-  scopes: bigint[];
+  parentParentHash: bigint;
+  parentAx: bigint;
+  parentAy: bigint;
+  scopes: bigint[]; // length 2
   budgets: bigint[];
   expiries: bigint[];
-  enabled: bigint[];
   humanTag: bigint;
   childPkX: bigint[];
   childPkY: bigint[];
@@ -42,17 +45,18 @@ export type WarrantWitness = {
 };
 
 export type BuildWitnessArgs = {
-  root: Identity;
-  children: Identity[];
-  mandates: SignedMandate[];
+  rootPk: readonly [bigint, bigint];
+  parentSignerPk: readonly [bigint, bigint];
+  leaf: Identity;
+  mandates: SignedMandate[]; // length === 2
   group: Group;
   leafIndex: number;
   humanTag: bigint;
   contextHash: bigint;
   requestHash: bigint;
   minExpiry: bigint;
-  /** On-curve dummy identity. Defaults to last enabled child (never Ax=0). */
-  dummy?: Identity;
+  epoch: bigint;
+  tier: bigint;
 };
 
 function fieldToString(v: bigint | string | number): string {
@@ -78,10 +82,12 @@ export function stringifyWitness(
     merkleDepth: fieldToString(w.merkleDepth),
     merkleIndex: fieldToString(w.merkleIndex),
     siblings: w.siblings.map(fieldToString),
+    parentParentHash: fieldToString(w.parentParentHash),
+    parentAx: fieldToString(w.parentAx),
+    parentAy: fieldToString(w.parentAy),
     scopes: w.scopes.map(fieldToString),
     budgets: w.budgets.map(fieldToString),
     expiries: w.expiries.map(fieldToString),
-    enabled: w.enabled.map(fieldToString),
     humanTag: fieldToString(w.humanTag),
     childPkX: w.childPkX.map(fieldToString),
     childPkY: w.childPkY.map(fieldToString),
@@ -97,123 +103,64 @@ export function stringifyWitness(
   };
 }
 
-function padDummyHops(
-  children: Identity[],
-  mandates: SignedMandate[],
-  humanTag: bigint,
-  dummy: Identity,
-): { children: Identity[]; mandates: SignedMandate[]; enabled: bigint[] } {
-  if (children.length !== mandates.length) {
-    throw new Error("children and mandates length mismatch");
-  }
-  if (mandates.length < 1 || mandates.length > DEPTH) {
-    throw new Error(`enabled hops must be 1..${DEPTH}`);
-  }
-  for (const child of [...children, dummy]) {
-    if (child.publicKey[0] === 0n) {
-      throw new Error("dummy hops must reuse an on-curve Identity (Ax != 0)");
-    }
-  }
-
-  const paddedChildren = [...children];
-  const paddedMandates = [...mandates];
-  const enabled = mandates.map(() => 1n);
-  const last = mandates[mandates.length - 1]!;
-  let parentHash = last.hash;
-  let parentSigner = children[children.length - 1]!;
-
-  while (paddedMandates.length < DEPTH) {
-    const hop = createMandate({
-      parent: parentSigner,
-      child: dummy,
-      scope: last.scope,
-      budgetCap: last.budgetCap,
-      expiry: last.expiry,
-      tier: last.tier,
-      epoch: last.epoch,
-      parentHash,
-      humanTag,
-      parentScope: last.scope,
-      parentBudgetCap: last.budgetCap,
-      parentExpiry: last.expiry,
-    });
-    paddedChildren.push(dummy);
-    paddedMandates.push(hop);
-    enabled.push(0n);
-    parentHash = hop.hash;
-    parentSigner = dummy;
-  }
-
-  return { children: paddedChildren, mandates: paddedMandates, enabled };
-}
-
 export function buildWitness(args: BuildWitnessArgs): {
   witness: WarrantWitness;
   publics: PublicInputs;
 } {
-  const dummy = args.dummy ?? args.children[args.children.length - 1];
-  if (!dummy) throw new Error("need at least one child identity");
+  if (args.mandates.length !== DEPTH) {
+    throw new Error(`mandates.length must be ${DEPTH}`);
+  }
 
-  const padded = padDummyHops(args.children, args.mandates, args.humanTag, dummy);
-  const lastEnabled = args.mandates[args.mandates.length - 1]!;
-  const leaf = args.children[args.children.length - 1]!;
-  const reqSig = sign(leaf, args.requestHash);
+  const last = args.mandates[DEPTH - 1]!;
+  const reqSig = sign(args.leaf, args.requestHash);
   const merkle = membershipProof(args.group, args.leafIndex);
   const hopIndex: bigint[] = [];
   const hopDepth: bigint[] = [];
   const hopSiblings: bigint[][] = [];
   for (let i = 0; i < DEPTH; i++) {
-    if (padded.enabled[i] === 1n) {
-      const hash = padded.mandates[i]!.hash;
-      const idx = args.group.indexOf(hash);
-      if (idx < 0) {
-        throw new Error(`mandate hash not in the forest at hop ${i}`);
-      }
-      const hop = membershipProof(args.group, idx);
-      hopIndex.push(hop.index);
-      hopDepth.push(hop.depth);
-      hopSiblings.push(hop.siblings);
-    } else {
-      hopIndex.push(merkle.index);
-      hopDepth.push(merkle.depth);
-      hopSiblings.push(merkle.siblings);
+    const hash = args.mandates[i]!.hash;
+    const idx = args.group.indexOf(hash);
+    if (idx < 0) {
+      throw new Error(`mandate hash not in the forest at hop ${i}`);
     }
+    const hop = membershipProof(args.group, idx);
+    hopIndex.push(hop.index);
+    hopDepth.push(hop.depth);
+    hopSiblings.push(hop.siblings);
   }
-  const expectedLeaf = hashLeaf(
-    args.root.publicKey[0],
-    args.root.publicKey[1],
-    lastEnabled.tier,
-    lastEnabled.epoch,
-  );
+  const expectedLeaf = hashLeaf(args.rootPk[0], args.rootPk[1], args.tier, args.epoch);
   if (args.group.members[args.leafIndex] !== expectedLeaf) {
     throw new Error("group leaf does not match hashLeaf(root, tier, epoch)");
   }
 
+  const parent = args.mandates[0]!;
   const witness: WarrantWitness = {
     merkleRoot: merkle.root,
     contextHash: args.contextHash,
     nullifier: hashNullifier(args.humanTag, args.contextHash),
-    effectiveScope: lastEnabled.scope,
-    effectiveBudgetCap: lastEnabled.budgetCap,
+    effectiveScope: last.scope,
+    effectiveBudgetCap: last.budgetCap,
     minExpiry: args.minExpiry,
-    tier: lastEnabled.tier,
+    tier: args.tier,
     requestHash: args.requestHash,
-    rootPkX: args.root.publicKey[0],
-    rootPkY: args.root.publicKey[1],
-    epoch: lastEnabled.epoch,
+    rootPkX: args.rootPk[0],
+    rootPkY: args.rootPk[1],
+    epoch: args.epoch,
     merkleDepth: merkle.depth,
     merkleIndex: merkle.index,
     siblings: merkle.siblings,
-    scopes: padded.mandates.map((m) => m.scope),
-    budgets: padded.mandates.map((m) => m.budgetCap),
-    expiries: padded.mandates.map((m) => m.expiry),
-    enabled: padded.enabled,
+    parentParentHash: parent.parentHash,
+    parentAx: args.parentSignerPk[0],
+    parentAy: args.parentSignerPk[1],
+    scopes: args.mandates.map((m) => m.scope),
+    budgets: args.mandates.map((m) => m.budgetCap),
+    expiries: args.mandates.map((m) => m.expiry),
     humanTag: args.humanTag,
-    childPkX: padded.children.map((c) => c.publicKey[0]),
-    childPkY: padded.children.map((c) => c.publicKey[1]),
-    sigS: padded.mandates.map((m) => m.signature.S),
-    sigR8x: padded.mandates.map((m) => m.signature.R8x),
-    sigR8y: padded.mandates.map((m) => m.signature.R8y),
+    childPkX: args.mandates.map((m) => m.childPkX),
+    childPkY: args.mandates.map((m) => m.childPkY),
+    sigS: args.mandates.map((m) => m.signature.S),
+    sigR8x: args.mandates.map((m) => m.signature.R8x),
+    sigR8y: args.mandates.map((m) => m.signature.R8y),
     reqS: reqSig.S,
     reqR8x: reqSig.R8x,
     reqR8y: reqSig.R8y,

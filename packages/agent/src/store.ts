@@ -12,8 +12,9 @@ import { homedir } from "node:os";
 import {
   keygen,
   createGroup,
-  createMandate,
   hashLeaf,
+  hashMandate,
+  tagCommitment,
   TRANSLATE,
   FETCH,
   TRADE,
@@ -150,7 +151,26 @@ export function saveState(state: WarrantState, path = defaultStorePath()): void 
 export function identityOf(state: WarrantState, name: string): Identity {
   const row = state.identities[name];
   if (!row) throw new Error(`unknown identity: ${name}`);
+  if (!row.privateKey) throw new Error(`no private key for ${name}`);
   return keygen(row.privateKey);
+}
+
+export function publicOf(state: WarrantState, name: string): readonly [bigint, bigint] {
+  const row = state.identities[name];
+  if (!row) throw new Error(`unknown identity: ${name}`);
+  return [BigInt(row.pkX), BigInt(row.pkY)];
+}
+
+export function hasPrivateKey(state: WarrantState, name: string): boolean {
+  const row = state.identities[name];
+  if (!row) throw new Error(`unknown identity: ${name}`);
+  return row.privateKey !== "";
+}
+
+export function stripPrivateKey(state: WarrantState, name: string): void {
+  const row = state.identities[name];
+  if (!row) throw new Error(`unknown identity: ${name}`);
+  row.privateKey = "";
 }
 
 export function ensureIdentity(state: WarrantState, name: string, seed?: string): Identity {
@@ -168,29 +188,39 @@ export function rebuildGroup(state: WarrantState) {
   return createGroup(state.members.map((m) => BigInt(m)));
 }
 
-/** Rebuild mandates via createMandate so tagCommitment matches circuit. */
-export function replayMandates(state: WarrantState): SignedMandate[] {
+/** Rebuild stored hops from public keys + hashes. Does not need parent private keys. */
+export function loadMandates(state: WarrantState): SignedMandate[] {
   const out: SignedMandate[] = [];
   for (const m of state.mandates) {
-    const parent = identityOf(state, m.from);
-    const child = identityOf(state, m.to);
-    const signed = createMandate({
-      parent,
-      child,
+    const [childPkX, childPkY] = publicOf(state, m.to);
+    const signed: SignedMandate = {
+      childPkX,
+      childPkY,
       scope: BigInt(m.scope),
       budgetCap: BigInt(m.budgetCap),
       expiry: BigInt(m.expiry),
       tier: BigInt(m.tier),
       epoch: BigInt(m.epoch),
       parentHash: BigInt(m.parentHash),
-      humanTag: BigInt(m.humanTag),
-    });
-    if (signed.hash !== BigInt(m.hash)) {
+      tagCommitment: tagCommitment(BigInt(m.humanTag)),
+      hash: BigInt(m.hash),
+      signature: {
+        S: BigInt(m.signature.S),
+        R8x: BigInt(m.signature.R8x),
+        R8y: BigInt(m.signature.R8y),
+      },
+    };
+    if (hashMandate(signed) !== signed.hash) {
       throw new Error(`mandate hash drift for ${m.from}→${m.to}`);
     }
     out.push(signed);
   }
   return out;
+}
+
+/** @deprecated Use loadMandates — kept so existing tests compile until updated. */
+export function replayMandates(state: WarrantState): SignedMandate[] {
+  return loadMandates(state);
 }
 
 export function appendLeaf(state: WarrantState, leaf: bigint): number {

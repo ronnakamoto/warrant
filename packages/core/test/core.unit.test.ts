@@ -163,8 +163,8 @@ describe("@ronnakamoto/warrant-core unit", function () {
     });
   });
 
-  describe("dummy hops", function () {
-    it("reuses an on-curve identity (Ax != 0) for disabled hops", function () {
+  describe("two-hop witness", function () {
+    it("builds a two-hop witness with no dummy slots", function () {
       const root = keygen("wp4-dummy-root");
       const agent = keygen("wp4-dummy-agent");
       const translator = keygen("wp4-dummy-translator");
@@ -197,8 +197,9 @@ describe("@ronnakamoto/warrant-core unit", function () {
       const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], 2n, 0n);
       const group = createGroup([leaf, hop0.hash, hop1.hash]);
       const { witness } = buildWitness({
-        root,
-        children: [agent, translator],
+        rootPk: root.publicKey,
+        parentSignerPk: root.publicKey,
+        leaf: translator,
         mandates: [hop0, hop1],
         group,
         leafIndex: 0,
@@ -206,27 +207,83 @@ describe("@ronnakamoto/warrant-core unit", function () {
         contextHash: 99n,
         requestHash: 123456789n,
         minExpiry: now,
+        epoch: 0n,
+        tier: 2n,
       });
-      assert.equal(witness.enabled.length, DEPTH);
-      assert.deepEqual(witness.enabled, [1n, 1n, 0n, 0n]);
-      assert.notEqual(witness.childPkX[2], 0n);
-      assert.notEqual(witness.childPkX[3], 0n);
-      assert.equal(witness.childPkX[2], translator.publicKey[0]);
-      assert.equal(witness.siblings.length, MAX_MERKLE_DEPTH);
-      assert.equal(witness.hopIndex.length, DEPTH);
-      assert.equal(witness.hopSiblings.length, DEPTH);
-      assert.equal(witness.hopSiblings[0]!.length, MAX_MERKLE_DEPTH);
-      assert.equal(
-        witness.hopIndex[0],
-        BigInt(group.generateMerkleProof(group.indexOf(hop0.hash)).index),
-      );
-      assert.equal(
-        witness.hopIndex[1],
-        BigInt(group.generateMerkleProof(group.indexOf(hop1.hash)).index),
-      );
+      assert.equal(DEPTH, 2);
+      assert.equal(witness.scopes.length, 2);
+      assert.equal(witness.hopIndex.length, 2);
+      assert.equal("enabled" in witness, false);
+      assert.equal(witness.parentParentHash, 0n);
+      assert.equal(witness.childPkX[1], translator.publicKey[0]);
     });
 
-    it("rejects an enabled mandate missing from the forest", function () {
+    it("opens a helper-shaped parent (parentHash != 0)", function () {
+      const root = keygen("wp4-helper-root");
+      const orch = keygen("wp4-helper-orch");
+      const translator = keygen("wp4-helper-translator");
+      const helper = keygen("wp4-helper-helper");
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const hop0 = createMandate({
+        parent: root,
+        child: orch,
+        scope: 7n,
+        budgetCap: 2_000_000n,
+        expiry: now + 86400n,
+        tier: 2n,
+        epoch: 0n,
+        parentHash: 0n,
+        humanTag: 42n,
+      });
+      const hop1 = createMandate({
+        parent: orch,
+        child: translator,
+        scope: TRANSLATE,
+        budgetCap: 200_000n,
+        expiry: now + 3600n,
+        tier: 2n,
+        epoch: 0n,
+        parentHash: hop0.hash,
+        humanTag: 42n,
+        parentScope: hop0.scope,
+        parentBudgetCap: hop0.budgetCap,
+        parentExpiry: hop0.expiry,
+      });
+      const hop2 = createMandate({
+        parent: translator,
+        child: helper,
+        scope: TRANSLATE,
+        budgetCap: 50_000n,
+        expiry: now + 1800n,
+        tier: 2n,
+        epoch: 0n,
+        parentHash: hop1.hash,
+        humanTag: 42n,
+        parentScope: hop1.scope,
+        parentBudgetCap: hop1.budgetCap,
+        parentExpiry: hop1.expiry,
+      });
+      const leaf = hashLeaf(root.publicKey[0], root.publicKey[1], 2n, 0n);
+      const group = createGroup([leaf, hop0.hash, hop1.hash, hop2.hash]);
+      const { witness } = buildWitness({
+        rootPk: root.publicKey,
+        parentSignerPk: orch.publicKey,
+        leaf: helper,
+        mandates: [hop1, hop2],
+        group,
+        leafIndex: 0,
+        humanTag: 42n,
+        contextHash: 99n,
+        requestHash: 123456789n,
+        minExpiry: now,
+        epoch: 0n,
+        tier: 2n,
+      });
+      assert.equal(witness.parentParentHash, hop0.hash);
+      assert.equal(witness.parentAx, orch.publicKey[0]);
+    });
+
+    it("rejects a mandate hash missing from the forest", function () {
       const root = keygen("wp4-miss-root");
       const agent = keygen("wp4-miss-agent");
       const translator = keygen("wp4-miss-translator");
@@ -261,8 +318,9 @@ describe("@ronnakamoto/warrant-core unit", function () {
       assert.throws(
         () =>
           buildWitness({
-            root,
-            children: [agent, translator],
+            rootPk: root.publicKey,
+            parentSignerPk: root.publicKey,
+            leaf: translator,
             mandates: [hop0, hop1],
             group,
             leafIndex: 0,
@@ -270,6 +328,8 @@ describe("@ronnakamoto/warrant-core unit", function () {
             contextHash: 99n,
             requestHash: 123456789n,
             minExpiry: now,
+            epoch: 0n,
+            tier: 2n,
           }),
         /not in the forest/,
       );

@@ -1,12 +1,12 @@
 # 02 — Warrant: design
 
-**Live host (2026-09):** forest circuit `WarrantFull(4, 20)` is **101,781** constraints (pot17, `artifacts-groth16-v2`). Identity leaf plus each enabled mandate hash share one LeanIMT. `revokeMandate` tombstones a hop; identity `revoke` still bumps epoch. Addresses: [`deployments/base-sepolia.json`](../deployments/base-sepolia.json). The public book is https://warrant-beta.vercel.app/docs. Numbers below that say 59,837 / pot16 are the pre-forest WP2 measurement.
+**Live host (2026-09):** circuit `WarrantHop(20)` is **39,424 non-linear / 61,111 snarkjs** constraints (pot16, `artifacts-groth16-v3`). The leaf sees the immediate parent, not the chain. This is not pairing recursion. Identity leaf plus each enabled mandate hash share one LeanIMT. `revokeMandate` tombstones a hop; identity `revoke` still bumps epoch. Addresses: [`deployments/base-sepolia.json`](../deployments/base-sepolia.json). The public book is https://warrant-beta.vercel.app/docs.
 
 ## 0. The claim in one sentence
 
 Warrant is a **delegatable anonymous credential** for agents. A verifier learns exactly four things about a request: *(1)* it was authorized by a chain that starts at a **World-ID-backed human** (or a Selfie-Check-tier human — the proof carries the assurance tier), *(2)* the **effective scope and budget ceiling** at the leaf, *(3)* the chain is **not revoked and not expired**, and *(4)* a **context-scoped nullifier** that lets the verifier rate-limit or de-duplicate per human without linking across verifiers. It learns nothing else: not the human, not the root agent, not the intermediate agents, not the depth of the chain.
 
-The Groth16 circuit is a **flattened PCD** (max depth 4, padded). What we **take** from adjacent research vs **leave** is §9.
+The Groth16 circuit is an **incremental two-slot hop** (parent and leaf). What we **take** from adjacent research vs **leave** is §9.
 
 ## 1. Actors and vocabulary
 
@@ -54,28 +54,24 @@ sig = EdDSA_Poseidon(parentSk, Poseidon(all fields except humanTag) )
 ### 2.3 Warrant (the proof)
 
 Public inputs: `merkleRoot, contextHash, nullifier, effectiveScope, effectiveBudgetCap, minExpiry (= now), tier, requestHash`.
-Private inputs: `rootPk, epoch, merkleDepth, merkleIndex, siblings[MAX_DEPTH], mandates[0..D-1], sigs[0..D-1], enabled[D], humanTag, leafSk`. Membership is Semaphore v4 `BinaryMerkleRoot` (single `index`, not `pathIndices[]`). See `docs/05-implementation-plan.md` for measured constraint counts.
+Private inputs: `rootPk`, `parentSignerPk`, two always-on mandates (parent + leaf), `humanTag`, merkle siblings. No `enabled[]`. Membership is Semaphore v4 `BinaryMerkleRoot` (single `index`, not `pathIndices[]`). See `docs/05-implementation-plan.md` for measured constraint counts.
 
-## 3. The circuit (Noir or circom; fixed max depth D = 4, padded)
+## 3. The circuit (circom; `WarrantHop(20)`, two always-on slots)
 
 ```
 1. tagC = Poseidon(DST_tag, humanTag)
    leaf = Poseidon(DST_leaf, rootPk, tier, epoch) ; assert MerkleVerify(leaf, path) == merkleRoot
-2. for i in 0..D:
-     parentHash_0 = 0 ; parentHash_i = H(mandate_{i-1})
-     M_i = Poseidon(DST_mandate, childPk, scope, budget, expiry, tier, epoch, parentHash_i, tagC)
-     if enabled[i]:
-        assert EdDSAVerify(pk_{i-1} (pk_{-1} = rootPk), M_i, sig_i)
-        assert scope ⊆ parent.scope ; budget ≤ parent.budget ; expiry ≤ parent.expiry
-     else: padding (on-curve dummy keys)
-3. leafPk = last-enabled childPk
+2. Two slots (parent, leaf). parentParentHash = 0 on the first hop (signer = rootPk);
+   else signer = parentAx/Ay. Leaf parentHash === parent mandate hash.
+   Both mandate hashes and the identity leaf sit in the same LeanIMT.
+3. Attenuation: leaf scope ⊆ parent; leaf budget and expiry ≤ parent.
 4. assert EdDSAVerify(leafPk, requestHash)          ; binds this proof to this exact HTTP request / tx
-5. assert minExpiry ≤ last-enabled expiry
-6. effectiveScope / effectiveBudgetCap = last-enabled hop
+5. assert minExpiry ≤ leaf expiry
+6. effectiveScope / effectiveBudgetCap = leaf hop
 7. nullifier = Poseidon(DST_nullifier, humanTag, contextHash)
 ```
 
-Cost (measured on WP2 product circuit): **59,837** constraints; Groth16 prove ~**1.8 s** in CI-local runs. Public inputs stay 8. zkey ~**28 MB** (do not commit). Domain tags and `tagC` inside every mandate close quota-rotation. If time allows, Noir + UltraHonk avoids the trusted setup (still not PQ by itself).
+Live `WarrantHop(20)`: **39,424 non-linear / 61,111 snarkjs** constraints; pot16; ceremony `artifacts-groth16-v3`. Public inputs stay 8. zkey is not in git. Domain tags and `tagC` inside every mandate close quota-rotation. A later `IVerifier` swap (for example Honk) is the path when pairing-based trust is unacceptable (still not PQ by itself).
 
 Why `requestHash` matters: the proof is not a bearer token. Replaying it against a different request fails. Pinned formula (spike 16): `requestHash = keccak256(method|path|nonce|merkleRoot|amount|payTo|bodyHash) mod r` (`r` = bn254 scalar field). The leaf EdDSA-signs that field. The x402 hook requires `publicSignals[7]` to equal the live challenge.
 
@@ -107,7 +103,7 @@ Anonymity and exact per-human budget accounting are in tension (exact accounting
 ## 7. Threat model and limitations
 
 - **Compromised sub-agent key:** can spend within its mandate until expiry or root revocation; cannot widen scope; cannot forge a longer chain (needs parent signatures). Mid-tree revocation without touching the root is a known gap — mitigated by short TTLs on sub-mandates (minutes to hours). v2 is a **live-mandate forest** (delete the node; every hop proves inclusion), not Lightning-style punishment secrets.
-- **Leaf sees the chain:** the Groth16 witness includes every parent mandate. The *verifier* does not. Recursive / PCD proving is how descendants stop seeing intermediates (ePrint 2026/1855). Not this week's circuit.
+- **Leaf sees the immediate parent:** the Groth16 witness includes the parent mandate, not the chain above it. The *verifier* sees neither. This is not pairing recursion. Recursive / PCD proving is a later path (ePrint 2026/1855). Not this circuit.
 - **Leaked `humanTag`:** allows *linking* a human's nullifiers, never forging authority. Rotate by re-binding the root.
 - **Anonymity set:** equals the number of bound roots. On day one that is our test users; the real set is every AgentBook agent that binds a key. State this plainly; it is the same bootstrapping every Semaphore app faces.
 - **Trusted setup:** Groth16 needs one; use a Semaphore-style ceremony or switch to Honk. For a hackathon, a local powers-of-tau is acceptable if disclosed.
@@ -127,7 +123,7 @@ From DAC papers and PPP: **only what upgrades this mechanism without a second pr
 | Take | Where | Circuit? |
 |---|---|---|
 | Call it a DAC; 2026/1855 is EUDI wallets, we are agent OBO | Pitch, Q&A | No |
-| Flattened PCD, D=4 | Pitch, this section | Already |
+| Incremental two-slot hop | Pitch, this section | Already |
 | Seal-close `(nullifier, requestHash)` | x402 hook / `INullifierStore` | No |
 | Poseidon domain tags | `@warrant/core` hashes | No |
 | Budgets are ceilings, not coins | Stage talk, §6 | No |

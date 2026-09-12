@@ -1,10 +1,49 @@
 import assert from "node:assert/strict";
-import { appendLeaf, emptyState, ensureIdentity, freshFieldTag, identityOf } from "@warrant/agent";
+import {
+  appendLeaf,
+  emptyState,
+  ensureIdentity,
+  freshFieldTag,
+  identityOf,
+  publicOf,
+  stripPrivateKey,
+} from "@warrant/agent";
 import { FETCH, TRANSLATE, hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
-import { appendHelperHop } from "../src/hire.ts";
+import { appendHelperHop, hireHelper } from "../src/hire.ts";
 import { assembleGuestTree } from "../src/mint.ts";
-import { actingName, proveGuest } from "../src/prove.ts";
-import type { GuestSession } from "../src/session.ts";
+import { actingName, identityLeafOf, proveGuest, refreshMembers } from "../src/prove.ts";
+import { mandateHashForKind, markHelperFired, markSessionFired } from "../src/revoke.ts";
+import { createSessionStore, type GuestSession } from "../src/session.ts";
+
+describe("refreshMembers", function () {
+  it("hashes the identity leaf after Alice's seed is stripped", async function () {
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-stripped");
+    ensureIdentity(state, "orchestrator", "orch-stripped");
+    ensureIdentity(state, "translator", "trans-stripped");
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const [pkX, pkY] = publicOf(state, "alice");
+    const expected = hashLeaf(pkX, pkY, 0n, 0n).toString();
+    stripPrivateKey(state, "alice");
+    assert.equal(state.identities.alice?.privateKey, "");
+
+    await refreshMembers(state, async () => [expected]);
+    assert.equal(identityLeafOf(state), expected);
+    assert.ok(state.members.includes(expected));
+
+    const session: GuestSession = {
+      id: "p",
+      deskId: "desk",
+      wallet: "0x0000000000000000000000000000000000000003",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state,
+    };
+    assert.equal(mandateHashForKind(session, undefined, "identity"), expected);
+  });
+});
 
 describe("actingName", function () {
   it("selects helper vs translator from parentId", function () {
@@ -114,5 +153,93 @@ describe("proveGuest", function () {
     assert.ok(out.nullifier);
     const parsed = JSON.parse(out.warrant) as { publicSignals: string[]; nonce: string };
     assert.equal(parsed.publicSignals[2], out.nullifier);
+  });
+
+  it("proves a hired slim helper and still translates after Fire helper", async function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    const parentState = emptyState();
+    ensureIdentity(parentState, "alice", "alice-pr");
+    ensureIdentity(parentState, "orchestrator", "orch-pr");
+    ensureIdentity(parentState, "translator", "trans-pr");
+    parentState.humanTag = freshFieldTag();
+    parentState.contextHash = freshFieldTag();
+    parentState.rootName = "alice";
+    parentState.rootTier = 0;
+    parentState.rootEpoch = 0;
+    const alice = identityOf(parentState, "alice");
+    appendLeaf(parentState, hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n));
+    assembleGuestTree(parentState, BigInt(Math.floor(Date.now() / 1000) + 3600), TRANSLATE | FETCH);
+    store.put({
+      id: "p",
+      deskId: "desk",
+      wallet: "0x0000000000000000000000000000000000000003",
+      evmPrivateKey: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      createdAt: Date.now(),
+      state: parentState,
+    });
+    const hired = await hireHelper(store, "p");
+    assert.equal(hired.ok, true);
+    if (!hired.ok) return;
+    const helper = store.get(hired.helperSessionId)!;
+    assert.equal(helper.state.mandates.length, 2);
+    assert.equal(store.get("p")!.state.mandates.length, 2);
+
+    const prover: IProver = {
+      async prove(witness) {
+        assert.ok(witness);
+        return { pi_a: ["1"], pi_b: [["1"]], pi_c: ["1"], protocol: "groth16" } as WarrantProof;
+      },
+    };
+    const challenge = {
+      method: "POST" as const,
+      path: "/v1/translate",
+      nonce: "n1",
+      merkleRoot: "1",
+      amount: "0",
+      payTo: "0.0.1",
+      bodyHash: "0x00",
+    };
+    const helperOut = await proveGuest({ session: helper, challenge, prover });
+    assert.ok(helperOut.nullifier);
+
+    markHelperFired(store, store.get("p")!);
+    const parent = store.get("p")!;
+    assert.equal(parent.revoked, undefined);
+    const translatorOut = await proveGuest({ session: parent, challenge, prover });
+    assert.ok(translatorOut.nullifier);
+  });
+
+  it("Fire this marks the helper session so hop 2 is gone from the live chain", async function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-pr");
+    ensureIdentity(state, "orchestrator", "orch-pr");
+    ensureIdentity(state, "translator", "trans-pr");
+    state.humanTag = freshFieldTag();
+    state.contextHash = freshFieldTag();
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const alice = identityOf(state, "alice");
+    appendLeaf(state, hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n));
+    assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 3600), TRANSLATE | FETCH);
+    store.put({
+      id: "p",
+      deskId: "desk",
+      wallet: "0x0000000000000000000000000000000000000003",
+      evmPrivateKey: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      createdAt: Date.now(),
+      state,
+    });
+    const hired = await hireHelper(store, "p");
+    assert.equal(hired.ok, true);
+    if (!hired.ok) return;
+    const parent = store.get("p")!;
+    const helper = store.get(hired.helperSessionId)!;
+    markSessionFired(store, parent);
+    assert.equal(store.get("p")?.revoked, true);
+    assert.equal(store.get(hired.helperSessionId)?.revoked, true);
+    assert.equal(mandateHashForKind(parent, store, "warrant"), parent.state.mandates[1]!.hash);
+    assert.notEqual(parent.state.mandates[1]!.hash, helper.state.mandates[1]!.hash);
   });
 });

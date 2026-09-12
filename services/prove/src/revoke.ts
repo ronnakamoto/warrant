@@ -1,5 +1,3 @@
-import { hashLeaf } from "@ronnakamoto/warrant-core";
-import { identityOf } from "@warrant/agent";
 import { LeanIMT } from "@zk-kit/lean-imt";
 import { poseidon2 } from "poseidon-lite";
 import {
@@ -15,7 +13,7 @@ import { baseSepolia } from "viem/chains";
 import { assertNotFounder } from "./founders.js";
 import type { GuestSession, SessionStore } from "./session.js";
 import type { LeafLoader } from "./members.js";
-import { refreshMembers } from "./prove.js";
+import { identityLeafOf, refreshMembers } from "./prove.js";
 
 const revokeAbi = [
   {
@@ -80,13 +78,7 @@ export async function sponsorRevokeGas(args: {
 export type RevokeKind = "identity" | "warrant" | "helper";
 
 function identityLeaf(session: GuestSession): string {
-  const root = identityOf(session.state, session.state.rootName ?? "alice");
-  return hashLeaf(
-    root.publicKey[0],
-    root.publicKey[1],
-    BigInt(session.state.rootTier ?? 0),
-    BigInt(session.state.rootEpoch ?? 0),
-  ).toString();
+  return identityLeafOf(session.state);
 }
 
 export function mandateHashForKind(
@@ -105,7 +97,7 @@ export function mandateHashForKind(
     : session.helperSessionId
       ? store?.get(session.helperSessionId)
       : undefined;
-  const hop = helper?.state.mandates[2];
+  const hop = helper?.state.mandates.at(-1);
   if (!hop?.hash) throw new Error("helper hop missing");
   return hop.hash;
 }
@@ -207,13 +199,7 @@ export async function revokeGuest(args: {
   assertNotFounder(args.session.wallet);
   await refreshMembers(args.session.state, args.loadMembers);
 
-  const root = identityOf(args.session.state, args.session.state.rootName ?? "alice");
-  const leaf = hashLeaf(
-    root.publicKey[0],
-    root.publicKey[1],
-    BigInt(args.session.state.rootTier ?? 0),
-    BigInt(args.session.state.rootEpoch ?? 0),
-  ).toString();
+  const leaf = identityLeaf(args.session);
   const siblings = await revokeSiblingsFor(args.session.state.members, leaf);
 
   if (args.clients?.revoke) {

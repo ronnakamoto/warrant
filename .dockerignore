@@ -12,3 +12,6 @@ cache
 *.md
 .impeccable
 agent-transcripts
+circuits/build
+*.ptau
+*.zkey

@@ -4,13 +4,12 @@ include "poseidon.circom";
 include "comparators.circom";
 include "binary-merkle-root.circom";
 include "eddsaposeidon.circom";
-include "lib/enabled_prefix.circom";
 include "lib/attenuation.circom";
 include "lib/warrant_hashes.circom";
 
-// Full product circuit: LeanIMT membership + D padded mandate hops + request sig.
-// Public inputs: same frozen 8-tuple as warrant_lean / Groth16 verifier.
-template WarrantFull(D, MAX_DEPTH) {
+// Incremental hop: identity leaf + two always-on mandate slots in one forest.
+// Public inputs: same frozen 8-tuple as WarrantFull / Groth16 verifier.
+template WarrantHop(MAX_DEPTH) {
     // —— public ——
     signal input merkleRoot;
     signal input contextHash;
@@ -29,25 +28,26 @@ template WarrantFull(D, MAX_DEPTH) {
     signal input merkleIndex;
     signal input siblings[MAX_DEPTH];
 
-    // —— private: mandate chain ——
-    signal input scopes[D];
-    signal input budgets[D];
-    signal input expiries[D];
-    signal input enabled[D];
+    // —— private: two-slot mandate chain ——
+    signal input parentParentHash;
+    signal input parentAx;
+    signal input parentAy;
+    signal input scopes[2];
+    signal input budgets[2];
+    signal input expiries[2];
     signal input humanTag;
-    signal input childPkX[D];
-    signal input childPkY[D];
-    signal input sigS[D];
-    signal input sigR8x[D];
-    signal input sigR8y[D];
+    signal input childPkX[2];
+    signal input childPkY[2];
+    signal input sigS[2];
+    signal input sigR8x[2];
+    signal input sigR8y[2];
     signal input reqS;
     signal input reqR8x;
     signal input reqR8y;
-    signal input hopIndex[D];
-    signal input hopDepth[D];
-    signal input hopSiblings[D][MAX_DEPTH];
+    signal input hopIndex[2];
+    signal input hopDepth[2];
+    signal input hopSiblings[2][MAX_DEPTH];
 
-    // Tag commitment binds humanTag into every signed mandate (closes quota rotation).
     component tagC = TagCommitment();
     tagC.humanTag <== humanTag;
 
@@ -66,29 +66,18 @@ template WarrantFull(D, MAX_DEPTH) {
     }
     merkle.out === merkleRoot;
 
-    component enabledGate = EnabledPrefix(D);
-    for (var i = 0; i < D; i++) {
-        enabledGate.enabled[i] <== enabled[i];
-    }
+    // parentParentHash == 0 → root signs the parent slot; else parentAx/Ay.
+    component parentIsRoot = IsZero();
+    parentIsRoot.in <== parentParentHash;
+    signal parentSignerAx;
+    signal parentSignerAy;
+    parentSignerAx <== parentAx + parentIsRoot.out * (rootPkX - parentAx);
+    parentSignerAy <== parentAy + parentIsRoot.out * (rootPkY - parentAy);
 
-    component atten = AttenuationChain(D);
-    for (var i = 0; i < D; i++) {
-        atten.scopes[i] <== scopes[i];
-        atten.budgets[i] <== budgets[i];
-        atten.expiries[i] <== expiries[i];
-        atten.enabled[i] <== enabled[i];
-    }
+    component mandateHash[2];
+    component mandateSig[2];
 
-    component mandateHash[D];
-    component mandateSig[D];
-    signal parentHash[D];
-    parentHash[0] <== 0;
-
-    for (var i = 0; i < D; i++) {
-        if (i > 0) {
-            parentHash[i] <== mandateHash[i - 1].out;
-        }
-
+    for (var i = 0; i < 2; i++) {
         mandateHash[i] = WarrantMandateHash();
         mandateHash[i].childPkX <== childPkX[i];
         mandateHash[i].childPkY <== childPkY[i];
@@ -97,17 +86,21 @@ template WarrantFull(D, MAX_DEPTH) {
         mandateHash[i].expiry <== expiries[i];
         mandateHash[i].tier <== tier;
         mandateHash[i].epoch <== epoch;
-        mandateHash[i].parentHash <== parentHash[i];
+        if (i == 0) {
+            mandateHash[i].parentHash <== parentParentHash;
+        } else {
+            mandateHash[i].parentHash <== mandateHash[0].out;
+        }
         mandateHash[i].tagCommitment <== tagC.out;
 
         mandateSig[i] = EdDSAPoseidonVerifier();
-        mandateSig[i].enabled <== enabled[i];
+        mandateSig[i].enabled <== 1;
         if (i == 0) {
-            mandateSig[i].Ax <== rootPkX;
-            mandateSig[i].Ay <== rootPkY;
+            mandateSig[i].Ax <== parentSignerAx;
+            mandateSig[i].Ay <== parentSignerAy;
         } else {
-            mandateSig[i].Ax <== childPkX[i - 1];
-            mandateSig[i].Ay <== childPkY[i - 1];
+            mandateSig[i].Ax <== childPkX[0];
+            mandateSig[i].Ay <== childPkY[0];
         }
         mandateSig[i].S <== sigS[i];
         mandateSig[i].R8x <== sigR8x[i];
@@ -115,8 +108,8 @@ template WarrantFull(D, MAX_DEPTH) {
         mandateSig[i].M <== mandateHash[i].out;
     }
 
-    component hopMerkle[D];
-    for (var i = 0; i < D; i++) {
+    component hopMerkle[2];
+    for (var i = 0; i < 2; i++) {
         hopMerkle[i] = BinaryMerkleRoot(MAX_DEPTH);
         hopMerkle[i].leaf <== mandateHash[i].out;
         hopMerkle[i].depth <== hopDepth[i];
@@ -124,39 +117,29 @@ template WarrantFull(D, MAX_DEPTH) {
         for (var j = 0; j < MAX_DEPTH; j++) {
             hopMerkle[i].siblings[j] <== hopSiblings[i][j];
         }
-        enabled[i] * (hopMerkle[i].out - merkleRoot) === 0;
+        hopMerkle[i].out === merkleRoot;
     }
 
-    component muxScope = EnabledMux(D);
-    component muxBudget = EnabledMux(D);
-    component muxExpiry = EnabledMux(D);
-    component muxPkX = EnabledMux(D);
-    component muxPkY = EnabledMux(D);
-    for (var i = 0; i < D; i++) {
-        muxScope.values[i] <== scopes[i];
-        muxScope.enabled[i] <== enabled[i];
-        muxBudget.values[i] <== budgets[i];
-        muxBudget.enabled[i] <== enabled[i];
-        muxExpiry.values[i] <== expiries[i];
-        muxExpiry.enabled[i] <== enabled[i];
-        muxPkX.values[i] <== childPkX[i];
-        muxPkX.enabled[i] <== enabled[i];
-        muxPkY.values[i] <== childPkY[i];
-        muxPkY.enabled[i] <== enabled[i];
+    component atten = AttenuationChain(2);
+    for (var i = 0; i < 2; i++) {
+        atten.scopes[i] <== scopes[i];
+        atten.budgets[i] <== budgets[i];
+        atten.expiries[i] <== expiries[i];
+        atten.enabled[i] <== 1;
     }
 
-    muxScope.out === effectiveScope;
-    muxBudget.out === effectiveBudgetCap;
+    scopes[1] === effectiveScope;
+    budgets[1] === effectiveBudgetCap;
 
     component expiryOk = LessEqThan(64);
     expiryOk.in[0] <== minExpiry;
-    expiryOk.in[1] <== muxExpiry.out;
+    expiryOk.in[1] <== expiries[1];
     expiryOk.out === 1;
 
     component reqSig = EdDSAPoseidonVerifier();
     reqSig.enabled <== 1;
-    reqSig.Ax <== muxPkX.out;
-    reqSig.Ay <== muxPkY.out;
+    reqSig.Ax <== childPkX[1];
+    reqSig.Ay <== childPkY[1];
     reqSig.S <== reqS;
     reqSig.R8x <== reqR8x;
     reqSig.R8y <== reqR8y;
@@ -173,4 +156,4 @@ component main {
         merkleRoot, contextHash, nullifier, effectiveScope,
         effectiveBudgetCap, minExpiry, tier, requestHash
     ]
-} = WarrantFull(4, 20);
+} = WarrantHop(20);
