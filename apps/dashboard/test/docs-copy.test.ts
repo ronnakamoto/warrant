@@ -54,6 +54,14 @@ describe("protocol docs", function () {
     assert.match(book, /WarrantHop/);
     assert.match(book, /immediate parent/);
     assert.match(book, /artifacts-groth16-v3/);
+    assert.match(book, /b97ca5dec3b187b59b513b8aaf70b7447c0ec35e584a7065c175ec2f3b50abd2/);
+    assert.match(book, /6bbd75496678755487820a83f7184da784ccfb1bad1db1ad577535a25cdb2652/);
+    assert.match(book, /8709811b852c70ca56c094953d60d6ad54e0538b9c3aa685ac2dabb6a493b30a/);
+    assert.equal(/replace after `setup-groth16`/.test(book), false);
+    assert.match(book, /recovers the same hop tree/);
+    assert.match(book, /those hops are dead/);
+    assert.equal(/Authorize again inserts another hop chain/.test(book), false);
+    assert.equal(/Last-enabled hop/.test(book), false);
     assert.equal(/WarrantFull\(4/.test(book), false);
     assert.equal(book.includes("101_781"), false);
     assert.equal(/artifacts-groth16-v2/.test(book), false);

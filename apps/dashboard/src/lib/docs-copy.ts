@@ -92,7 +92,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
           },
           {
             dt: "Root",
-            dd: "MandateRegistry `currentRoot`: one LeanIMT over the identity leaf and every enabled mandate hash. Your MetaMask binds one Baby Jubjub public key. Authorize again inserts another hop chain under that same identity leaf.",
+            dd: "MandateRegistry `currentRoot`: one LeanIMT over the identity leaf and every enabled mandate hash. Your MetaMask binds one Baby Jubjub public key. Authorize again recovers the same hop tree under that identity leaf. It fails if those hops are dead.",
           },
           {
             dt: "Leaf",
@@ -228,11 +228,15 @@ export const DOCS_SECTIONS: DocsSection[] = [
         rows: [
           [
             "`warrant_final.zkey`",
-            "replace after `setup-groth16` + GitHub release `artifacts-groth16-v3`",
+            "b97ca5dec3b187b59b513b8aaf70b7447c0ec35e584a7065c175ec2f3b50abd2",
           ],
           [
             "`warrant_vkey.json`",
-            "replace after `setup-groth16` + GitHub release `artifacts-groth16-v3`",
+            "6bbd75496678755487820a83f7184da784ccfb1bad1db1ad577535a25cdb2652",
+          ],
+          [
+            "`warrant.wasm`",
+            "8709811b852c70ca56c094953d60d6ad54e0538b9c3aa685ac2dabb6a493b30a",
           ],
         ],
       },
@@ -270,9 +274,9 @@ export const DOCS_SECTIONS: DocsSection[] = [
           ["0", "`merkleRoot`", "Must equal MandateRegistry `currentRoot`. After any Fire the copied bearer's root is stale → `root_revoked`. Groth16 fail against a still-accepted root → `invalid_proof`."],
           ["1", "`contextHash`", "Scopes the nullifier. Not your name."],
           ["2", "`nullifier`", "Per-human-per-context id for quota and the replay seal. Not a wallet."],
-          ["3", "`effectiveScope`", "Last-enabled hop’s uint64 capability bits."],
-          ["4", "`effectiveBudgetCap`", "Last-enabled hop’s budget ceiling. Not a conserved coin."],
-          ["5", "`minExpiry`", "Shop’s `now`. Circuit checks `minExpiry ≤` last-enabled expiry."],
+          ["3", "`effectiveScope`", "Leaf hop’s uint64 capability bits."],
+          ["4", "`effectiveBudgetCap`", "Leaf hop’s budget ceiling. Not a conserved coin."],
+          ["5", "`minExpiry`", "Shop’s `now`. Circuit checks `minExpiry ≤` leaf expiry."],
           ["6", "`tier`", "Personhood floor. This host binds `tier=0`. Not a World ID proof."],
           ["7", "`requestHash`", "This exact challenge. A copied proof on a different request fails."],
         ],

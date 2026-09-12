@@ -1,5 +1,6 @@
 import {
   proveForChallenge,
+  publicOf,
   warrantHeaderJson,
   type WarrantState,
 } from "@warrant/agent";
@@ -8,7 +9,6 @@ import type { GuestSession } from "./session.js";
 import type { LeafLoader } from "./members.js";
 import { mergeForestLeaves, mergeGuestLeaf } from "./members.js";
 import { hashLeaf } from "@ronnakamoto/warrant-core";
-import { publicOf } from "../../../packages/agent/src/store.ts";
 
 export function identityLeafOf(state: WarrantState): string {
   const [pkX, pkY] = publicOf(state, state.rootName ?? "alice");

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
-import { appendLeaf, emptyState, ensureIdentity, freshFieldTag, identityOf } from "@warrant/agent";
-import { publicOf, stripPrivateKey } from "../../../packages/agent/src/store.ts";
+import {
+  appendLeaf,
+  emptyState,
+  ensureIdentity,
+  freshFieldTag,
+  identityOf,
+  publicOf,
+  stripPrivateKey,
+} from "@warrant/agent";
 import { FETCH, TRANSLATE, hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
 import { appendHelperHop, hireHelper } from "../src/hire.ts";
 import { assembleGuestTree } from "../src/mint.ts";

@@ -6,7 +6,7 @@
 
 Warrant is a **delegatable anonymous credential** for agents. A verifier learns exactly four things about a request: *(1)* it was authorized by a chain that starts at a **World-ID-backed human** (or a Selfie-Check-tier human — the proof carries the assurance tier), *(2)* the **effective scope and budget ceiling** at the leaf, *(3)* the chain is **not revoked and not expired**, and *(4)* a **context-scoped nullifier** that lets the verifier rate-limit or de-duplicate per human without linking across verifiers. It learns nothing else: not the human, not the root agent, not the intermediate agents, not the depth of the chain.
 
-The Groth16 circuit is a **flattened PCD** (max depth 4, padded). What we **take** from adjacent research vs **leave** is §9.
+The Groth16 circuit is an **incremental two-slot hop** (parent and leaf). What we **take** from adjacent research vs **leave** is §9.
 
 ## 1. Actors and vocabulary
 
@@ -127,7 +127,7 @@ From DAC papers and PPP: **only what upgrades this mechanism without a second pr
 | Take | Where | Circuit? |
 |---|---|---|
 | Call it a DAC; 2026/1855 is EUDI wallets, we are agent OBO | Pitch, Q&A | No |
-| Flattened PCD, D=4 | Pitch, this section | Already |
+| Incremental two-slot hop | Pitch, this section | Already |
 | Seal-close `(nullifier, requestHash)` | x402 hook / `INullifierStore` | No |
 | Poseidon domain tags | `@warrant/core` hashes | No |
 | Budgets are ceilings, not coins | Stage talk, §6 | No |

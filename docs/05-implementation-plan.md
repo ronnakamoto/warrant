@@ -68,7 +68,7 @@ spikes    ×  everything product
 | `src/crypto/poseidon.ts` | poseidon-lite `poseidon2/4/5` only |
 | `src/crypto/identity.ts` | Semaphore `Identity` wrap |
 | `src/crypto/tree.ts` | Semaphore `Group` wrap + sibling pad |
-| `src/prove/witness.ts` | Private inputs for D=4; dummy hops on-curve |
+| `src/prove/witness.ts` | Private inputs for two always-on hops; three EdDSA (parent, leaf, request) |
 | `src/prove/snarkjs-prover.ts` | `IProver` |
 | `src/prove/snarkjs-verifier.ts` | `IVerifier` |
 | `src/index.ts` | Public barrel: `keygen`, `createMandate`, `prove`, `verify`, `hashChallenge` |
@@ -190,9 +190,9 @@ pnpm exec node scripts/check-boundaries.mjs
 | Constant | Value |
 |---|---|
 | Public inputs (8) | `merkleRoot, contextHash, nullifier, effectiveScope, effectiveBudgetCap, minExpiry, tier, requestHash` |
-| Max depth D | 4 (padded) |
+| Hops | Two always-on (parent, leaf). Not D=4 padded. |
 | LeanIMT | `BinaryMerkleRoot(20)`, pin `@zk-kit/binary-merkle-root.circom` ≥ 2.0.0 |
-| EdDSA | 5× `EdDSAPoseidonVerifier` (4 mandate + 1 request) |
+| EdDSA | 3× `EdDSAPoseidonVerifier` (parent, leaf, request) |
 | Mandate hash | `Poseidon(10)([DST_mandate, childPkX, childPkY, scope, budgetCap, expiry, tier, epoch, parentHash, tagCommitment])` |
 | Leaf | `Poseidon(5)([DST_leaf, pkX, pkY, tier, epoch])` |
 | Tag commitment | `Poseidon(2)([DST_tag, humanTag])` (bound into every mandate) |

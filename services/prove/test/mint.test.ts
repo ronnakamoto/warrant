@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { FETCH, TRANSLATE } from "@ronnakamoto/warrant-core";
 import { FOUNDER_ETH } from "../src/founders.ts";
-import { assembleGuestTree, mintGuest } from "../src/mint.ts";
+import { assembleGuestTree, mintGuest, type MintGuestDeps } from "../src/mint.ts";
 import { createSessionStore } from "../src/session.ts";
 import { emptyState, ensureIdentity, identityOf, freshFieldTag } from "@warrant/agent";
 
@@ -327,5 +327,145 @@ describe("mintGuest", function () {
     assert.equal(session.state.identities.orchestrator?.privateKey, "");
     assert.ok(session.state.identities.translator?.privateKey);
     assert.equal(session.state.mandates.length, 2);
+  });
+
+  const wallet = "0x00000000000000000000000000000000000000ab" as const;
+  const bindKey = "0x1111111111111111111111111111111111111111111111111111111111111111" as const;
+  const registry = "0x103749E5529c3Ce31A1EB8e0657280AaE7e9dA89" as const;
+
+  function remintDeps(
+    store: ReturnType<typeof createSessionStore>,
+    extra: Partial<MintGuestDeps> = {},
+  ): MintGuestDeps {
+    return {
+      store,
+      wallet,
+      bindPrivateKey: bindKey,
+      registry,
+      rpc: "https://sepolia.base.org",
+      loadMembers: async () => [],
+      bindRoot: async () => ({ leaf: 1n, root: 2n, txHash: "0x1" }),
+      ...extra,
+    };
+  }
+
+  it("second authorize recovers the same hop tree for the same scope", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const now = Date.now();
+    let inserts = 0;
+    const first = await mintGuest(
+      remintDeps(store, {
+        scope: "fetch",
+        now: () => now,
+        insertMandates: async () => {
+          inserts += 1;
+        },
+      }),
+    );
+    const firstSession = store.get(first.sessionId)!;
+    const firstHashes = firstSession.state.mandates.map((m) => m.hash);
+    const alice = firstSession.state.identities.alice!;
+    const second = await mintGuest(
+      remintDeps(store, {
+        scope: "fetch",
+        now: () => now + 60_000,
+        bindRoot: async () => {
+          throw new Error("must not bind again");
+        },
+        readBinding: async () => ({
+          epoch: 0,
+          tier: 0,
+          leaf: 1n,
+          pkX: BigInt(alice.pkX),
+          pkY: BigInt(alice.pkY),
+        }),
+        insertMandates: async () => {
+          inserts += 1;
+        },
+      }),
+    );
+    const recovered = store.get(second.sessionId)!;
+    assert.equal(recovered.scope, "fetch");
+    assert.deepEqual(
+      recovered.state.mandates.map((m) => m.hash),
+      firstHashes,
+    );
+    assert.equal(recovered.state.humanTag, firstSession.state.humanTag);
+    assert.equal(inserts, 1);
+  });
+
+  it("second authorize refuses a different scope than the stored hops", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const first = await mintGuest(remintDeps(store, { scope: "fetch" }));
+    const alice = store.get(first.sessionId)!.state.identities.alice!;
+    await assert.rejects(
+      () =>
+        mintGuest(
+          remintDeps(store, {
+            scope: "translate",
+            bindRoot: async () => {
+              throw new Error("must not bind again");
+            },
+            readBinding: async () => ({
+              epoch: 0,
+              tier: 0,
+              leaf: 1n,
+              pkX: BigInt(alice.pkX),
+              pkY: BigInt(alice.pkY),
+            }),
+          }),
+        ),
+      /scope does not match stored hops/,
+    );
+  });
+
+  it("second authorize refuses expired stored hops", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const now = Date.now();
+    const first = await mintGuest(remintDeps(store, { now: () => now }));
+    const alice = store.get(first.sessionId)!.state.identities.alice!;
+    await assert.rejects(
+      () =>
+        mintGuest(
+          remintDeps(store, {
+            now: () => now + 31 * 60 * 1000,
+            bindRoot: async () => {
+              throw new Error("must not bind again");
+            },
+            readBinding: async () => ({
+              epoch: 0,
+              tier: 0,
+              leaf: 1n,
+              pkX: BigInt(alice.pkX),
+              pkY: BigInt(alice.pkY),
+            }),
+          }),
+        ),
+      /stored hops are dead/,
+    );
+  });
+
+  it("second authorize refuses epoch-mismatched stored hops", async function () {
+    const store = createSessionStore({ ttlMs: 60_000 });
+    const first = await mintGuest(remintDeps(store));
+    const alice = store.get(first.sessionId)!.state.identities.alice!;
+    await assert.rejects(
+      () =>
+        mintGuest(
+          remintDeps(store, {
+            bindRoot: async () => {
+              throw new Error("must not bind again");
+            },
+            readBinding: async () => ({
+              epoch: 1,
+              tier: 0,
+              leaf: 1n,
+              pkX: BigInt(alice.pkX),
+              pkY: BigInt(alice.pkY),
+            }),
+          }),
+        ),
+      /stored hops are dead/,
+    );
   });
 });
