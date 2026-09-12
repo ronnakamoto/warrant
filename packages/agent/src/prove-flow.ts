@@ -9,8 +9,9 @@ import {
 } from "@ronnakamoto/warrant-core";
 import {
   identityOf,
+  loadMandates,
+  publicOf,
   rebuildGroup,
-  replayMandates,
   requireTags,
   type WarrantState,
 } from "./store.js";
@@ -43,42 +44,45 @@ export async function proveForChallenge(args: ProveForChallengeArgs): Promise<Pr
   }
   const { humanTag, contextHash } = requireTags(state);
 
-  const root = identityOf(state, state.rootName);
-  const mandates = replayMandates(state);
-  const children = state.mandates.map((m) => identityOf(state, m.to));
-  const acting = identityOf(state, as);
-  const lastChild = children[children.length - 1]!;
-  if (
-    acting.publicKey[0] !== lastChild.publicKey[0] ||
-    acting.publicKey[1] !== lastChild.publicKey[1]
-  ) {
+  const rootPk = publicOf(state, state.rootName);
+  const mandates = loadMandates(state);
+  if (mandates.length < 2) throw new Error("need parent hop and leaf hop");
+  const pair = mandates.slice(-2);
+  const parentHop = state.mandates[state.mandates.length - 2]!;
+  const parentSignerPk =
+    BigInt(parentHop.parentHash) === 0n ? rootPk : publicOf(state, parentHop.from);
+  const leaf = identityOf(state, as);
+  if (leaf.publicKey[0] !== pair[1]!.childPkX || leaf.publicKey[1] !== pair[1]!.childPkY) {
     throw new Error(`--as ${as} is not the tip of the mandate chain`);
   }
 
   const group = rebuildGroup(state);
   const tier = BigInt(state.rootTier ?? 0);
   const epoch = BigInt(state.rootEpoch ?? 0);
-  const rootLeaf = hashLeaf(root.publicKey[0], root.publicKey[1], tier, epoch);
+  const rootLeaf = hashLeaf(rootPk[0], rootPk[1], tier, epoch);
   const leafIndex = state.members.findIndex((m) => m === rootLeaf.toString());
   if (leafIndex < 0) throw new Error("root leaf missing from local membership group");
 
   const requestHash = hashChallenge(challenge);
-  const minExpiry = mandates.reduce(
+  const minExpiry = pair.reduce(
     (min, m) => (m.expiry < min ? m.expiry : min),
-    mandates[0]!.expiry,
+    pair[0]!.expiry,
   );
 
   const { proof, publics } = await prove(
     {
-      root,
-      children,
-      mandates,
+      rootPk,
+      parentSignerPk,
+      leaf,
+      mandates: pair,
       group,
       leafIndex,
       humanTag: BigInt(humanTag),
       contextHash: BigInt(contextHash),
       requestHash,
       minExpiry,
+      epoch,
+      tier,
     },
     prover,
   );
