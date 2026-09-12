@@ -4,7 +4,6 @@ export function LandDay({ scope }: { scope: GuestScopeName }) {
   const day = landDayFor(scope);
   const steps: { name: string; foot: string; live?: boolean }[] = [
     { name: LAND_DAY.you, foot: LAND_DAY.youFoot },
-    { name: LAND_DAY.bot, foot: LAND_DAY.botFoot },
     { name: day.act, foot: day.actFoot, live: true },
     { name: LAND_DAY.fire, foot: LAND_DAY.fireFoot },
   ];
@@ -23,7 +22,6 @@ export function LandDay({ scope }: { scope: GuestScopeName }) {
             className="land-day-step"
             data-live={step.live ? "true" : undefined}
           >
-            <span className="land-day-node" aria-hidden="true" />
             <strong className="land-day-name">{step.name}</strong>
             <span className="land-day-foot">{step.foot}</span>
           </li>
