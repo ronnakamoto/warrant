@@ -40,7 +40,10 @@ function storeMandate(
   };
 }
 
-export function appendHelperHop(state: WarrantState): void {
+export function appendHelperHop(state: WarrantState): {
+  hop3: ReturnType<typeof createMandate>;
+  helper: ReturnType<typeof identityOf>;
+} {
   if (state.mandates.length !== 2) throw new Error("expected two hops");
   const hop2 = state.mandates[1];
   if (!hop2 || hop2.to !== "translator") throw new Error("last hop must end at translator");
@@ -69,6 +72,7 @@ export function appendHelperHop(state: WarrantState): void {
   });
   state.mandates.push(storeMandate("translator", HELPER_NAME, hop3, humanTag));
   state.members = mergeForestLeaves(state.members, [hop3.hash.toString()]);
+  return { hop3, helper };
 }
 
 export async function hireHelper(
@@ -86,10 +90,12 @@ export async function hireHelper(
 
   if (parent.helperSessionId) store.delete(parent.helperSessionId);
 
-  const hop2 = parent.state.mandates[1];
-  if (!hop2 || hop2.to !== "translator") throw new Error("last hop must end at translator");
-  if (!parent.state.humanTag) throw new Error("missing humanTag");
-  const humanTag = parent.state.humanTag;
+  const working = structuredClone(parent.state);
+  const { hop3 } = appendHelperHop(working);
+  const hop2 = working.mandates[1];
+  const hop3Stored = working.mandates[2];
+  const helperIdentity = working.identities[HELPER_NAME];
+  if (!hop2 || !hop3Stored || !helperIdentity) throw new Error("helper hop missing");
 
   const helperState = emptyState();
   helperState.humanTag = parent.state.humanTag;
@@ -103,31 +109,9 @@ export async function hireHelper(
     if (!row) throw new Error(`missing identity: ${name}`);
     helperState.identities[name] = { privateKey: "", pkX: row.pkX, pkY: row.pkY };
   }
-  if (!helperState.identities[HELPER_NAME]) {
-    ensureIdentity(helperState, HELPER_NAME, `helper-${randomBytes(16).toString("hex")}`);
-  }
-
-  const translator = identityOf(parent.state, "translator");
-  const helper = identityOf(helperState, HELPER_NAME);
-  const hop3 = createMandate({
-    parent: translator,
-    child: helper,
-    scope: FETCH,
-    budgetCap: HELPER_BUDGET,
-    expiry: BigInt(hop2.expiry),
-    tier: BigInt(hop2.tier),
-    epoch: BigInt(hop2.epoch),
-    parentHash: BigInt(hop2.hash),
-    humanTag: BigInt(humanTag),
-    parentScope: BigInt(hop2.scope),
-    parentBudgetCap: BigInt(hop2.budgetCap),
-    parentExpiry: BigInt(hop2.expiry),
-  });
+  helperState.identities[HELPER_NAME] = structuredClone(helperIdentity);
   helperState.members = mergeForestLeaves(parent.state.members, [hop3.hash.toString()]);
-  helperState.mandates = [
-    structuredClone(hop2),
-    storeMandate("translator", HELPER_NAME, hop3, humanTag),
-  ];
+  helperState.mandates = [structuredClone(hop2), structuredClone(hop3Stored)];
 
   if (insertMandates) {
     await insertMandates({
