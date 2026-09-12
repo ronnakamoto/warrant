@@ -16,6 +16,7 @@ import {
   type GuestScopeName,
 } from "../lib/guest-copy";
 import { LandDay } from "./LandDay";
+import { LandViz } from "./LandViz";
 
 type Phase = "land" | "minting" | "ready" | "revoked" | "limited";
 type WarrantView = {
@@ -553,40 +554,52 @@ export function GuestTry() {
               {titleLines.map((line, i) => (
                 <span key={line}>
                   {i > 0 ? <br /> : null}
-                  {line}
+                  <span
+                    className={
+                      i === titleLines.length - 1
+                        ? "land-title-line land-title-punch"
+                        : "land-title-line"
+                    }
+                    style={{ animationDelay: `${i * 90}ms` }}
+                  >
+                    {line}
+                  </span>
                 </span>
               ))}
             </h1>
-            <p className="land-standfirst">{GUEST_COPY.standfirst}</p>
+            <LandViz scope={scope} />
           </div>
           {phase === "limited" ? <Banner status="warning" title={GUEST_COPY.rateLimited} /> : null}
           {phase === "minting" ? <p className="land-note">{GUEST_COPY.minting}</p> : null}
-          {phase === "land" || phase === "limited" ? (
-            <div className="land-act">
-              <ScopePicks tone="land" scope={scope} busy={busy} onPick={setScope} />
-              <LandDay scope={scope} />
-              <div className="land-cta">
-                <Button
-                  label={GUEST_COPY.authorize}
-                  variant="primary"
-                  size="lg"
-                  onClick={() => void authorize()}
-                  isDisabled={busy}
-                />
-                <button
-                  type="button"
-                  className="land-connect"
-                  onClick={() => void recoverDesk()}
-                  disabled={busy}
-                >
-                  {GUEST_COPY.connectAction}
-                </button>
+          <div className="land-board">
+            <p className="land-standfirst">{GUEST_COPY.standfirst}</p>
+            {phase === "land" || phase === "limited" ? (
+              <div className="land-act">
+                <ScopePicks tone="land" scope={scope} busy={busy} onPick={setScope} />
+                <LandDay scope={scope} />
+                <div className="land-cta">
+                  <Button
+                    label={GUEST_COPY.authorize}
+                    variant="primary"
+                    size="lg"
+                    onClick={() => void authorize()}
+                    isDisabled={busy}
+                  />
+                  <button
+                    type="button"
+                    className="land-connect"
+                    onClick={() => void recoverDesk()}
+                    disabled={busy}
+                  >
+                    {GUEST_COPY.connectAction}
+                  </button>
+                </div>
+                <p className="land-note">
+                  {GUEST_COPY.world} {GUEST_COPY.twoWallets}
+                </p>
               </div>
-              <p className="land-note">
-                {GUEST_COPY.world} {GUEST_COPY.twoWallets}
-              </p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       ) : null}
 
