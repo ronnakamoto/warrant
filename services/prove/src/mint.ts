@@ -10,6 +10,7 @@ import {
   isUnboundError,
   type WarrantState,
 } from "@warrant/agent";
+import { hasPrivateKey, publicOf, stripPrivateKey } from "../../../packages/agent/src/store.ts";
 import { isAddress, type Address, type Hex } from "viem";
 import { assertNotFounder } from "./founders.js";
 import { mergeForestLeaves, mergeGuestLeaf, type LeafLoader } from "./members.js";
@@ -91,6 +92,23 @@ function priorAliceForWallet(store: SessionStore, wallet: Address) {
 const PARENT_BUDGET = 2_000_000n;
 const LEAF_BUDGET = 200_000n;
 const TTL_SECONDS = 30n * 60n;
+
+function adoptPriorGuestTree(state: WarrantState, prior: GuestSession): void {
+  const orch = prior.state.identities.orchestrator;
+  const trans = prior.state.identities.translator;
+  if (!orch || !trans || prior.state.mandates.length < 2) {
+    throw new Error("prior tree missing identities");
+  }
+  if (prior.state.humanTag) state.humanTag = prior.state.humanTag;
+  if (prior.state.contextHash) state.contextHash = prior.state.contextHash;
+  state.identities.orchestrator = { privateKey: "", pkX: orch.pkX, pkY: orch.pkY };
+  state.identities.translator = structuredClone(trans);
+  state.mandates = structuredClone(prior.state.mandates);
+  state.members = mergeForestLeaves(
+    state.members,
+    state.mandates.map((m) => m.hash),
+  );
+}
 
 export function assembleGuestTree(state: WarrantState, expiry: bigint, bits: bigint): void {
   const { humanTag } = requireHuman(state);
@@ -184,7 +202,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
   } else {
     ensureIdentity(state, "alice", `alice-${seed}`);
   }
-  const alice = identityOf(state, "alice");
+  const [pkX, pkY] = publicOf(state, "alice");
 
   if (prior?.state.identities.alice) {
     const read = deps.readBinding ?? (await import("@warrant/agent")).readBinding;
@@ -194,7 +212,7 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
         registry: deps.registry,
         wallet: deps.wallet,
       });
-      if (alice.publicKey[0] !== onchain.pkX || alice.publicKey[1] !== onchain.pkY) {
+      if (pkX !== onchain.pkX || pkY !== onchain.pkY) {
         throw new Error("wallet already bound");
       }
       epoch = onchain.epoch;
@@ -206,12 +224,12 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
         registry: deps.registry,
         privateKey: deps.bindPrivateKey,
         wallet: deps.wallet,
-        pkX: alice.publicKey[0],
-        pkY: alice.publicKey[1],
+        pkX,
+        pkY,
         tier: 0,
       });
       txHash = bound.txHash ?? "0x";
-      leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+      leaf = hashLeaf(pkX, pkY, 0n, 0n);
     }
   } else {
     try {
@@ -220,12 +238,12 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
         registry: deps.registry,
         privateKey: deps.bindPrivateKey,
         wallet: deps.wallet,
-        pkX: alice.publicKey[0],
-        pkY: alice.publicKey[1],
+        pkX,
+        pkY,
         tier: 0,
       });
       txHash = bound.txHash ?? "0x";
-      leaf = hashLeaf(alice.publicKey[0], alice.publicKey[1], 0n, 0n);
+      leaf = hashLeaf(pkX, pkY, 0n, 0n);
     } catch (err) {
       if (!isAlreadyBound(err)) throw err;
       throw new Error("wallet already bound");
@@ -250,13 +268,20 @@ export async function mintGuest(deps: MintGuestDeps): Promise<{
 
   const scope = deps.scope ?? "fetch";
   const expiry = BigInt(Math.floor((deps.now ?? Date.now)() / 1000)) + TTL_SECONDS;
-  assembleGuestTree(state, expiry, bitsForScope(scope));
+  const rebound = Boolean(prior?.state.identities.alice && !hasPrivateKey(state, "alice"));
+  if (rebound && prior) {
+    adoptPriorGuestTree(state, prior);
+  } else {
+    assembleGuestTree(state, expiry, bitsForScope(scope));
+  }
   if (deps.insertMandates) {
     await deps.insertMandates({
       wallet: deps.wallet,
       hashes: state.mandates.map((m) => BigInt(m.hash)),
     });
   }
+  stripPrivateKey(state, "alice");
+  stripPrivateKey(state, "orchestrator");
 
   const deskId = resolveMintDesk(deps.store, deps.wallet, deps.deskId);
   const session: GuestSession = {
