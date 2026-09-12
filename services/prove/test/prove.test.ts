@@ -1,10 +1,42 @@
 import assert from "node:assert/strict";
 import { appendLeaf, emptyState, ensureIdentity, freshFieldTag, identityOf } from "@warrant/agent";
+import { publicOf, stripPrivateKey } from "../../../packages/agent/src/store.ts";
 import { FETCH, TRANSLATE, hashLeaf, type IProver, type WarrantProof } from "@ronnakamoto/warrant-core";
 import { appendHelperHop } from "../src/hire.ts";
 import { assembleGuestTree } from "../src/mint.ts";
-import { actingName, proveGuest } from "../src/prove.ts";
+import { actingName, identityLeafOf, proveGuest, refreshMembers } from "../src/prove.ts";
+import { mandateHashForKind } from "../src/revoke.ts";
 import type { GuestSession } from "../src/session.ts";
+
+describe("refreshMembers", function () {
+  it("hashes the identity leaf after Alice's seed is stripped", async function () {
+    const state = emptyState();
+    ensureIdentity(state, "alice", "alice-stripped");
+    ensureIdentity(state, "orchestrator", "orch-stripped");
+    ensureIdentity(state, "translator", "trans-stripped");
+    state.rootName = "alice";
+    state.rootTier = 0;
+    state.rootEpoch = 0;
+    const [pkX, pkY] = publicOf(state, "alice");
+    const expected = hashLeaf(pkX, pkY, 0n, 0n).toString();
+    stripPrivateKey(state, "alice");
+    assert.equal(state.identities.alice?.privateKey, "");
+
+    await refreshMembers(state, async () => [expected]);
+    assert.equal(identityLeafOf(state), expected);
+    assert.ok(state.members.includes(expected));
+
+    const session: GuestSession = {
+      id: "p",
+      deskId: "desk",
+      wallet: "0x0000000000000000000000000000000000000003",
+      evmPrivateKey: "0x",
+      createdAt: Date.now(),
+      state,
+    };
+    assert.equal(mandateHashForKind(session, undefined, "identity"), expected);
+  });
+});
 
 describe("actingName", function () {
   it("selects helper vs translator from parentId", function () {
