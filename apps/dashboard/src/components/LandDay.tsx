@@ -1,5 +1,5 @@
 import { landDayFor, type GuestScopeName } from "../lib/guest-copy";
-import { LandViz } from "./LandViz";
+import { LandFigures } from "./LandFigures";
 
 export function LandDay({ scope }: { scope: GuestScopeName }) {
   const day = landDayFor(scope);
@@ -11,7 +11,7 @@ export function LandDay({ scope }: { scope: GuestScopeName }) {
       id="land-day-panel"
       aria-labelledby={`land-tab-${scope}`}
     >
-      <LandViz scope={scope} />
+      <LandFigures />
       <div className="land-day-live" key={scope}>
         <h2 className="land-story-title">{day.title}</h2>
         <p className="land-story">{day.story}</p>
