@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Warrant",
+  title: "Warrant Protocol",
   description: "Your agent can act. Nobody it called learns who you are.",
 };
 

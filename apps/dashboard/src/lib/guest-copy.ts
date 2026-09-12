@@ -1,12 +1,15 @@
 export const GUEST_COPY = {
   headline: "Your agent can act. Nobody it called learns who you are.",
-  standfirst:
-    "Give the bot you already have a warrant. When you fire it, whoever it wrote or talked to still does not know it was you.",
-  world: "This is a public trial. Not a World ID check.",
+  problem:
+    "Hand the bot a key to leave a note or translate a sentence, and whoever it called can name you. Hire a helper, and you cannot fire the chain.",
+  standfirst: "You already have the bot.",
+  world: "Public trial.",
+  signHint: "You sign. The bot never gets that key.",
+  nextHint: "After you sign, you get one paragraph to paste. Fire lives in the tab.",
   twoWallets:
-    "You approve in MetaMask. The bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
+    "You sign in MetaMask. The bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
   connectWallet: "You keep the key. Connect to authorize.",
-  connectAction: "Connect",
+  connectAction: "I already authorized",
   hostError: "Something went wrong. Try again in a moment.",
   revokeFailed: "Revoke did not take. The agent can still act.",
   authorize: "Authorize my agent",
@@ -24,7 +27,7 @@ export const GUEST_COPY = {
   signRejected: "The wallet did not sign.",
   rateLimited: "Try again in a few minutes.",
   registry: "Registry",
-  warrantTab: "Warrant",
+  warrantTab: "Warrant Protocol",
   docs: "Docs",
   localhostHint:
     "Cloud agents (Grok) cannot reach this machine. OpenClaw or Hermes on this machine can.",
@@ -40,8 +43,8 @@ export const GUEST_COPY = {
     "Your agent acted. The shop has a HashScan link and a nullifier. It still does not know who you are.",
   helperSkillFoot:
     "This helper can scar memo. It cannot translate. Fire helper in the tab kills it. Fire this warrant kills it too.",
-  scopeLead: "Your bot may leave a memo, translate, or both.",
-  scopeMemo: "Memo",
+  scopeLead: "Note, translate, or both.",
+  scopeMemo: "Note",
   scopeTranslate: "Translate",
   scopeBoth: "Both",
 } as const;
@@ -50,27 +53,27 @@ export const LAND_DAY = {
   you: "You",
   youFoot: "Keep the key",
   bot: "Your bot",
-  botFoot: "Paste into the chat",
+  botFoot: "Gets one paragraph",
   fire: "Fire",
   fireFoot: "Take it back",
   fetch: {
     title: "Leave a note. Keep your name.",
     story:
-      "Tell your bot to leave a memo. Other people can read the note. They cannot tell it was you. Fire, and the bot cannot leave another.",
+      "It leaves a note. People can read it. They cannot tell it was you. Fire, and it stops.",
     act: "The note",
     actFoot: "Goes out without your name",
   },
   translate: {
     title: "Translate. Keep your name.",
     story:
-      "Tell your bot to translate a sentence. You get the other language. They cannot tell who asked. Fire, and the bot cannot translate again.",
+      "It translates a sentence. You get the other language. They cannot tell who asked. Fire, and it stops.",
     act: "The words",
     actFoot: "Come back without your name",
   },
   both: {
     title: "A note or a translation. One Fire.",
     story:
-      "One warrant. Your bot can leave a memo or translate. Fire stops both. Nobody they talked to can tell it was you.",
+      "One warrant. Note or translate. Fire stops both. Nobody they talked to can name you.",
     act: "The job",
     actFoot: "A note or a translation",
   },
