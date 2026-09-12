@@ -97,7 +97,7 @@ export function mandateHashForKind(
     : session.helperSessionId
       ? store?.get(session.helperSessionId)
       : undefined;
-  const hop = helper?.state.mandates[2];
+  const hop = helper?.state.mandates.at(-1);
   if (!hop?.hash) throw new Error("helper hop missing");
   return hop.hash;
 }

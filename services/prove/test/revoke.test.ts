@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { FOUNDER_ETH } from "../src/founders.ts";
 import {
+  mandateHashForKind,
   markHelperFired,
   markSessionFired,
   markWalletFired,
@@ -9,9 +10,32 @@ import {
   revokeSiblingsFor,
   waitUntilBalance,
 } from "../src/revoke.ts";
-import { createSessionStore } from "../src/session.ts";
+import { hireHelper } from "../src/hire.ts";
+import { assembleGuestTree } from "../src/mint.ts";
+import { createSessionStore, type GuestSession } from "../src/session.ts";
 import { FETCH, TRANSLATE } from "@ronnakamoto/warrant-core";
-import { emptyState } from "@warrant/agent";
+import { emptyState, ensureIdentity, freshFieldTag } from "@warrant/agent";
+
+function parentSession(): GuestSession {
+  const state = emptyState();
+  ensureIdentity(state, "alice", "alice-fire");
+  ensureIdentity(state, "orchestrator", "orch-fire");
+  ensureIdentity(state, "translator", "trans-fire");
+  state.humanTag = freshFieldTag();
+  state.contextHash = freshFieldTag();
+  state.rootName = "alice";
+  state.rootTier = 0;
+  state.rootEpoch = 0;
+  assembleGuestTree(state, BigInt(Math.floor(Date.now() / 1000) + 1800), TRANSLATE | FETCH);
+  return {
+    id: "parent",
+    deskId: "desk",
+    createdAt: 1_000,
+    wallet: "0x00000000000000000000000000000000000000aa",
+    evmPrivateKey: "0x",
+    state,
+  };
+}
 
 describe("waitUntilBalance", function () {
   it("returns once the credit is visible", async function () {
@@ -293,5 +317,33 @@ describe("prepareGuestRevoke", function () {
     assert.equal(store.get("a")?.revoked, undefined);
     assert.equal(store.get("h")?.revoked, true);
     assert.equal(store.get("a")?.helperSessionId, undefined);
+  });
+
+  it("Fire helper uses the slim helper hop (index 1)", async function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    store.put(parentSession());
+    const hired = await hireHelper(store, "parent");
+    assert.equal(hired.ok, true);
+    if (!hired.ok) return;
+    const helper = store.get(hired.helperSessionId);
+    assert.ok(helper);
+    const fromHelper = mandateHashForKind(helper, store, "helper");
+    const fromParent = mandateHashForKind(store.get("parent")!, store, "helper");
+    assert.equal(fromHelper, helper.state.mandates[1]!.hash);
+    assert.equal(fromParent, helper.state.mandates[1]!.hash);
+    assert.notEqual(fromHelper, store.get("parent")!.state.mandates[1]!.hash);
+  });
+
+  it("Fire this after hire still names parent hop 2", async function () {
+    const store = createSessionStore({ ttlMs: 60_000, now: () => 1_000 });
+    store.put(parentSession());
+    const hired = await hireHelper(store, "parent");
+    assert.equal(hired.ok, true);
+    if (!hired.ok) return;
+    const parent = store.get("parent")!;
+    const helper = store.get(hired.helperSessionId)!;
+    assert.equal(mandateHashForKind(parent, store, "warrant"), parent.state.mandates[1]!.hash);
+    assert.notEqual(parent.state.mandates[1]!.hash, helper.state.mandates[1]!.hash);
+    assert.equal(parent.state.mandates.length, 2);
   });
 });
