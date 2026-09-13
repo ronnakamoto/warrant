@@ -18,8 +18,10 @@ import {
   mandateRemainingMs,
   remainingLife,
   remainingMsUntil,
+  sessionPrompt,
   shopIsDead,
   skillMarkdown,
+  skillUrl,
 } from "../src/lib/guest-copy.ts";
 import {
   hederaPayFrom,
@@ -89,7 +91,7 @@ describe("guest first-run copy", function () {
     assert.match(GUEST_COPY.standfirst, /agent\/bot/i);
     assert.match(GUEST_COPY.explain, /permission slip/i);
     assert.match(GUEST_COPY.explain, /agent\/bot/i);
-    assert.match(GUEST_COPY.explain, /paste one paragraph/i);
+    assert.match(GUEST_COPY.explain, /paste the warrant/i);
     assert.match(GUEST_COPY.explain, /Fire/i);
     assert.match(GUEST_COPY.honesty, /still public/i);
     assert.equal(/World ID|shop|API|merkle|Groth16/i.test(`${GUEST_COPY.explain} ${GUEST_COPY.honesty}`), false);
@@ -114,6 +116,10 @@ describe("guest first-run copy", function () {
     assert.equal(existsSync(join(dashboard, "src/components/LandViz.tsx")), false);
     assert.equal(existsSync(join(dashboard, "public/land/without.excalidraw")), true);
     assert.equal(existsSync(join(dashboard, "public/land/with.excalidraw")), true);
+    const withScene = readFileSync(join(dashboard, "public/land/with.excalidraw"), "utf8");
+    assert.equal(/one paragraph/i.test(withScene), false);
+    assert.match(withScene, /Paste the warrant/);
+    assert.equal(/one paragraph/i.test(LAND_DAY.botFoot), false);
   });
 
   it("splits the land headline onto poster display lines", function () {
@@ -159,7 +165,8 @@ describe("guest first-run copy", function () {
     assert.match(skill, /even a greeting/);
     assert.match(skill, /Do not greet me/);
     assert.match(skill, /Do not ask if I meant it/);
-    assert.match(skill, /the moment you read this/);
+    assert.match(skill, /the moment you have a bearer/);
+    assert.match(skill, /Use warrant\. Bearer/);
     assert.match(skill, /A warrant acted/);
     assert.equal(skill.includes("<what I asked you to send>"), false);
     assert.match(skill, /https:\/\/app\.example\/api\/agent\/memo/);
@@ -279,7 +286,7 @@ describe("guest first-run copy", function () {
     assert.match(src, /GUEST_COPY\.scopeTranslate/);
     assert.match(src, /GUEST_COPY\.scopeBoth/);
     assert.match(src, /JSON\.stringify\(\{\s*wallet,\s*scope/);
-    assert.match(src, /agentPrompt\(origin, token, selected\.scope \?\? "fetch"\)/);
+    assert.match(src, /sessionPrompt\(token, selected\.scope \?\? "fetch"\)/);
     assert.match(src, /useState<GuestScopeName>\("fetch"\)/);
     assert.match(src, /scope\?: GuestScopeName/);
     assert.equal((src.match(/label=\{GUEST_COPY\.authorize\}/g) ?? []).length, 1);
@@ -291,7 +298,12 @@ describe("guest first-run copy", function () {
     assert.match(src, /GUEST_COPY\.promptLead/);
     assert.match(src, /actingWarrants\.length > 1/);
     assert.equal(src.includes("idTail"), false);
-    assert.match(src, /label=\{copied \? GUEST_COPY\.copied : GUEST_COPY\.copyPrompt\}[\s\S]*?variant="primary"/);
+    assert.equal(src.includes("agentPrompt"), false);
+    assert.match(src, /copied === "warrant" \? GUEST_COPY\.copied : GUEST_COPY\.copyPrompt/);
+    assert.match(src, /copied === "skill" \? GUEST_COPY\.copied : GUEST_COPY\.skillCopy/);
+    assert.match(src, /GUEST_COPY\.skillHint/);
+    assert.match(src, /console-warrant/);
+    assert.match(src, /href=\{skillHref\}/);
     assert.match(src, /\{actingWarrants\.length > 1 \? \(\s*<Button[\s\S]*?label=\{GUEST_COPY\.fireEvery\}/);
     assert.match(src, /localHost \? \([\s\S]*GUEST_COPY\.fundHint/);
   });
@@ -322,8 +334,10 @@ describe("guest first-run copy", function () {
       "utf8",
     );
     assert.equal(repo, md);
-    assert.equal(md.includes("/api/agent/translate"), false);
-    assert.match(md, /api\/agent\/memo/);
+    assert.match(md, /name: warrant/);
+    assert.match(md, /Use warrant\. Bearer/);
+    assert.match(md, /If they said Translate/);
+    assert.match(md, /api\/agent\/translate/);
     assert.match(md, /Fire helper, Fire this warrant, or Fire every warrant/);
     assert.equal(/fire everyone/i.test(md), false);
     assert.equal(PUBLIC_APP_ORIGIN, "https://warrant-beta.vercel.app");
@@ -475,7 +489,8 @@ describe("guest first-run copy", function () {
     assert.equal(src.includes("<textarea"), false);
     assert.equal(/Call the shop|Pay the shop|shopCall|payCall/.test(src), false);
     assert.match(src, /connectRootWallet/);
-    assert.match(src, /Copy for my agent|copyPrompt/);
+    assert.match(src, /skillUrl\(origin\)/);
+    assert.match(src, /Copy warrant|copyPrompt/);
     assert.match(src, /fundHint/);
     assert.equal(/letSpendFromReady|Let it spend|cutSpend|copiedOnce/.test(src), false);
     assert.match(src, /\/api\/guest\/challenge/);
@@ -912,6 +927,52 @@ describe("guest first-run copy", function () {
     const body = await res.text();
     assert.equal(body, skillMarkdown("https://warrant-beta.vercel.app"));
     assert.equal(body.includes("Bearer tok_"), false);
+    assert.match(res.headers.get("access-control-allow-origin") ?? "", /\*/);
+  });
+
+  it("copies a session line, not the whole skill", function () {
+    const note = sessionPrompt("tok_live_abc", "fetch");
+    assert.match(note, /^Use warrant\. Bearer tok_live_abc\nLeave a note\.$/);
+    assert.equal(note.includes("POST"), false);
+    assert.equal(sessionPrompt("tok_live_abc", "translate").includes("Translate."), true);
+    assert.equal(sessionPrompt("tok_live_abc", "both"), "Use warrant. Bearer tok_live_abc\nNote or translate.");
+    assert.equal(skillUrl("https://warrant-beta.vercel.app"), "https://warrant-beta.vercel.app/skill.md");
+    assert.match(GUEST_COPY.promptLead, /skill once/i);
+    assert.match(GUEST_COPY.copyPrompt, /warrant/i);
+    assert.equal(GUEST_COPY.skillHint.includes("npx"), false);
+  });
+
+  it("publishes well-known Agent Skills indexes", async function () {
+    const origin = "https://warrant-beta.vercel.app";
+    const { wellKnownSkillsIndex, wellKnownAgentSkillsIndex, skillDigest } = await import(
+      "../src/lib/skill-discovery.ts"
+    );
+    const legacy = wellKnownSkillsIndex(origin);
+    assert.equal(legacy.skills[0]?.name, "warrant");
+    assert.deepEqual(legacy.skills[0]?.files, ["SKILL.md"]);
+    const v2 = wellKnownAgentSkillsIndex(origin);
+    assert.equal(v2.skills[0]?.type, "skill-md");
+    assert.equal(v2.skills[0]?.url, `${origin}/skill.md`);
+    assert.equal(v2.skills[0]?.digest, skillDigest(origin));
+    const { GET: getLegacy } = await import("../src/app/.well-known/skills/index.json/route.ts");
+    const { GET: getV2 } = await import("../src/app/.well-known/agent-skills/index.json/route.ts");
+    const { GET: getKnown } = await import(
+      "../src/app/.well-known/skills/warrant/SKILL.md/route.ts"
+    );
+    const legacyRes = await getLegacy(new Request(`${origin}/.well-known/skills/index.json`));
+    const v2Res = await getV2(new Request(`${origin}/.well-known/agent-skills/index.json`));
+    const knownRes = await getKnown(
+      new Request(`${origin}/.well-known/skills/warrant/SKILL.md`),
+    );
+    assert.equal(legacyRes.status, 200);
+    assert.equal(v2Res.status, 200);
+    assert.equal(knownRes.status, 200);
+    assert.equal(legacyRes.headers.get("access-control-allow-origin"), "*");
+    assert.equal(v2Res.headers.get("access-control-allow-origin"), "*");
+    const v2Body = (await v2Res.json()) as { skills: { digest: string; url: string }[] };
+    assert.equal(v2Body.skills[0]?.digest, skillDigest(origin));
+    assert.equal(v2Body.skills[0]?.url, `${origin}/skill.md`);
+    assert.equal(await knownRes.text(), skillMarkdown(origin));
   });
 
   it("speaks remaining life in days or minutes", function () {

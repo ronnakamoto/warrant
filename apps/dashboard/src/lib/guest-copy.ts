@@ -5,9 +5,9 @@ export const GUEST_COPY = {
   standfirst: "You already have the agent/bot.",
   world: "Public trial.",
   signHint: "You sign. The agent/bot never gets that key.",
-  nextHint: "After you sign, you get one paragraph to paste. Fire lives in the tab.",
+  nextHint: "After you sign, you get a warrant to paste. Fire lives in the tab.",
   explain:
-    "Warrant is the permission slip the agent/bot carries instead of your name. You keep the key. You paste one paragraph into the agent/bot you already have. It acts. They cannot tell who asked. Fire when you are done. They still do not know who you were.",
+    "Warrant is the permission slip the agent/bot carries instead of your name. You keep the key. You paste the warrant into the agent/bot you already have. It acts. They cannot tell who asked. Fire when you are done. They still do not know who you were.",
   honesty:
     "A note you post is still public. Anyone with the link can read the words. They cannot tell it was you.",
   twoWallets:
@@ -19,9 +19,11 @@ export const GUEST_COPY = {
   authorize: "Authorize my agent",
   minting: "Issuing the warrant…",
   authorized: "Your agent is authorized.",
-  promptLead: "Paste this into Grok, Hermes, or OpenClaw. It should post. This is the warrant — not a wish.",
+  promptLead: "Install the warrant skill once. Then paste the warrant.",
+  skillHint: "Hermes: /skills install the URL. Grok and OpenClaw: add the skill from the URL.",
+  skillCopy: "Copy skill",
   botLead: "For the agent/bot you already have.",
-  copyPrompt: "Copy for my agent",
+  copyPrompt: "Copy warrant",
   copied: "Copied.",
   revoke: "Fire everyone",
   afterRevoke: "Every agent under you is done. They still do not know who you were.",
@@ -57,7 +59,7 @@ export const LAND_DAY = {
   you: "You",
   youFoot: "Keep the key",
   bot: "Your agent/bot",
-  botFoot: "Gets one paragraph",
+  botFoot: "Gets the warrant",
   fire: "Fire",
   fireFoot: "Take it back",
   fetch: {
@@ -96,7 +98,7 @@ export const LAND_FIGURES = [
   {
     title: "With a warrant",
     src: "/land/with.png",
-    alt: "You keep the key. Authorize. Paste one paragraph. Your agent/bot acts. They cannot tell who asked. Fire takes it back.",
+    alt: "You keep the key. Authorize. Paste the warrant. Your agent/bot acts. They cannot tell who asked. Fire takes it back.",
   },
 ] as const;
 
@@ -184,7 +186,8 @@ function hireLines(origin: string, bearer: string): string[] {
 
 function jobRules(kind: "agent" | "helper"): string[] {
   return [
-    "The JSON above is the first job. POST it the moment you read this. Do not reply first.",
+    "The JSON above is the first job. POST it the moment you have a bearer. Do not reply first.",
+    "If I paste Use warrant. Bearer <token>, that token is this job. POST now. Do not wait for this file to be pasted again.",
     "Every message I send after this is the next text, even a greeting. POST it. Do not greet me. Do not ask if I meant it. Do not wait for more text. Do not wait for a fire word.",
     ...(kind === "agent" ? ["Do not hire unless I ask."] : []),
     "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
@@ -264,6 +267,31 @@ function helperSkillLines(origin: string, bearer: string): string[] {
   ];
 }
 
+const SKILL_DESCRIPTION =
+  "Use when the human pastes a warrant bearer, says use warrant, leave a note, or translate. POST the job. Never put a Hedera key in chat.";
+
+/** Tokenless skill file. Never pass a live session id. */
+const SKILL_FRONTMATTER = [
+  "---",
+  "name: warrant",
+  `description: "${SKILL_DESCRIPTION}"`,
+  "---",
+] as const;
+
+export function skillUrl(appOrigin: string): string {
+  return `${appOrigin.replace(/\/$/, "")}/skill.md`;
+}
+
+export function sessionPrompt(token: string, scope: GuestScopeName = "fetch"): string {
+  const job =
+    scope === "translate" ? "Translate." : scope === "both" ? "Note or translate." : "Leave a note.";
+  return `Use warrant. Bearer ${token}\n${job}`;
+}
+
+export function skillDescription(): string {
+  return SKILL_DESCRIPTION;
+}
+
 export function agentPrompt(
   appOrigin: string,
   token: string,
@@ -272,17 +300,17 @@ export function agentPrompt(
   return skillLines(appOrigin.replace(/\/$/, ""), token, scope).join("\n");
 }
 
-/** Tokenless skill file. Never pass a live session id. */
-const SKILL_FRONTMATTER = [
-  "---",
-  "name: warrant",
-  "description: POST the warrant job as soon as you receive it. Never put a Hedera key in chat.",
-  "---",
-] as const;
-
 export function skillMarkdown(appOrigin: string = PUBLIC_APP_ORIGIN): string {
   const origin = appOrigin.replace(/\/$/, "");
-  return [...SKILL_FRONTMATTER, "", ...skillLines(origin, BEARER_PLACEHOLDER, "fetch"), ""].join("\n");
+  return [
+    ...SKILL_FRONTMATTER,
+    "",
+    ...skillLines(origin, BEARER_PLACEHOLDER, "fetch"),
+    "",
+    "If they said Translate, POST this instead of memo:",
+    ...shopBlock(origin, BEARER_PLACEHOLDER, "/api/agent/translate", TRANSLATE_BODY),
+    "",
+  ].join("\n");
 }
 
 /** Helper paste. Memo only. Never a hire or translate URL. */

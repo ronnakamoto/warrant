@@ -2,9 +2,9 @@
 
 A key for the bot you already have.
 
-Authorize. Paste one paragraph into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
+Authorize. Install the skill once. Paste the warrant into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
 
-**Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, Copy (or fetch [`/skill.md`](https://warrant-beta.vercel.app/skill.md)), fire. The skill is the paragraph. Clone is optional local prove. Base Sepolia + Hedera testnet.
+**Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, copy the warrant, fire. Install the skill once from [`/skill.md`](https://warrant-beta.vercel.app/skill.md). Clone is optional local prove. Base Sepolia + Hedera testnet.
 
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 

@@ -49,7 +49,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Open Warrant. Authorize with MetaMask. Copy one paragraph into the bot you already have. The bot calls a shop we operate, or a shop someone wrapped with the kit. When you are done, Fire. The next call dies. The shop still does not know it was you.",
+        text: "Open Warrant. Authorize with MetaMask. Install `/skill.md` once. Paste the warrant into the bot you already have. The bot calls a shop we operate, or a shop someone wrapped with the kit. When you are done, Fire. The next call dies. The shop still does not know it was you.",
       },
     ],
   },
@@ -67,7 +67,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         kind: "p",
-        text: "The chat can see the bearer. Treat that paragraph like a key. Anyone who has it can act until you Fire.",
+        text: "The chat can see the bearer. Treat that warrant like a key. Anyone who has it can act until you Fire.",
       },
       {
         kind: "p",
@@ -494,7 +494,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Testnet is the product. Console: https://warrant-beta.vercel.app — Authorize, Copy, Fire. The skill is the paragraph (`/skill.md`). Clone is optional local prove.",
+        text: "Testnet is the product. Console: https://warrant-beta.vercel.app — Authorize, Copy the warrant, Fire. Install `/skill.md` once. Clone is optional local prove.",
       },
       {
         kind: "table",
