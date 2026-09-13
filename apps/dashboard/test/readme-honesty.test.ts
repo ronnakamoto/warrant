@@ -26,5 +26,6 @@ describe("README honesty", function () {
     assert.match(readme, /eight public signals/i);
     assert.match(readme, /https:\/\/warrant-beta\.vercel\.app\/docs/);
     assert.equal(readme.includes("npx"), false);
+    assert.equal(readme.includes("```mermaid"), false);
   });
 });

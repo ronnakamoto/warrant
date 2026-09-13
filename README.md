@@ -267,24 +267,6 @@ translator  --POST /v1/translate-->  translate (Hono + @ronnakamoto/warrant-x402
 
 `HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`). The console and the agent API settle the same way the CLI does (`WARRANT_PAY=1`): the caller signs ExactHedera. Testnet HBAR: [Hedera faucet](https://portal.hedera.com/faucet). The shop still logs a nullifier; the settle `txId` is a HashScan link. Do not set `WARRANT_GUEST_SPONSOR` as the door.
 
-### Architecture (overview)
-
-The protocol picture is [How a warrant acts](#how-a-warrant-acts). This is the process graph: root → hops → shop → Fire.
-
-```mermaid
-flowchart LR
-  Human[Human root] --> Orch[Orchestrator]
-  Orch --> Trans[Translator]
-  Trans -->|warrant.fetch + Groth16| X402["@ronnakamoto/warrant-x402"]
-  X402 -->|warrant ok| Pay[Blocky402 exact HBAR]
-  X402 -->|paid| OK[200 + HCS nullifier]
-  Human -->|revoke epoch| Reg[MandateRegistry]
-  Reg -->|currentRoot| X402
-  Reg -->|Bound/Revoked| G[Studio subgraph]
-  G -->|live list| Dash[Dashboard]
-  A0[Agent0 ERC-8004 subgraph] -->|owner join| Dash
-```
-
 Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/08-demo-runbook.md`](docs/08-demo-runbook.md).
 
 ## Documentation
