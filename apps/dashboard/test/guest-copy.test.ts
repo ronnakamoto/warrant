@@ -73,11 +73,11 @@ describe("guest first-run copy", function () {
 
   it("names the problem Warrant fixes today", function () {
     assert.match(GUEST_COPY.problem, /agent\/bot/i);
-    assert.match(GUEST_COPY.problem, /leave a note/i);
-    assert.match(GUEST_COPY.problem, /translate a sentence/i);
+    assert.match(GUEST_COPY.problem, /so it can act/i);
     assert.match(GUEST_COPY.problem, /name you/i);
     assert.match(GUEST_COPY.problem, /hire a helper/i);
     assert.match(GUEST_COPY.problem, /fire the chain/i);
+    assert.equal(/leave a note|translate a sentence/i.test(GUEST_COPY.problem), false);
     assert.equal(/World ID|shop|API|merkle|Groth16/i.test(GUEST_COPY.problem), false);
     const src = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
@@ -93,7 +93,8 @@ describe("guest first-run copy", function () {
     assert.match(GUEST_COPY.explain, /agent\/bot/i);
     assert.match(GUEST_COPY.explain, /paste the warrant/i);
     assert.match(GUEST_COPY.explain, /Fire/i);
-    assert.match(GUEST_COPY.honesty, /still public/i);
+    assert.match(GUEST_COPY.honesty, /still be public/i);
+    assert.equal(/a note you post/i.test(GUEST_COPY.honesty), false);
     assert.equal(/World ID|shop|API|merkle|Groth16/i.test(`${GUEST_COPY.explain} ${GUEST_COPY.honesty}`), false);
     const src = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), "../src/components/GuestTry.tsx"),
@@ -118,7 +119,9 @@ describe("guest first-run copy", function () {
     assert.equal(existsSync(join(dashboard, "public/land/with.excalidraw")), true);
     const withScene = readFileSync(join(dashboard, "public/land/with.excalidraw"), "utf8");
     assert.equal(/one paragraph/i.test(withScene), false);
+    assert.equal(/note or translation/i.test(withScene), false);
     assert.match(withScene, /Paste the warrant/);
+    assert.match(withScene, /the job/);
     assert.equal(/one paragraph/i.test(LAND_DAY.botFoot), false);
   });
 
@@ -240,7 +243,8 @@ describe("guest first-run copy", function () {
   });
 
   it("keeps picker copy quiet and out of land bans", function () {
-    assert.match(GUEST_COPY.scopeLead, /note|translate|both/i);
+    assert.match(GUEST_COPY.scopeLead, /this trial/i);
+    assert.equal(/note|translate|both/i.test(GUEST_COPY.scopeLead), false);
     assert.match(GUEST_COPY.scopeMemo, /note/i);
     assert.match(GUEST_COPY.scopeTranslate, /translate/i);
     assert.match(GUEST_COPY.scopeBoth, /both/i);

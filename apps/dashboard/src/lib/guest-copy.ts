@@ -1,7 +1,7 @@
 export const GUEST_COPY = {
   headline: "Your agent can act. Nobody it called learns who you are.",
   problem:
-    "Hand the agent/bot a key to leave a note or translate a sentence, and whoever it called can name you. Hire a helper, and you cannot fire the chain.",
+    "Hand the agent/bot a key so it can act, and whoever it called can name you. Hire a helper, and you cannot fire the chain.",
   standfirst: "You already have the agent/bot.",
   world: "Public trial.",
   signHint: "You sign. The agent/bot never gets that key.",
@@ -9,7 +9,7 @@ export const GUEST_COPY = {
   explain:
     "Warrant is the permission slip the agent/bot carries instead of your name. You keep the key. You paste the warrant into the agent/bot you already have. It acts. They cannot tell who asked. Fire when you are done. They still do not know who you were.",
   honesty:
-    "A note you post is still public. Anyone with the link can read the words. They cannot tell it was you.",
+    "What it sent can still be public. They cannot tell it was you.",
   twoWallets:
     "You sign in MetaMask. The agent/bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
   connectWallet: "You keep the key. Connect to authorize.",
@@ -49,7 +49,7 @@ export const GUEST_COPY = {
     "Your agent acted. The shop has a HashScan link and a nullifier. It still does not know who you are.",
   helperSkillFoot:
     "This helper can scar memo. It cannot translate. Fire helper in the tab kills it. Fire this warrant kills it too.",
-  scopeLead: "Note, translate, or both.",
+  scopeLead: "What this trial may do.",
   scopeMemo: "Note",
   scopeTranslate: "Translate",
   scopeBoth: "Both",
