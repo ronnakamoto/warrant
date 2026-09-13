@@ -6,6 +6,28 @@ Authorize. Install the skill once. Paste the warrant into Grok, Hermes, or OpenC
 
 **Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, install the skill once from [`/skill.md`](https://warrant-beta.vercel.app/skill.md), copy the warrant, fire. Hermes can search `/.well-known/skills/`. Clone is optional local prove. Base Sepolia + Hedera testnet.
 
+**Book:** [How Warrant works](https://warrant-beta.vercel.app/docs) — hops, eight public signals, Fire.
+
+## How a warrant acts
+
+![How a warrant acts: hops stay private, eight public signals cross Groth16, the shop never sees your name](apps/dashboard/public/protocol/how-warrant-works.png)
+
+The hops stay private. Eight public signals cross Groth16 (`WarrantHop`). The shop only ever sees the right. A proof opens the leaf and its immediate parent — not the chain above. Fire helper or Fire this deletes a hop. Fire every kills the identity leaf.
+
+**Testnet.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
+
+PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
+
+| | Chain private? | Recursive attenuation | Personhood root | Revoke cascade |
+|---|---|---|---|---|
+| IETF AIP / Biscuit | No | Yes | No | App-defined |
+| ERC-7710 | No | Yes | No | Per-session |
+| World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
+| Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
+| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **`tier=0` on the host; AgentBook when that bind is live** | **Hop tombstone or identity epoch** |
+
+## If you run a shop
+
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 
 The hosted memo shop is a public HCS memo, not a reverse proxy.
@@ -61,7 +83,7 @@ The agent CLI is `@ronnakamoto/warrant`. A bot uses a JS runner already on PATH 
 
 ```bash
 npm exec --yes -- @ronnakamoto/warrant ready
-WARRANT_BEARER='<the bearer from Copy>' npm exec --yes -- @ronnakamoto/warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"hi"}'
+WARRANT_BEARER='<the bearer from Copy warrant>' npm exec --yes -- @ronnakamoto/warrant act --url https://warrant-beta.vercel.app/api/agent/memo --body '{"text":"hi"}'
 ```
 
 `pnpm warrant act --url` already takes any shop. A mandate that includes `fetch` can hit the in-repo echo shop (`services/echo`, port 8788):
@@ -71,18 +93,6 @@ WARRANT_BEARER='<the bearer from Copy>' npm exec --yes -- @ronnakamoto/warrant a
 pnpm warrant delegate --from alice --to helper --scope fetch --budget 1 --ttl 1h
 pnpm warrant act --url http://127.0.0.1:8788/v1/echo --body '{"text":"ping"}'
 ```
-
-**Testnet.** Warrant's hosted helper sees the witness when it proves for a cloud bot. The shop still does not.
-
-PSE's May 2026 ACTA post asked for the minimum predicate that verifies a recursive delegation chain without a trusted intermediary. Warrant is a working construction for five predicates — `rooted`, `chained`, `attenuated`, `fresh`, `unrevoked` — not a complete ACTA stack, not a policy language, and not personhood. Capability claims (audit score, jurisdiction) stay outside this circuit.
-
-| | Chain private? | Recursive attenuation | Personhood root | Revoke cascade |
-|---|---|---|---|---|
-| IETF AIP / Biscuit | No | Yes | No | App-defined |
-| ERC-7710 | No | Yes | No | Per-session |
-| World AgentKit | Human ID only | No (policy, not OBO chain) | AgentBook | N/A |
-| Agent Passport (APS) | No (JWT chain) | Scoped hops | World ID | App-defined |
-| **Warrant** | **Yes (ZK)** | **Yes (in-circuit)** | **`tier=0` on the host; AgentBook when that bind is live** | **Hop tombstone or identity epoch** |
 
 ## Status
 
@@ -255,9 +265,11 @@ translator  --POST /v1/translate-->  translate (Hono + @ronnakamoto/warrant-x402
                 | paid → 200 + HCS nullifier
 ```
 
-`HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`). Guest Try and the agent API settle the same way the CLI does (`WARRANT_PAY=1`): the caller signs ExactHedera. Testnet HBAR: [Hedera faucet](https://portal.hedera.com/faucet). The shop still logs a nullifier; the settle `txId` is a HashScan link. Do not set `WARRANT_GUEST_SPONSOR` as the door.
+`HEDERA_PAY_TO` is the resource-server recipient; the agent payer (`HEDERA_ACCOUNT_ID` + key) must be a **different** account. Scheme registration: `ExactHederaScheme` is registered **before** `initialize()` (see `services/translate/src/wiring.ts`). The console and the agent API settle the same way the CLI does (`WARRANT_PAY=1`): the caller signs ExactHedera. Testnet HBAR: [Hedera faucet](https://portal.hedera.com/faucet). The shop still logs a nullifier; the settle `txId` is a HashScan link. Do not set `WARRANT_GUEST_SPONSOR` as the door.
 
 ### Architecture (overview)
+
+The protocol picture is [How a warrant acts](#how-a-warrant-acts). This is the process graph: root → hops → shop → Fire.
 
 ```mermaid
 flowchart LR
@@ -279,6 +291,7 @@ Video dry-run (no recording): `./scripts/demo-video-dry-run.sh` — see [`docs/0
 
 | Document | Description |
 |---|---|
+| [How Warrant works](https://warrant-beta.vercel.app/docs) | Live protocol book (same picture as above) |
 | [`docs/01-research.md`](docs/01-research.md) | Landscape and the ACTA gap |
 | [`docs/02-design.md`](docs/02-design.md) | Threat model, circuit, contracts, x402 |
 | [`docs/03-execution.md`](docs/03-execution.md) | Demo video script and judging self-check |
