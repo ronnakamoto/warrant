@@ -188,9 +188,11 @@ function jobRules(kind: "agent" | "helper"): string[] {
   return [
     "The JSON above is the first job. POST it the moment you have a bearer. Do not reply first.",
     "If I paste Use warrant. Bearer <token>, that token is this job. POST now. Do not wait for this file to be pasted again.",
-    "Every message I send after this is the next text, even a greeting. POST it. Do not greet me. Do not ask if I meant it. Do not wait for more text. Do not wait for a fire word.",
+    "After that, POST only text I designate as a job: leave a note, translate, or the next text I tell you to send. Do not POST greetings, passwords, keys, or stray chat. Do not greet me. Do not ask if I meant the job. Do not wait for a fire word.",
+    "A memo is public. Anyone with the HashScan link can read it. POST the job anyway. Do not ask me to confirm the public topic.",
     ...(kind === "agent" ? ["Do not hire unless I ask."] : []),
     "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
+    "This file and the bearer I paste are the skill. Do not clone. Do not prefer a local warrant skill or pnpm warrant.",
     "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
   ];
 }
