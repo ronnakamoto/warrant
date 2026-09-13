@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { VStack } from "@astryxdesign/core/Layout";
@@ -72,6 +73,25 @@ function scopeWord(scope: GuestScopeName | undefined): string {
   if (scope === "translate") return GUEST_COPY.scopeTranslate;
   if (scope === "both") return GUEST_COPY.scopeBoth;
   return GUEST_COPY.scopeMemo;
+}
+
+function HeaderLeave(props: { show: boolean; busy: boolean; onLeave: () => void }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlot(document.getElementById("land-chrome-cta"));
+  }, []);
+  if (!props.show || !slot) return null;
+  return createPortal(
+    <button
+      type="button"
+      className="site-disconnect"
+      onClick={props.onLeave}
+      disabled={props.busy}
+    >
+      {GUEST_COPY.disconnect}
+    </button>,
+    slot,
+  );
 }
 
 function LandAuthorize(props: { busy: boolean; size?: "sm" | "lg"; onClick: () => void }) {
@@ -564,17 +584,38 @@ export function GuestTry() {
     }
   }
 
+  async function leaveDesk() {
+    if (busy) return;
+    setError(null);
+    setRecovering(true);
+    try {
+      await fetch("/api/guest/leave", { method: "POST" });
+      const { disconnectRootWallet } = await import("../lib/browser-wallet");
+      await disconnectRootWallet();
+      applyList([]);
+      setCopied(null);
+      setNotice(null);
+      setPhase("land");
+    } catch {
+      setError(GUEST_COPY.hostError);
+    } finally {
+      setRecovering(false);
+    }
+  }
+
   const busy = phase === "minting" || revoking || recovering;
   const live =
     Boolean(selected && deskLive(selected)) &&
     phase !== "land" &&
     phase !== "limited" &&
     phase !== "revoked";
+  const seated = live || phase === "ready" || phase === "revoked";
   const landing = phase === "land" || phase === "limited" || phase === "minting";
   const titleLines = landHeadlineLines();
 
   return (
     <>
+      <HeaderLeave show={seated} busy={busy} onLeave={() => void leaveDesk()} />
       {error ? <Banner status="error" title="Can’t do that" description={error} /> : null}
 
       {landing ? (

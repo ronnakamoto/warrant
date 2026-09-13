@@ -34,6 +34,19 @@ export function deskMessage(wallet: Address, nonce: string): string {
   return `Warrant desk\n${getAddress(wallet)}\n${nonce}`;
 }
 
+export async function disconnectRootWallet(): Promise<void> {
+  const eth = injected();
+  if (!eth) return;
+  try {
+    await eth.request({
+      method: "wallet_revokePermissions",
+      params: [{ eth_accounts: {} }],
+    });
+  } catch {
+    /* Cookie is gone. The wallet may keep the permission. */
+  }
+}
+
 export async function signDeskMessage(wallet: Address, nonce: string): Promise<Hex> {
   const eth = injected();
   if (!eth) throw new Error("NO_WALLET");

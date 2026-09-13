@@ -40,6 +40,11 @@ export function clearGuestCookie(env: Env = process.env): string {
   return `warrant_guest=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
+export function clearDeskCookie(env: Env = process.env): string {
+  const secure = isStrictHost(env) ? "; Secure" : "";
+  return `warrant_desk=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
+}
+
 export function deskCookie(deskId: string, env: Env = process.env): string {
   const secure = isStrictHost(env) ? "; Secure" : "";
   return `warrant_desk=${deskId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1800${secure}`;

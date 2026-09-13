@@ -14,6 +14,7 @@ export const GUEST_COPY = {
     "You sign in MetaMask. The agent/bot never gets that key. If it asks you to pay, send HBAR to the address it shows.",
   connectWallet: "You keep the key. Connect to authorize.",
   connectAction: "I already authorized",
+  disconnect: "Disconnect",
   hostError: "Something went wrong. Try again in a moment.",
   revokeFailed: "Revoke did not take. The agent can still act.",
   authorize: "Authorize my agent",
