@@ -4,11 +4,11 @@ A key for the bot you already have.
 
 Authorize. Install the skill once. Paste the warrant into Grok, Hermes, or OpenClaw. The bot can call a shop. Fire the key. The next call dies. The shop saw a nullifier, not you.
 
-**Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, copy the warrant, fire. Install the skill once from [`/skill.md`](https://warrant-beta.vercel.app/skill.md). Clone is optional local prove. Base Sepolia + Hedera testnet.
+**Console:** [https://warrant-beta.vercel.app](https://warrant-beta.vercel.app) — Authorize, install the skill once from [`/skill.md`](https://warrant-beta.vercel.app/skill.md), copy the warrant, fire. Hermes can search `/.well-known/skills/`. Clone is optional local prove. Base Sepolia + Hedera testnet.
 
 Integrator shop: `POST https://translate-production-ed28.up.railway.app/v1/translate` (x402 + warrant). Do not call prove from a bot; the dashboard agent API proves for you.
 
-The hosted Copy shop is a public HCS memo, not a reverse proxy.
+The hosted memo shop is a public HCS memo, not a reverse proxy.
 
 We do **not** host a reverse proxy and do **not** “protect any URL” you paste. Wrap your own Hono `POST` with `createWarrantShop` + `warrantHono`. The request body stays in your process.
 

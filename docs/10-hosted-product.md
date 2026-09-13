@@ -1,6 +1,6 @@
 # 10 — Hosted Warrant (production-grade testnet)
 
-**Live host (2026-09):** the loop is Authorize (MetaMask) → Copy → a real agent → a real testnet shop → Fire helper / Fire this / Fire every. There is no in-tab shop and no wallet-less Try-it. Fire is three on-chain acts (`revokeMandate` hop 3, hop 2, or identity epoch), not one “Fire everyone” POST. The public book is https://warrant-beta.vercel.app/docs. Copy below that still says Door 1 Try-it / in-page shop / Fire everyone is the design history that got us here.
+**Live host (2026-09):** the loop is Authorize (MetaMask) → install `/skill.md` once → Copy warrant → a real agent → a real testnet shop → Fire helper / Fire this / Fire every. There is no in-tab shop and no wallet-less Try-it. Fire is three on-chain acts (`revokeMandate` hop 3, hop 2, or identity epoch), not one “Fire everyone” POST. The public book is https://warrant-beta.vercel.app/docs. Copy below that still says Door 1 Try-it / in-page shop / Fire everyone is the design history that got us here.
 
 Warrant as an **Apple-simple hosted product on public testnets**: one site, no clone, no `.env`, no zkey ritual. This file locks the **security model**, the **first-run UX**, what we will not do, and a **phased build** that does not break the protocol pitch.
 
@@ -40,7 +40,7 @@ They open a URL. The page is finished. Quiet. One sentence, one button. No walle
 This door exists so a human *believes*. It is not how they live.
 
 **Door 2 — they live it (their bot, every day).**  
-Authorize issues a bearer for that leaf. They paste a skill that calls `{APP}/api/agent/translate` with `Authorization: Bearer …`. The BFF proves; the bot never sees a zkey. Fire everyone is `POST {APP}/api/agent/revoke`. Cloud bots need a public https origin — `127.0.0.1` only works for agents on that machine.
+Authorize issues a bearer for that leaf. They install tokenless `/skill.md` once, then paste `Use warrant. Bearer …` and the job. The BFF proves; the bot never sees a zkey. Fire lives in the tab (`Fire helper` / `Fire this` / `Fire every`). Cloud bots need a public https origin — `127.0.0.1` only works for agents on that machine.
 
 The hosted bearer means Warrant sees the witness. Local CLI prove does not.
 
@@ -62,7 +62,7 @@ If any of that is fake, they were entertained. They were not given Warrant.
 
 | They should feel | Therefore we build |
 |---|---|
-| “I already have a bot” | Hosted `TRANSLATE_URL` + a one-prompt skill (Grok / Hermes / OpenClaw / any HTTP) |
+| “I already have a bot” | Hosted `TRANSLATE_URL` + tokenless `/skill.md` (install once) + a session warrant (Grok / Hermes / OpenClaw / any HTTP) |
 | “I didn’t set anything up” | Guest mint + prove worker for Door 1; bot path uses the same hosted prove or a local store the skill creates |
 | “I’m not the messenger” | Bot ↔ API directly. Human only for Try-it belief and for *fire everyone* |
 | “It actually translated” | MyMemory (or better). Never reverse-string |
@@ -142,7 +142,7 @@ We sponsor **testnet** bind gas and guest revoke gas. We do not make the registr
 | Persona | Success in one sitting |
 |---|---|
 | **Guest (Door 1 — belief)** | Open URL → type a sentence → 200 → revoke → next call 403. No wallet. Session TTL. |
-| **Bot owner (Door 2 — life)** | Already has Grok / Hermes / OpenClaw. One prompt. Their bot calls hosted translate with a real warrant. *Fire everyone* and the bot is done. |
+| **Bot owner (Door 2 — life)** | Already has Grok / Hermes / OpenClaw. Install `/skill.md` once. Paste the warrant. Their bot calls a hosted shop. Fire in the tab and the bot is done. |
 | **Wallet user** | Connect Base Sepolia → we bind *their* pubkey → same feeling, keys stay in the tab. |
 | **Integrator** | `TRANSLATE_URL` + CLI / `warrant.fetch` / SKILL.md. Same rails. |
 
@@ -156,11 +156,11 @@ Stay **Astryx + Carbon**. Do not add a second design system. First screen is a p
 
 ### 4.1 90-second path
 
-1. Land. One sentence: *Your agent can act. The API never learns who you are.*
-2. Primary button: **Authorize my agent.** The instruction they paste into Grok / Hermes / OpenClaw is the product, not a fold.
-3. After mint: the paste block, remaining life, **Copy for my agent**. If one live warrant: **Fire**. If two or more: **Fire this warrant** on the selected paste, **Fire every warrant** once beneath.
-4. In-page **Call the shop** stays below the paste (Door 1 belief). Success: translated text, then the nullifier foot. Do not persist shop translations.
-5. Fire this (others still live): *That warrant is done. The shop still does not know who you were.* Fire every / last live: *Every agent under you is done. The API still does not know who you were.* Next agent call is **403**.
+1. Land. One sentence: *Your agent can act. Nobody it called learns who you are.*
+2. Primary button: **Authorize my agent.** After they sign, they install `/skill.md` once, then paste the warrant — not a protocol essay.
+3. After mint: remaining life, the skill URL + **Copy skill**, the warrant line + **Copy warrant**. If one live warrant: **Fire**. If two or more: **Fire this warrant** on the selected warrant, **Fire every warrant** once beneath. Fire is in the tab, not a chat word.
+4. The bot calls the shop. There is no in-tab shop. Success on the console is a HashScan link and a nullifier. Do not persist shop translations in the tab.
+5. Fire this (others still live): *That warrant is done. They still do not know who you were.* Fire every / last live: *Every agent under you is done. They still do not know who you were.* Next agent call is **403**.
 6. Registry is a quiet supporting word — not a peer tab next to the key. Graph, epoch, and explorer links stay behind it. Not the first viewport.
 
 ### 4.2 Copy bans (first viewport)
@@ -175,7 +175,7 @@ Those words may appear in the fold or CLI docs. They may not be the headline.
 |---|---|
 | First land | Headline + Authorize my agent |
 | Minting | Honest wait — “Issuing the warrant…” (bind can take ~15s) |
-| Ready | Paste + remaining life + Copy. Fire, or Fire this + Fire every. Shop stays below. |
+| Ready | Skill URL + Copy skill. Warrant line + Copy warrant. Fire, or Fire this + Fire every. No shop in the tab. |
 | Proving | “Your agent is calling the shop…” (~1–2s). Do not say merkle / epoch / zkey / Groth16 |
 | Success | Result + nullifier-only receipt |
 | Quota / 402 | “The shop wants testnet HBAR.” Faucet link + account + key. This page signs the 402. Do not keep the key. |

@@ -115,6 +115,9 @@ describe("protocol docs", function () {
     assert.match(picture, /Any Fire moves currentRoot/);
     assert.match(picture, /WarrantHop/);
     assert.match(picture, /immediate parent/);
+    assert.match(picture, /Paste warrant/);
+    assert.equal(/Copy skill/.test(picture), false);
+    assert.equal(/one paragraph/i.test(picture), false);
     assert.equal(/WarrantFull/.test(picture), false);
     assert.equal(/D=4/.test(picture), false);
     assert.equal(/enabled=0/.test(picture), false);
@@ -126,6 +129,13 @@ describe("protocol docs", function () {
     const book = docsBookText();
     assert.equal(book.includes("npx"), false);
     assert.equal(/ETHOnline|hi\.new/i.test(book), false);
+    assert.match(book, /\/skill\.md/);
+    assert.match(book, /Copy warrant/);
+    assert.match(book, /Install `\/skill\.md` once/);
+    assert.equal(/one paragraph|Copy for my agent/i.test(book), false);
+    const diagrams = readFileSync(join(root, "../src/components/ProtocolDiagrams.tsx"), "utf8");
+    assert.match(diagrams, /Paste warrant/);
+    assert.equal(diagrams.includes('label="Copy"'), false);
   });
 
   it("does not import warrant-core from the docs route", function () {

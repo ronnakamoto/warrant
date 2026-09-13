@@ -65,16 +65,16 @@ function Arrow({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: num
 
 export function DiagramLoop() {
   return (
-    <svg viewBox="0 0 720 120" width="100%" height="auto" role="img" aria-label="Authorize, copy, bot, shop, fire">
-      <Box x={8} y={36} w={120} h={48} label="Authorize" />
-      <Arrow x1={132} y1={60} x2={156} y2={60} />
-      <Box x={160} y={36} w={100} h={48} label="Copy" />
-      <Arrow x1={264} y1={60} x2={288} y2={60} />
-      <Box x={292} y={36} w={100} h={48} label="Your bot" />
-      <Arrow x1={396} y1={60} x2={420} y2={60} />
-      <Box x={424} y={36} w={100} h={48} label="Shop" />
-      <Arrow x1={528} y1={60} x2={552} y2={60} />
-      <Box x={556} y={36} w={152} h={48} label="Fire → 403" />
+    <svg viewBox="0 0 720 120" width="100%" height="auto" role="img" aria-label="Authorize, paste warrant, bot, shop, fire">
+      <Box x={8} y={36} w={110} h={48} label="Authorize" />
+      <Arrow x1={122} y1={60} x2={146} y2={60} />
+      <Box x={150} y={36} w={132} h={48} label="Paste warrant" />
+      <Arrow x1={286} y1={60} x2={310} y2={60} />
+      <Box x={314} y={36} w={96} h={48} label="Your bot" />
+      <Arrow x1={414} y1={60} x2={438} y2={60} />
+      <Box x={442} y={36} w={92} h={48} label="Shop" />
+      <Arrow x1={538} y1={60} x2={562} y2={60} />
+      <Box x={566} y={36} w={146} h={48} label="Fire → 403" />
     </svg>
   );
 }

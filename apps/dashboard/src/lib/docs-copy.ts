@@ -27,7 +27,7 @@ export const DOCS_COPY = {
 export const DOCS_EXCALIDRAW = {
   title: "How a warrant acts",
   src: "/protocol/how-warrant-works.png",
-  alt: "You authorize, copy a skill into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire helper deletes hop 3. Fire this deletes hop 2. Fire every bumps the identity epoch and every hop dies.",
+  alt: "You authorize, install the skill once, paste the warrant into your bot, and the bot calls a shop. Hops stay private and only get narrower. Groth16 carries eight public signals. The shop never sees your name. Fire helper deletes hop 3. Fire this deletes hop 2. Fire every bumps the identity epoch and every hop dies.",
 } as const;
 
 export const DOCS_DIAGRAMS = [
@@ -49,7 +49,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Open Warrant. Authorize with MetaMask. Install `/skill.md` once. Paste the warrant into the bot you already have. The bot calls a shop we operate, or a shop someone wrapped with the kit. When you are done, Fire. The next call dies. The shop still does not know it was you.",
+        text: "Open Warrant. Authorize with MetaMask. Install `/skill.md` once (Hermes: `/skills install` the URL; Grok and OpenClaw: add the skill from the URL). Copy warrant and paste that line into the chat. The bot calls a shop we operate, or a shop someone wrapped with the kit. When you are done, Fire in the tab. The next call dies. The shop still does not know it was you.",
       },
     ],
   },
@@ -88,7 +88,11 @@ export const DOCS_SECTIONS: DocsSection[] = [
         items: [
           {
             dt: "Warrant",
-            dd: "A Groth16 proof that this request is authorized by a live leaf and its immediate parent, through hops that only got narrower, bound to this shop challenge. It is not a session cookie and not your MetaMask key.",
+            dd: "A Groth16 proof that this request is authorized by a live leaf and its immediate parent, through hops that only got narrower, bound to this shop challenge. It is not a session cookie and not your MetaMask key. On the console, Copy warrant is the live bearer the bot posts with: `Use warrant. Bearer …` and the job.",
+          },
+          {
+            dt: "Skill",
+            dd: "Tokenless `/skill.md`, also at `/.well-known/skills/`. Install once. It tells the bot how to POST. It never holds a live bearer. Hermes can search this origin as well-known skills. Fire stays in the tab.",
           },
           {
             dt: "Root",
@@ -494,7 +498,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     blocks: [
       {
         kind: "p",
-        text: "Testnet is the product. Console: https://warrant-beta.vercel.app — Authorize, Copy the warrant, Fire. Install `/skill.md` once. Clone is optional local prove.",
+        text: "Testnet is the product. Console: https://warrant-beta.vercel.app — Authorize, install `/skill.md` once, Copy warrant, Fire. Clone is optional local prove.",
       },
       {
         kind: "table",
