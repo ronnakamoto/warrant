@@ -344,6 +344,44 @@ body {
   padding-top: var(--spacing-2);
 }
 
+.console-skill-url {
+  margin: 0;
+  max-width: 34rem;
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  word-break: break-all;
+  color: var(--color-text-primary);
+}
+
+.console-skill-url a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.console-skill-url a:hover {
+  color: var(--color-text-primary);
+}
+
+.console-skill-url a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.console-warrant {
+  margin: 0;
+  max-width: 34rem;
+  padding: var(--spacing-3);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-text-primary);
+  background: var(--color-background-surface);
+}
+
 .site-chrome {
   display: flex;
   align-items: center;

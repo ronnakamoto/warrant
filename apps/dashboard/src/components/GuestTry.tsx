@@ -6,13 +6,14 @@ import { Button } from "@astryxdesign/core/Button";
 import { VStack } from "@astryxdesign/core/Layout";
 import { Text } from "@astryxdesign/core/Text";
 import {
-  agentPrompt,
   GUEST_COPY,
   WARRANT_TTL_MS,
   landHeadlineLines,
   mandateRemainingMs,
   remainingLife,
   remainingMsUntil,
+  sessionPrompt,
+  skillUrl,
   type GuestScopeName,
 } from "../lib/guest-copy";
 import { LandDay } from "./LandDay";
@@ -174,7 +175,7 @@ export function GuestTry() {
   const [warrants, setWarrants] = useState<WarrantView[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"skill" | "warrant" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
   const [recovering, setRecovering] = useState(false);
@@ -189,7 +190,8 @@ export function GuestTry() {
   const liveWarrants = warrants.filter(deskLive);
   const actingWarrants = warrants.filter((w) => isActing(w));
   const token = selected && isActing(selected) ? selected.id : null;
-  const prompt = selected && token ? agentPrompt(origin, token, selected.scope ?? "fetch") : "";
+  const prompt = selected && token ? sessionPrompt(token, selected.scope ?? "fetch") : "";
+  const skillHref = skillUrl(origin);
   const localHost = origin.includes("127.0.0.1") || origin.includes("localhost");
 
   const applyList = useCallback((list: WarrantView[], preferId?: string | null) => {
@@ -275,7 +277,7 @@ export function GuestTry() {
 
   async function authorize() {
     setError(null);
-    setCopied(false);
+    setCopied(null);
     setNotice(null);
     let wallet: string;
     try {
@@ -455,7 +457,7 @@ export function GuestTry() {
       if (!(await fireOnChain(selectedId, "warrant"))) return;
       const list = await refreshWarrants();
       const remaining = list.filter(deskLive);
-      setCopied(false);
+      setCopied(null);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
         if (next) setSelectedId(next.id);
@@ -485,7 +487,7 @@ export function GuestTry() {
     try {
       if (!(await fireOnChain(selectedId, "helper"))) return;
       const list = await refreshWarrants();
-      setCopied(false);
+      setCopied(null);
       setNotice(GUEST_COPY.afterFireHelper);
       const remaining = list.filter(deskLive);
       if (remaining.length > 0) {
@@ -514,7 +516,7 @@ export function GuestTry() {
       if (!(await fireOnChain(liveWarrants[0]!.id, "identity"))) return;
       const list = await refreshWarrants();
       const remaining = list.filter(deskLive);
-      setCopied(false);
+      setCopied(null);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
         if (next) setSelectedId(next.id);
@@ -536,10 +538,19 @@ export function GuestTry() {
     }
   }
 
+  async function copySkill() {
+    try {
+      await navigator.clipboard.writeText(skillHref);
+      setCopied("skill");
+    } catch {
+      setError(GUEST_COPY.hostError);
+    }
+  }
+
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(prompt);
-      setCopied(true);
+      setCopied("warrant");
     } catch {
       setError(GUEST_COPY.hostError);
     }
@@ -655,7 +666,7 @@ export function GuestTry() {
                   isDisabled={busy}
                   onClick={() => {
                     setSelectedId(w.id);
-                    setCopied(false);
+                    setCopied(null);
                   }}
                 />
               ))}
@@ -664,14 +675,33 @@ export function GuestTry() {
 
           <VStack gap={3}>
             {token ? (
-              <VStack gap={2}>
+              <VStack gap={4} className="console-skill">
                 <Text>{GUEST_COPY.promptLead}</Text>
-                <Button
-                  label={copied ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
-                  variant="primary"
-                  size="lg"
-                  onClick={() => void copyPrompt()}
-                />
+                <VStack gap={2}>
+                  <p className="console-skill-url">
+                    <a href={skillHref} rel="noreferrer">
+                      {skillHref}
+                    </a>
+                  </p>
+                  <Text type="supporting" color="secondary">
+                    {GUEST_COPY.skillHint}
+                  </Text>
+                  <Button
+                    label={copied === "skill" ? GUEST_COPY.copied : GUEST_COPY.skillCopy}
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => void copySkill()}
+                  />
+                </VStack>
+                <VStack gap={2}>
+                  <pre className="console-warrant">{prompt}</pre>
+                  <Button
+                    label={copied === "warrant" ? GUEST_COPY.copied : GUEST_COPY.copyPrompt}
+                    variant="primary"
+                    size="lg"
+                    onClick={() => void copyPrompt()}
+                  />
+                </VStack>
               </VStack>
             ) : null}
             {localHost ? (

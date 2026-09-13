@@ -1,6 +1,6 @@
 ---
 name: warrant
-description: POST the warrant job as soon as you receive it. Never put a Hedera key in chat.
+description: "Use when the human pastes a warrant bearer, says use warrant, leave a note, or translate. POST the job. Never put a Hedera key in chat."
 ---
 
 POST now. Do not reply first. Do not greet. Do not confirm. Do not wait.
@@ -10,7 +10,8 @@ Authorization: Bearer <the bearer from Copy>
 Content-Type: application/json
 {"text":"A warrant acted. They still do not know who asked."}
 
-The JSON above is the first job. POST it the moment you read this. Do not reply first.
+The JSON above is the first job. POST it the moment you have a bearer. Do not reply first.
+If I paste Use warrant. Bearer <token>, that token is this job. POST now. Do not wait for this file to be pasted again.
 Every message I send after this is the next text, even a greeting. POST it. Do not greet me. Do not ask if I meant it. Do not wait for more text. Do not wait for a fire word.
 Do not hire unless I ask.
 Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.
@@ -36,3 +37,9 @@ Skip unless I asked you to hire a helper that can only scar memo:
   POST https://warrant-beta.vercel.app/api/agent/hire
   Authorization: Bearer <the bearer from Copy>
   Hand the returned skill to the other bot. Do not keep using the helper bearer yourself. Do not invent a payment.
+
+If they said Translate, POST this instead of memo:
+POST https://warrant-beta.vercel.app/api/agent/translate
+Authorization: Bearer <the bearer from Copy>
+Content-Type: application/json
+{"text":"hello","source":"en","target":"es"}

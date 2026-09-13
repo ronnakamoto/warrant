@@ -26,6 +26,22 @@ const nextConfig = {
       process.env.TRANSLATE_URL ??
       "http://127.0.0.1:8787/v1/translate",
   },
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/skills/warrant",
+        destination: "/skill.md",
+      },
+      {
+        source: "/.well-known/agent-skills/warrant",
+        destination: "/skill.md",
+      },
+      {
+        source: "/.well-known/agent-skills/warrant/SKILL.md",
+        destination: "/skill.md",
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
