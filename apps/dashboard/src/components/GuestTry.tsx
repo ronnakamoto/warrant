@@ -62,6 +62,12 @@ function latestActing(warrants: WarrantView[]): WarrantView | undefined {
   return warrants.filter((w) => isActing(w)).sort((a, b) => b.createdAt - a.createdAt)[0];
 }
 
+/** Desk can outlive the mandate so Fire still works. A warrant you just fired is not remaining. */
+function remainingLive(list: WarrantView[], except: string | Iterable<string>): WarrantView[] {
+  const skip = typeof except === "string" ? new Set([except]) : new Set(except);
+  return list.filter((w) => deskLive(w) && !skip.has(w.id));
+}
+
 function scopeWord(scope: GuestScopeName | undefined): string {
   if (scope === "translate") return GUEST_COPY.scopeTranslate;
   if (scope === "both") return GUEST_COPY.scopeBoth;
@@ -455,8 +461,9 @@ export function GuestTry() {
     setRevoking(true);
     try {
       if (!(await fireOnChain(selectedId, "warrant"))) return;
+      const firedId = selectedId;
       const list = await refreshWarrants();
-      const remaining = list.filter(deskLive);
+      const remaining = remainingLive(list, firedId);
       setCopied(null);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
@@ -514,8 +521,9 @@ export function GuestTry() {
     setRevoking(true);
     try {
       if (!(await fireOnChain(liveWarrants[0]!.id, "identity"))) return;
+      const fired = liveWarrants.map((w) => w.id);
       const list = await refreshWarrants();
-      const remaining = list.filter(deskLive);
+      const remaining = remainingLive(list, fired);
       setCopied(null);
       if (remaining.length > 0) {
         const next = latestLive(remaining);
@@ -630,7 +638,7 @@ export function GuestTry() {
         <VStack gap={5} className="console">
           {notice ? <Banner status="success" title={notice} /> : null}
           <VStack gap={1}>
-            <Text>{GUEST_COPY.authorized}</Text>
+            {token ? <Text>{GUEST_COPY.authorized}</Text> : null}
             {selected ? (
               <Text type="supporting" color="secondary">
                 {remainingLife(mandateRemainingMs(selected.createdAt))}

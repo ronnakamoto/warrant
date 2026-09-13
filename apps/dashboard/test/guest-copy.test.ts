@@ -521,6 +521,9 @@ describe("guest first-run copy", function () {
     assert.equal(src.includes("label={GUEST_COPY.connectWallet}"), false);
     assert.match(src, /recovering/);
     assert.match(src, /status === 429/);
+    assert.match(src, /remainingLive\(list, firedId\)/);
+    assert.match(src, /remainingLive\(list, fired\)/);
+    assert.match(src, /\{token \? <Text>\{GUEST_COPY\.authorized\}<\/Text> : null\}/);
   });
 
   it("rejects cross-origin guest POSTs on the public host", function () {
