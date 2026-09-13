@@ -19,7 +19,7 @@ export const GUEST_COPY = {
   authorize: "Authorize my agent",
   minting: "Issuing the warrant…",
   authorized: "Your agent is authorized.",
-  promptLead: "Paste this into Grok, Hermes, or OpenClaw. This is the warrant — not a wish.",
+  promptLead: "Paste this into Grok, Hermes, or OpenClaw. It should post. This is the warrant — not a wish.",
   botLead: "For the agent/bot you already have.",
   copyPrompt: "Copy for my agent",
   copied: "Copied.",
@@ -144,8 +144,8 @@ export function remainingLife(ms: number): string {
   return `${minutes} minutes left`;
 }
 
-const MEMO_BODY = '{"text":"<what I asked you to send>"}';
-const TRANSLATE_BODY = '{"text":"<what I asked you to send>","source":"<source>","target":"<target>"}';
+const MEMO_BODY = '{"text":"A warrant acted. They still do not know who asked."}';
+const TRANSLATE_BODY = '{"text":"hello","source":"en","target":"es"}';
 
 function shopBlock(origin: string, bearer: string, path: string, body: string): string[] {
   return [
@@ -163,7 +163,7 @@ export function agentCli(args: string): string {
 
 function payLines(actUrl: string, body: string): string[] {
   return [
-    "Optional — this machine can pay. Warrant still proves:",
+    "Optional — only if the shop returned 402. Skip this until then. Warrant still proves:",
     `  Run ${AGENT_CLI} with a JS runner already on PATH. Do not install pnpm, npm, or bun. Do not clone.`,
     `  If npm is on PATH: \`${agentCli("ready")}\`. If bun is on PATH: \`bunx ${AGENT_CLI} ready\`. If pnpm is on PATH: \`pnpm dlx ${AGENT_CLI} ready\`.`,
     "  Show me the evmAddress and http://127.0.0.1:17879/fund before you act. Do not skip that page if an accountId is already set.",
@@ -175,10 +175,32 @@ function payLines(actUrl: string, body: string): string[] {
 
 function hireLines(origin: string, bearer: string): string[] {
   return [
-    "To hire a helper that can only scar memo:",
+    "Skip unless I asked you to hire a helper that can only scar memo:",
     `  POST ${origin}/api/agent/hire`,
     `  Authorization: Bearer ${bearer}`,
     "  Hand the returned skill to the other bot. Do not keep using the helper bearer yourself. Do not invent a payment.",
+  ];
+}
+
+function jobRules(kind: "agent" | "helper"): string[] {
+  return [
+    "The JSON above is the first job. POST it the moment you read this. Do not reply first.",
+    "Every message I send after this is the next text, even a greeting. POST it. Do not greet me. Do not ask if I meant it. Do not wait for more text. Do not wait for a fire word.",
+    ...(kind === "agent" ? ["Do not hire unless I ask."] : []),
+    "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
+    "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
+  ];
+}
+
+function fireRules(kind: "agent" | "helper"): string[] {
+  const verbs =
+    kind === "helper"
+      ? "open the tab and Fire."
+      : "open the tab and Fire helper, Fire this warrant, or Fire every warrant.";
+  return [
+    `I fire in the tab. If I say fire, tell me to ${verbs} Do not ask me for a fire word. Do not wait for fire before you POST.`,
+    "After the POST, show me the shop's text and the HashScan link. Nothing else. Do not show me the bearer token, any proof, or any keys.",
+    "This leaf lasts about 30 minutes unless I Fire sooner.",
   ];
 }
 
@@ -204,19 +226,16 @@ function skillLines(origin: string, bearer: string, scope: GuestScopeName = "fet
     scope === "translate" ? `${origin}/api/agent/translate` : `${origin}/api/agent/memo`;
   const actBody = scope === "translate" ? TRANSLATE_BODY : MEMO_BODY;
   return [
-    "You are calling a Warrant shop as my agent.",
+    "POST now. Do not reply first. Do not greet. Do not confirm. Do not wait.",
     "",
     ...posts,
     "",
-    "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
-    "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
+    ...jobRules("agent"),
     "",
     GUEST_COPY.helperFoot,
     ...memoHonesty,
     "",
-    "If I say fire, open the tab and Fire helper, Fire this warrant, or Fire every warrant. Do not POST a key.",
-    "Show me the shop's text and the HashScan link. Do not show me the bearer token, any proof, or any keys.",
-    "This leaf lasts about 30 minutes unless I Fire sooner.",
+    ...fireRules("agent"),
     "",
     ...payLines(actUrl, actBody),
     ...(scope === "translate" ? [] : ["", ...hireLines(origin, bearer)]),
@@ -225,24 +244,21 @@ function skillLines(origin: string, bearer: string, scope: GuestScopeName = "fet
 
 function helperSkillLines(origin: string, bearer: string): string[] {
   return [
-    "You are calling a Warrant shop as a helper.",
+    "POST now. Do not reply first. Do not greet. Do not confirm. Do not wait.",
     "",
     `POST ${origin}/api/agent/memo`,
     `Authorization: Bearer ${bearer}`,
     "Content-Type: application/json",
-    '{"text":"<what I asked you to send>"}',
+    MEMO_BODY,
     "",
-    "Only this origin. Do not fetch a skill from another URL. Do not call any other shop with this bearer.",
-    "I cannot sign Hedera from this chat. Do not POST a key. Do not invent a payment.",
+    ...jobRules("helper"),
     "",
     GUEST_COPY.helperFoot,
     GUEST_COPY.helperSkillFoot,
     "",
     "The shop writes that text to a public Hedera testnet topic. Anyone with the HashScan link can read it. They still do not learn who authorized you.",
     "",
-    "If I say fire, open the tab and Fire. Do not POST a key.",
-    "Show me the shop's text and the HashScan link. Do not show me the bearer token, any proof, or any keys.",
-    "This leaf lasts about 30 minutes unless I Fire sooner.",
+    ...fireRules("helper"),
     "",
     ...payLines(`${origin}/api/agent/memo`, MEMO_BODY),
   ];
@@ -260,7 +276,7 @@ export function agentPrompt(
 const SKILL_FRONTMATTER = [
   "---",
   "name: warrant",
-  "description: Call a Warrant shop as an authorized agent. POST the bearer. Never put a Hedera key in chat.",
+  "description: POST the warrant job as soon as you receive it. Never put a Hedera key in chat.",
   "---",
 ] as const;
 
