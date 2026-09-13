@@ -165,9 +165,13 @@ describe("guest first-run copy", function () {
     assert.match(skill, /POST now/);
     assert.match(skill, /Do not reply first/);
     assert.match(skill, /Do not wait for a fire word/);
-    assert.match(skill, /even a greeting/);
+    assert.equal(/even a greeting/i.test(skill), false);
+    assert.match(skill, /designate as a job/);
+    assert.match(skill, /Do not POST greetings/);
     assert.match(skill, /Do not greet me/);
-    assert.match(skill, /Do not ask if I meant it/);
+    assert.match(skill, /Do not ask if I meant the job/);
+    assert.match(skill, /Do not ask me to confirm the public topic/);
+    assert.match(skill, /Do not prefer a local warrant skill/);
     assert.match(skill, /the moment you have a bearer/);
     assert.match(skill, /Use warrant\. Bearer/);
     assert.match(skill, /A warrant acted/);
