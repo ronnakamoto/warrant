@@ -43,6 +43,7 @@ import {
   sessionFromCookie,
   sessionFromBearer,
   clearGuestCookie,
+  clearDeskCookie,
   paymentRequiredFromResponse,
   guestOriginAllowed,
   publicGuestError,
@@ -368,6 +369,8 @@ describe("guest first-run copy", function () {
     assert.equal(set.includes("Secure"), false);
     assert.equal(sessionFromCookie(set), "abc123");
     assert.match(clearGuestCookie(), /Max-Age=0/);
+    assert.match(clearDeskCookie(), /warrant_desk=/);
+    assert.match(clearDeskCookie(), /Max-Age=0/);
   });
 
   it("reads guest and desk cookies independently", function () {
@@ -385,6 +388,16 @@ describe("guest first-run copy", function () {
     assert.match(set, /HttpOnly/);
   });
 
+  it("clears guest and desk cookies on leave", async function () {
+    const { POST } = await import("../src/app/api/guest/leave/route.ts");
+    const res = await POST(new Request("http://127.0.0.1/api/guest/leave", { method: "POST" }));
+    assert.equal(res.status, 204);
+    const cookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+    const joined = cookies.join("\n") || String(res.headers.get("set-cookie") ?? "");
+    assert.match(joined, /warrant_guest=.*Max-Age=0/);
+    assert.match(joined, /warrant_desk=.*Max-Age=0/);
+  });
+
   it("does not mention World ID on the land", function () {
     const land = `${GUEST_COPY.headline} ${GUEST_COPY.problem} ${GUEST_COPY.standfirst} ${GUEST_COPY.explain} ${GUEST_COPY.honesty} ${GUEST_COPY.world} ${GUEST_COPY.signHint} ${GUEST_COPY.nextHint} ${GUEST_COPY.authorize} ${GUEST_COPY.scopeLead}`;
     assert.equal(/World ID/i.test(land), false);
@@ -394,6 +407,8 @@ describe("guest first-run copy", function () {
     assert.match(GUEST_COPY.twoWallets, /Send HBAR/i);
     assert.match(GUEST_COPY.connectWallet, /You keep the key/);
     assert.match(GUEST_COPY.connectAction, /already authorized/i);
+    assert.match(GUEST_COPY.disconnect, /Disconnect/);
+    assert.equal(/Disconnect/i.test(GUEST_COPY.headline + GUEST_COPY.problem + GUEST_COPY.standfirst), false);
     assert.equal(/Paste one paragraph|Fire whenever/i.test(GUEST_COPY.standfirst), false);
   });
 
@@ -510,7 +525,11 @@ describe("guest first-run copy", function () {
     assert.match(src, /GUEST_COPY\.explain/);
     assert.match(src, /LandDay/);
     assert.match(src, /connectAction/);
-    assert.equal(src.includes("createPortal"), false);
+    assert.equal(src.includes("createPortal"), true);
+    assert.match(src, /HeaderLeave/);
+    assert.match(src, /\/api\/guest\/leave/);
+    assert.match(src, /disconnectRootWallet/);
+    assert.match(src, /GUEST_COPY\.disconnect/);
     assert.equal(src.includes("GUEST_COPY.twoWallets"), false);
     assert.match(src, /GUEST_COPY\.nextHint/);
     assert.match(src, /GUEST_COPY\.signHint/);
